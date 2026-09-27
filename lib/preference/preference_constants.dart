@@ -970,6 +970,19 @@ enum RecentlyReleasedSeriesType { series, season, episode }
 /// carry a media type, so the rest are unaffected either way.
 enum MediaTypeBadgeBehavior { always, mixedRowsOnly, never }
 
+// 27.09, Sid: "ajouter ta propre police comme asset et un petit sélecteur
+// dédié" - overrides every theme's own font (ThemeSpec.fontFamily, see
+// app_theme.dart) when set to anything but `themeDefault`. Font files/family
+// names declared in pubspec.yaml as CustomFontXxx.
+enum CustomFontFamily {
+  themeDefault,
+  inter,
+  poppins,
+  montserrat,
+  nunito,
+  spaceGrotesk,
+}
+
 enum LoadingAnimationImage {
   none,
   moonfinLogo,
@@ -978,6 +991,12 @@ enum LoadingAnimationImage {
   moonPhases,
   moonfinPhases,
   neonfinPhases,
+  // 26.09, Sid: "intégrer mon logo à moi" - her own CARBA TV branding
+  // (assets/images/carba_tv_logo.png), reusing the same rotating-flip
+  // animation as moonfinLogo. Set as the default below instead of
+  // overwriting moonfinLogo's own asset, so the original option stays
+  // available for reference/comparison against upstream.
+  carbaTv,
 }
 
 enum LoadingAnimationSize {

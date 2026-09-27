@@ -72,6 +72,18 @@ class AppThemeController extends ChangeNotifier {
     _apply(themeId, _activeCustomId, _activeOled);
   }
 
+  // 27.09, Sid: "petit sélecteur dédié" for a custom font - AppTheme.
+  // buildTheme reads UserPreferences.customFontFamily itself (see
+  // _effectiveFontFamily there), a preference _apply()'s own change-guard
+  // above never looks at, so picking a new font wouldn't otherwise rebuild
+  // MaterialApp's theme at all. Called directly from the font settings
+  // screen's own onChanged, unconditionally - unlike _apply, there's
+  // nothing to compare against here, this only ever fires when that exact
+  // preference just changed.
+  void refreshVisualOverrides() {
+    notifyListeners();
+  }
+
   void _apply(VisualThemeId builtIn, String customId, OledMode oled) {
     ThemeSpec resolved;
     final hasCustom =

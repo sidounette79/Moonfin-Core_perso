@@ -92,6 +92,13 @@ class _CustomizationCategoryScreen extends StatelessWidget {
                       context.pushSettingsScreen(const _LoadingAnimationScreen()),
                 ),
                 _TvSettingsListTile(
+                  leading: const Icon(Icons.text_fields),
+                  title: const Text('Police'),
+                  subtitle: const Text('Choisir la police de l\'interface'),
+                  onTap: () =>
+                      context.pushSettingsScreen(const _CustomFontScreen()),
+                ),
+                _TvSettingsListTile(
                   leading: const Icon(Icons.preview),
                   title: Text(l10n.localPreviews),
                   subtitle: Text(l10n.localPreviewsDescription),

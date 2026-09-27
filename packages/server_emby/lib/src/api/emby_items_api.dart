@@ -490,9 +490,22 @@ class EmbyItemsApi implements ItemsApi {
     String? seasonId,
     String? fields,
   }) async {
+    // 27.09, Sid: "badge vu absent" (visually confirmed against the real
+    // Emby app on the exact same season) - traced to here: /Shows/{Id}/
+    // Episodes only attaches per-user UserData (Played, PlayedPercentage,
+    // etc.) when a UserId is supplied, unlike every other call in this file
+    // (getThemeMedia, getPlaylists, getArtists...) which already does. Every
+    // episode was silently coming back with no UserData at all, so
+    // AggregatedItem.isPlayed defaulted to false regardless of the real
+    // watched state - same root cause across every detail layout (modern,
+    // nouveau, minimalist, spotlight), since they all share this one call.
     final response = await _dio.get(
       '/Shows/$seriesId/Episodes',
-      queryParameters: {'SeasonId': ?seasonId, 'Fields': ?_knownFields(fields)},
+      queryParameters: {
+        'UserId': _getUserId(),
+        'SeasonId': ?seasonId,
+        'Fields': ?_knownFields(fields),
+      },
     );
     return response.data as Map<String, dynamic>;
   }

@@ -876,6 +876,17 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
     final kidsMode = _kidsMode;
     final showLiveTv = _showLiveTvButton;
     final navLibraries = _navLibraries;
+    // 27.09, Sid: "avoir directe des favoris de bibliothèque... pouvoir en
+    // épingler qu'on puisse les avoir tout le temps" - rendered as its own
+    // always-visible block below (not gated by _librariesExpanded), toggled
+    // per-library from LibraryVisibilityScreen's own "Épingler" switch.
+    final pinnedLibraryIdsRaw = _prefs.get(UserPreferences.pinnedLibraryIds);
+    final pinnedLibraryIds = pinnedLibraryIdsRaw.isEmpty
+        ? const <String>[]
+        : pinnedLibraryIdsRaw.split(',');
+    final pinnedLibraries = navLibraries
+        .where((lib) => pinnedLibraryIds.contains(lib.id))
+        .toList();
     final showLibraries =
         !kidsMode && _prefs.get(UserPreferences.showLibrariesInToolbar);
     final showFolders = _prefs.get(UserPreferences.enableFolderView);
@@ -1074,6 +1085,26 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                       context.navigateTopLevel(Destinations.seerrDiscover);
                     },
                   ),
+                if (showLibraries && pinnedLibraries.isNotEmpty)
+                  for (final lib in pinnedLibraries)
+                    _SidebarLibraryItem(
+                      key: ValueKey('pinned-${lib.id}'),
+                      label: lib.name,
+                      baseColor: nextLibrarySidebarColor(),
+                      showLabel: _showLabels,
+                      onPressed: () {
+                        _onNavigate();
+                        _markNavigationAwayFromSidebar();
+                        context.navigateTopLevel(
+                          libraryRoute(
+                            lib.id,
+                            lib.collectionType,
+                            lib.name,
+                            serverId: lib.serverId,
+                          ),
+                        );
+                      },
+                    ),
                 if (showLibraries && navLibraries.isNotEmpty) ...[
                   _SidebarItem(
                     key: const ValueKey('sidebar-libraries'),

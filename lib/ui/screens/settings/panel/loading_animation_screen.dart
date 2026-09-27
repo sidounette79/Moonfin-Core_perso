@@ -40,6 +40,12 @@ class _LoadingAnimationScreenState extends State<_LoadingAnimationScreen> {
                   LoadingAnimationImage.none => l10n.none,
                   LoadingAnimationImage.moonfinLogo =>
                     l10n.loadingAnimationImageMoonfinLogo,
+                  // 26.09: hardcoded, not routed through l10n - this is a
+                  // personal fork's own brand name (not upstream Moonfin's),
+                  // and adding a real l10n key would need `flutter
+                  // gen-l10n` to regenerate every locale's generated Dart
+                  // file, which isn't set up to run here yet.
+                  LoadingAnimationImage.carbaTv => 'CARBA TV',
                   LoadingAnimationImage.spinner =>
                     l10n.loadingAnimationImageSpinner,
                   LoadingAnimationImage.runner =>

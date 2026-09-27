@@ -208,7 +208,17 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
       gridContentVersion++;
       cleanupGridFocusNodes(length);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) restoreGridFocusIfNeeded();
+        if (!mounted) return;
+        restoreGridFocusIfNeeded();
+        // A fresh entry (nothing remembered yet) otherwise leaves the D-pad
+        // sitting on the toolbar's home/back button, since it's the first
+        // focusable widget in the tree - Sid, 27.09: she wants the cursor to
+        // land on an item straight away, not on that chrome.
+        if (PlatformDetection.isTV &&
+            lastFocusedGridIndex == null &&
+            _vm.items.isNotEmpty) {
+          getGridItemFocusNode(0).requestFocus();
+        }
       });
     }
   }

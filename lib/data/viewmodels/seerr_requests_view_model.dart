@@ -346,6 +346,13 @@ class SeerrRequestsViewModel extends ChangeNotifier {
   Future<void> retryRequest(int requestId) =>
       _runAction(requestId, () => _repo.retryRequest(requestId));
 
+  // 27.09, Sid: "manque bouton pour supprimer" - the repo/API call already
+  // existed (used from the media detail page's own "cancel my request"
+  // button, seerr_media_detail_view_model.dart's cancelRequests), it just
+  // had no equivalent here on the Requests list itself.
+  Future<void> deleteRequest(int requestId) =>
+      _runAction(requestId, () => _repo.deleteRequest(requestId));
+
   Future<void> _runAction(int requestId, Future<void> Function() action) async {
     _state = _state.copyWith(actioningRequestId: requestId);
     notifyListeners();

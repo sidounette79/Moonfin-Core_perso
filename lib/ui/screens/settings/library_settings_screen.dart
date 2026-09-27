@@ -6,6 +6,7 @@ import 'package:server_core/server_core.dart' hide ImageType;
 import '../../../data/models/aggregated_library.dart';
 import '../../../data/repositories/user_views_repository.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../preference/user_preferences.dart';
 import '../../navigation/home_refresh_bus.dart';
 import '../../widgets/adaptive/adaptive_list_section.dart';
 import '../../widgets/settings/clean_settings_typography.dart';
@@ -24,6 +25,7 @@ class LibraryVisibilityScreen extends StatefulWidget {
 
 class _LibraryVisibilityScreenState extends State<LibraryVisibilityScreen> {
   final _viewsRepo = GetIt.instance<UserViewsRepository>();
+  final _prefs = GetIt.instance<UserPreferences>();
 
   List<AggregatedLibrary>? _libraries;
   UserConfiguration? _config;
@@ -118,6 +120,29 @@ class _LibraryVisibilityScreenState extends State<LibraryVisibilityScreen> {
       }
     });
     return _saveQueue;
+  }
+
+  // 27.09, Sid: "avoir directe des favoris de bibliothèque... pouvoir en
+  // épingler" - a purely local/synced UI preference (not a server
+  // UserConfiguration field like the two excludes above), same
+  // comma-separated-list shape as bottomNavbarTabs. Read fresh from the
+  // preference on every build rather than cached in state, since this
+  // screen has no other reason to rebuild when it changes elsewhere.
+  List<String> get _pinnedLibraryIds {
+    final raw = _prefs.get(UserPreferences.pinnedLibraryIds);
+    return raw.isEmpty ? const [] : raw.split(',');
+  }
+
+  void _togglePinned(String libraryId, bool pinned) {
+    final ids = List<String>.from(_pinnedLibraryIds);
+    if (pinned) {
+      if (!ids.contains(libraryId)) ids.add(libraryId);
+    } else {
+      ids.remove(libraryId);
+    }
+    setState(() {
+      _prefs.set(UserPreferences.pinnedLibraryIds, ids.join(','));
+    });
   }
 
   @override
@@ -237,6 +262,28 @@ class _LibraryVisibilityScreenState extends State<LibraryVisibilityScreen> {
                   onChanged: (v) => _toggleExclude(lib.id, !v, isLatest: true),
                 ),
               ),
+            TvFocusHighlight(
+              builder: (_, focused) => SwitchListTile.adaptive(
+                secondary: Icon(
+                  Icons.push_pin,
+                  color: focused
+                      ? AppColors.black.withValues(alpha: 0.54)
+                      : null,
+                ),
+                title: Text(
+                  'Épingler dans la barre latérale',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: focused
+                        ? AppColors.black.withValues(alpha: 0.87)
+                        : AppColorScheme.onSurface,
+                  ),
+                ),
+                value: _pinnedLibraryIds.contains(lib.id),
+                onChanged: (v) => _togglePinned(lib.id, v),
+              ),
+            ),
           ],
         ),
       ],

@@ -302,6 +302,29 @@ flutter:
     - family: EightBitHero
       fonts:
         - asset: assets/fonts/PressStart2P-Regular.ttf
+    # 27.09, Sid: "ajouter ta propre police comme asset et un petit sélecteur
+    # dédié" - a standalone font picker (Réglages > Personnalisation), not
+    # tied to any one visual theme. Variable fonts (one file, no separate
+    # bold weight declared) render at their own default instance regardless
+    # of a requested FontWeight - a known, acceptable simplification here;
+    # Poppins ships real static Bold/Regular files so it gets both.
+    - family: CustomFontInter
+      fonts:
+        - asset: assets/fonts/Inter-Variable.ttf
+    - family: CustomFontPoppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+    - family: CustomFontMontserrat
+      fonts:
+        - asset: assets/fonts/Montserrat-Variable.ttf
+    - family: CustomFontNunito
+      fonts:
+        - asset: assets/fonts/Nunito-Variable.ttf
+    - family: CustomFontSpaceGrotesk
+      fonts:
+        - asset: assets/fonts/SpaceGrotesk-Variable.ttf
 
 msix_config:
   display_name: Moonfin

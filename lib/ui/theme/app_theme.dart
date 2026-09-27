@@ -10,11 +10,30 @@ import '../../util/idiom/app_ui_idiom.dart';
 class AppTheme {
   const AppTheme._();
 
+  // 27.09, Sid: "ajouter ta propre police... un petit sélecteur dédié" -
+  // a standalone font choice (Réglages > Personnalisation) that overrides
+  // whatever the active visual theme itself specifies, when set to
+  // anything but themeDefault. Read fresh on every theme build rather than
+  // cached, so switching it in Settings takes effect immediately.
+  static String? _effectiveFontFamily(ThemeSpec spec) {
+    final prefs = GetIt.instance.isRegistered<UserPreferences>()
+        ? GetIt.instance<UserPreferences>()
+        : null;
+    return switch (prefs?.get(UserPreferences.customFontFamily)) {
+      CustomFontFamily.inter => 'CustomFontInter',
+      CustomFontFamily.poppins => 'CustomFontPoppins',
+      CustomFontFamily.montserrat => 'CustomFontMontserrat',
+      CustomFontFamily.nunito => 'CustomFontNunito',
+      CustomFontFamily.spaceGrotesk => 'CustomFontSpaceGrotesk',
+      CustomFontFamily.themeDefault || null => spec.fontFamily,
+    };
+  }
+
   static TextTheme _buildTextTheme(ThemeSpec spec) {
     final c = spec.colors;
     final base = ThemeData(
       brightness: Brightness.dark,
-      fontFamily: spec.fontFamily,
+      fontFamily: _effectiveFontFamily(spec),
     ).textTheme;
     if (spec.textGlow.isEmpty) {
       return base;
@@ -82,7 +101,7 @@ class AppTheme {
         AppUiIdiom.tvosLeanback => null,
       },
       brightness: Brightness.dark,
-      fontFamily: spec.fontFamily,
+      fontFamily: _effectiveFontFamily(spec),
       // Roboto stops at about 900 codepoints and the pixel font at fewer, so
       // NotoSans stands behind every theme for the wider Latin, Greek and
       // Cyrillic a title can carry.

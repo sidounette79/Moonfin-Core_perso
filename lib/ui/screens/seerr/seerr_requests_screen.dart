@@ -427,6 +427,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen>
           onApprove: () => vm.approveRequest(req.id),
           onDecline: () => vm.declineRequest(req.id),
           onRetry: () => vm.retryRequest(req.id),
+          onDelete: () => vm.deleteRequest(req.id),
           onFocusGained: () => _snapToTileRow(index),
         ),
       );
@@ -493,6 +494,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen>
                 onApprove: () => vm.approveRequest(req.id),
                 onDecline: () => vm.declineRequest(req.id),
                 onRetry: () => vm.retryRequest(req.id),
+                onDelete: () => vm.deleteRequest(req.id),
               ),
             );
           },
@@ -1365,6 +1367,11 @@ class _RequestCard extends StatefulWidget {
   final VoidCallback? onApprove;
   final VoidCallback? onDecline;
   final VoidCallback? onRetry;
+  // 27.09, Sid: "manque bouton pour supprimer" - the Requests list had
+  // Approve/Decline/Retry but no way to remove a request outright (the API
+  // call already existed, just unused here - see seerr_requests_view_model
+  // .dart's own comment).
+  final VoidCallback? onDelete;
 
   /// Fired when this card takes focus, so the grid can slide its row to a
   /// whole-row offset instead of leaving the next one half cut.
@@ -1379,6 +1386,7 @@ class _RequestCard extends StatefulWidget {
     this.onApprove,
     this.onDecline,
     this.onRetry,
+    this.onDelete,
     this.onFocusGained,
   });
 
@@ -1391,6 +1399,7 @@ class _RequestCardState extends State<_RequestCard> with FocusStateMixin {
   final _approveFocus = FocusNode(debugLabel: 'request-approve');
   final _declineFocus = FocusNode(debugLabel: 'request-decline');
   final _retryFocus = FocusNode(debugLabel: 'request-retry');
+  final _deleteFocus = FocusNode(debugLabel: 'request-delete');
 
   SeerrRequest get request => widget.request;
 
@@ -1400,6 +1409,7 @@ class _RequestCardState extends State<_RequestCard> with FocusStateMixin {
     _approveFocus.dispose();
     _declineFocus.dispose();
     _retryFocus.dispose();
+    _deleteFocus.dispose();
     super.dispose();
   }
 
@@ -1682,13 +1692,29 @@ class _RequestCardState extends State<_RequestCard> with FocusStateMixin {
                           onPressed: widget.onDecline,
                         ),
                       ] else if (widget.canManage &&
-                          request.status == SeerrRequest.statusFailed)
+                          request.status == SeerrRequest.statusFailed) ...[
                         _CardActionButton(
                           label: l10n.retry,
                           icon: Icons.refresh,
                           color: AppColorScheme.statusPending,
                           focusNode: _retryFocus,
                           onPressed: widget.onRetry,
+                        ),
+                        const SizedBox(width: 6),
+                        _CardActionButton(
+                          label: l10n.delete,
+                          icon: Icons.delete_outline,
+                          color: AppColorScheme.statusError,
+                          focusNode: _deleteFocus,
+                          onPressed: widget.onDelete,
+                        ),
+                      ] else if (widget.canManage)
+                        _CardActionButton(
+                          label: l10n.delete,
+                          icon: Icons.delete_outline,
+                          color: AppColorScheme.statusError,
+                          focusNode: _deleteFocus,
+                          onPressed: widget.onDelete,
                         ),
                     ],
                   ),
@@ -1743,6 +1769,27 @@ class _RequestCardState extends State<_RequestCard> with FocusStateMixin {
           color: AppColorScheme.statusPending,
           focusNode: _retryFocus,
           onPressed: widget.onRetry,
+          compact: true,
+        ),
+        const SizedBox(width: 8),
+        _CardActionButton(
+          label: l10n.delete,
+          icon: Icons.delete_outline,
+          color: AppColorScheme.statusError,
+          focusNode: _deleteFocus,
+          onPressed: widget.onDelete,
+          compact: true,
+        ),
+      ];
+    }
+    if (widget.canManage) {
+      return [
+        _CardActionButton(
+          label: l10n.delete,
+          icon: Icons.delete_outline,
+          color: AppColorScheme.statusError,
+          focusNode: _deleteFocus,
+          onPressed: widget.onDelete,
           compact: true,
         ),
       ];

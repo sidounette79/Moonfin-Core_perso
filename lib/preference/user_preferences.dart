@@ -496,6 +496,7 @@ class UserPreferences extends ChangeNotifier {
     'pref_navbar_position',
     'pref_bottom_navbar_style',
     'pref_bottom_navbar_tabs',
+    'pref_pinned_library_ids',
     'focus_color',
     'pref_watched_indicator_behavior',
     'pref_card_focus_expansion',
@@ -610,6 +611,7 @@ class UserPreferences extends ChangeNotifier {
     'loading_animation_size',
     'loading_animation_position',
     'loading_animation_speed',
+    'custom_font_family',
     'show_loading_animation_text',
   };
 
@@ -1670,6 +1672,18 @@ class UserPreferences extends ChangeNotifier {
   /// means automatic, resolved from the nav button toggles.
   static final bottomNavbarTabs = Preference(
     key: 'pref_bottom_navbar_tabs',
+    defaultValue: '',
+  );
+
+  // 27.09, Sid: "avoir directe des favoris de bibliothèque... pouvoir en
+  // épingler qu'on puisse les avoir tout le temps" - comma separated
+  // AggregatedLibrary.id values, same shape as bottomNavbarTabs above but
+  // for libraries (a dynamic, server-defined list rather than a fixed
+  // enum). Rendered always-visible above the collapsible "Bibliothèque"
+  // section in left_sidebar.dart; toggled per-library from
+  // LibraryVisibilityScreen. Empty means none pinned.
+  static final pinnedLibraryIds = Preference(
+    key: 'pref_pinned_library_ids',
     defaultValue: '',
   );
 
@@ -2992,9 +3006,18 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: 'none',
   );
 
+  static final customFontFamily = EnumPreference(
+    key: 'custom_font_family',
+    defaultValue: CustomFontFamily.themeDefault,
+    values: CustomFontFamily.values,
+  );
+
   static final loadingAnimationImage = EnumPreference(
     key: 'loading_animation_image',
-    defaultValue: LoadingAnimationImage.moonfinLogo,
+    // 26.09, Sid: "intégrer mon logo à moi" - CARBA TV branding by default
+    // on this fork, instead of upstream Moonfin's own logo (still picked
+    // via the same settings screen if she ever wants it back).
+    defaultValue: LoadingAnimationImage.carbaTv,
     values: LoadingAnimationImage.values,
   );
 

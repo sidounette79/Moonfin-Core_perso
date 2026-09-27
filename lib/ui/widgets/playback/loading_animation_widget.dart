@@ -215,6 +215,10 @@ class LoadingAnimationWidget extends StatelessWidget {
           size: size,
           speed: speed,
         ),
+      LoadingAnimationImage.carbaTv => CarbaTvLogoAnimation(
+          size: size,
+          speed: speed,
+        ),
       LoadingAnimationImage.spinner => StockSpinnerAnimation(
           size: size,
           speed: speed,
@@ -309,6 +313,81 @@ class _MoonfinLogoAnimationState extends State<MoonfinLogoAnimation>
         'assets/icons/moonfin_logo.svg',
         width: widget.size,
         height: widget.size,
+      ),
+    );
+  }
+}
+
+/// 3D Y-axis spinning CARBA TV logo animation - same flip as
+/// MoonfinLogoAnimation, over a raster (PNG) asset instead of an SVG,
+/// since the source logo is a painterly illustration, not vector art.
+class CarbaTvLogoAnimation extends StatefulWidget {
+  final double size;
+  final LoadingAnimationSpeed speed;
+
+  const CarbaTvLogoAnimation({
+    super.key,
+    required this.size,
+    this.speed = LoadingAnimationSpeed.fast,
+  });
+
+  @override
+  State<CarbaTvLogoAnimation> createState() => _CarbaTvLogoAnimationState();
+}
+
+class _CarbaTvLogoAnimationState extends State<CarbaTvLogoAnimation>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  Duration get _duration =>
+      Duration(milliseconds: (8000 / widget.speed.multiplier).round());
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: _duration,
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant CarbaTvLogoAnimation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.speed != widget.speed) {
+      _controller.duration = _duration;
+      if (_controller.isAnimating) {
+        _controller.repeat();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.001)
+            ..rotateY(_controller.value * 2 * math.pi),
+          child: child,
+        );
+      },
+      child: ClipOval(
+        child: Image.asset(
+          'assets/images/carba_tv_logo.png',
+          width: widget.size,
+          height: widget.size,
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }

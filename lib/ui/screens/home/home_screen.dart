@@ -2275,6 +2275,17 @@ class _ContentRowsState extends State<_ContentRows>
       return screenHeight * 0.65;
     }
 
+    // 27.09, Sid: "la barre média est trop grande sur TV, elle prend
+    // l'entier de l'écran" - confirmed: every non-banner/non-Aya mode
+    // (bookshelf/gallery/default) fell into the generic `!useMobileUi`
+    // branch below for BOTH desktop and TV, returning the full screen
+    // height on both. Desktop wasn't reported as broken, so this only
+    // special-cases TV, to the same 65% Aya mode already uses rather than
+    // inventing a new fraction.
+    if (PlatformDetection.isTV) {
+      return screenHeight * 0.65;
+    }
+
     if (!PlatformDetection.useMobileUi) {
       return screenHeight;
     }
@@ -2724,7 +2735,9 @@ class _ContentRowsState extends State<_ContentRows>
 
     double childHeight = 0.0;
     if (row.isLoading) {
-      if (row.rowType == HomeRowType.liveTv ||
+      if (row.rowType == HomeRowType.libraryTiles) {
+        childHeight = _libraryGridChildHeight(row, posterSize);
+      } else if (row.rowType == HomeRowType.liveTv ||
           row.rowType == HomeRowType.libraryTilesSmall) {
         final squarePosterSide = _squarePosterSide(posterSize);
         childHeight = squarePosterSide + (56 * metadataScale);
@@ -2744,6 +2757,8 @@ class _ContentRowsState extends State<_ContentRows>
             (10 * metadataScale) +
             headroom;
       }
+    } else if (row.rowType == HomeRowType.libraryTiles) {
+      childHeight = _libraryGridChildHeight(row, posterSize);
     } else if (row.rowType == HomeRowType.liveTv ||
         row.rowType == HomeRowType.libraryTilesSmall) {
       final squarePosterSide = _squarePosterSide(posterSize);
@@ -3718,6 +3733,33 @@ class _ContentRowsState extends State<_ContentRows>
         ? 0.8 * scaleFactor
         : scaleFactor;
     return posterSize.portraitHeight.toDouble() * platformScale;
+  }
+
+  /// "Mes médias" wraps into a grid instead of scrolling horizontally
+  /// forever (Sid, 27.09). Deliberately self-contained: a plain Wrap sized
+  /// off the same square tile used by [_buildLibraryButtonsRow], not the
+  /// shared V2/classic sizing math every other row type depends on - matches
+  /// the existing "library rows size themselves" comment near [_isLibraryRow].
+  /// [_buildLibraryTilesGrid] and this height computation MUST stay in sync
+  /// (same tile size / spacing) or the outer virtualized list clips or
+  /// leaves dead space, since this runs before that method actually renders.
+  int _libraryGridItemsPerLine(double availableWidth, double tileWidth) {
+    const spacing = 12.0;
+    final perLine = ((availableWidth + spacing) / (tileWidth + spacing)).floor();
+    return perLine < 1 ? 1 : perLine;
+  }
+
+  double _libraryGridChildHeight(HomeRow row, PosterSize posterSize) {
+    const spacing = 12.0;
+    final metadataScale = _desktopUiScaleFactor();
+    final squarePosterSide = _squarePosterSide(posterSize);
+    final tileHeight = squarePosterSide + (56 * metadataScale);
+    final availableWidth =
+        MediaQuery.sizeOf(context).width - (_kHomeRowLabelInset + 20.0);
+    final perLine = _libraryGridItemsPerLine(availableWidth, squarePosterSide);
+    final itemCount = row.items.isEmpty ? 1 : row.items.length;
+    final lines = (itemCount / perLine).ceil();
+    return lines * tileHeight + (lines - 1) * spacing;
   }
 
   /// Touch never leaves a card grown, so phones keep the tighter layout.
@@ -4728,6 +4770,75 @@ class _ContentRowsState extends State<_ContentRows>
     );
   }
 
+  /// "Mes médias" as a grid (Sid, 27.09) instead of the endless horizontal
+  /// scroll every other row uses. Kept self-contained from [_buildMediaRow]'s
+  /// shared V2/classic/preview pipeline - same [GridButtonCard] tile as
+  /// [_buildLibraryButtonsRow], just laid out with [Wrap] instead of
+  /// [LockedFocusRow]. Height MUST match [_libraryGridChildHeight].
+  Widget _buildLibraryTilesGrid({
+    required HomeRow row,
+    required int rowIndex,
+    required PosterSize posterSize,
+    required Color focusColor,
+    required bool cardExpansion,
+    required AppLocalizations l10n,
+  }) {
+    final squarePosterSide = _squarePosterSide(posterSize);
+    final childHeight = _libraryGridChildHeight(row, posterSize);
+    return _buildTitledRow(
+      key: _rowContainerKey(rowIndex),
+      title: _localizedRowTitle(row, l10n),
+      rowIndex: rowIndex,
+      hasItems: row.items.isNotEmpty,
+      height: childHeight,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(_kHomeRowLabelInset, 5, 20, 5),
+        child: Wrap(
+          spacing: 12.0,
+          runSpacing: 12.0,
+          children: [
+            for (final item in row.items)
+              _buildLibraryGridTile(
+                item,
+                squarePosterSide,
+                focusColor,
+                cardExpansion,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLibraryGridTile(
+    AggregatedItem item,
+    double squarePosterSide,
+    Color focusColor,
+    bool cardExpansion,
+  ) {
+    final collectionType =
+        (item.rawData['CollectionType'] as String? ?? '').toLowerCase();
+    final icon = isGameLibrary(item.id, collectionType, item.name)
+        ? gameLibraryIcon
+        : _iconForCollectionType(collectionType);
+    return SizedBox.square(
+      dimension: squarePosterSide,
+      child: GridButtonCard(
+        icon: icon,
+        label: item.name,
+        width: squarePosterSide,
+        height: squarePosterSide,
+        focusColor: focusColor,
+        cardFocusExpansion: cardExpansion,
+        onTap: () => _navigateToLibrary(context, item),
+        onLongPress: () =>
+            showContextMenu(context, item, onChanged: () => setState(() {})),
+        onSecondaryTap: () =>
+            showContextMenu(context, item, onChanged: () => setState(() {})),
+      ),
+    );
+  }
+
   Widget _buildMediaRow({
     required HomeRow row,
     required int rowIndex,
@@ -4740,6 +4851,16 @@ class _ContentRowsState extends State<_ContentRows>
     required bool useSeriesThumbs,
     required AppLocalizations l10n,
   }) {
+    if (row.rowType == HomeRowType.libraryTiles) {
+      return _buildLibraryTilesGrid(
+        row: row,
+        rowIndex: rowIndex,
+        posterSize: posterSize,
+        focusColor: focusColor,
+        cardExpansion: cardExpansion,
+        l10n: l10n,
+      );
+    }
     final suppressFocusGlow = ThemeRegistry.active.borders.focusGlow.isNotEmpty;
     final showMediaTypeBadges = showsMediaTypeBadges(
       prefs.get(UserPreferences.mediaTypeBadgeBehavior),
