@@ -857,6 +857,18 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     });
   }
 
+  /// Classic remote-style channel zapping: wraps around both ends of
+  /// [widget.channels] so holding the same direction cycles the whole
+  /// guide instead of dead-ending at the first/last entry.
+  Future<void> _zapChannel(int delta) async {
+    if (widget.channels.isEmpty) return;
+    final count = widget.channels.length;
+    // Dart's % always returns a non-negative result for a positive divisor,
+    // so this wraps correctly in both directions without an extra branch.
+    final newIndex = (_currentIndex + delta) % count;
+    await _switchChannel(newIndex);
+  }
+
   Future<void> _switchChannel(int newIndex) async {
     if (_isSwitching) return;
     _isSwitching = true;
@@ -1755,6 +1767,15 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowLeft:
         if (!_infoVisible) {
+          // 27.09, Sid: "zapping gauche droite pour la TV en direct" -
+          // classic remote channel-switching, only while the OSD is
+          // still hidden (once it's up, left/right already means
+          // "move between its buttons" below - overloading both would
+          // make the OSD unusable via D-pad).
+          if (PlatformDetection.isTV) {
+            unawaited(_zapChannel(-1));
+            return KeyEventResult.handled;
+          }
           _showInfo();
           return KeyEventResult.handled;
         }
@@ -1766,6 +1787,10 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowRight:
         if (!_infoVisible) {
+          if (PlatformDetection.isTV) {
+            unawaited(_zapChannel(1));
+            return KeyEventResult.handled;
+          }
           _showInfo();
           return KeyEventResult.handled;
         }

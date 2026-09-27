@@ -1059,7 +1059,17 @@ class ItemDetailViewModel extends ChangeNotifier {
           serverId: _serverId ?? _client.baseUrl,
           rawData: raw,
         );
-        if (isEligibleNextEpisodeCandidate(candidate)) {
+        // 27.09, Sid: Emby's own /Shows/NextUp returned an episode she'd
+        // already watched (confirmed: all 6 episodes of the season marked
+        // played server-side, yet NextUp still offered episode 1 with the
+        // full runtime remaining) - likely the same class of gap as
+        // project_emby_bulk_mark_watched_gaps (a bulk watched-mark not
+        // updating Emby's own NextUp bookkeeping). isEligibleNextEpisode-
+        // Candidate only checks technical playability, never watched
+        // state, so it let this through - cross-check the item's own
+        // Played flag here rather than trusting the endpoint blindly.
+        if (isEligibleNextEpisodeCandidate(candidate) &&
+            !candidate.isPlayed) {
           nextUp = candidate;
         }
       }

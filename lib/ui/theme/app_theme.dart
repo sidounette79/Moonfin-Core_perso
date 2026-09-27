@@ -25,6 +25,7 @@ class AppTheme {
       CustomFontFamily.montserrat => 'CustomFontMontserrat',
       CustomFontFamily.nunito => 'CustomFontNunito',
       CustomFontFamily.spaceGrotesk => 'CustomFontSpaceGrotesk',
+      CustomFontFamily.comfortaa => 'CustomFontComfortaa',
       CustomFontFamily.themeDefault || null => spec.fontFamily,
     };
   }

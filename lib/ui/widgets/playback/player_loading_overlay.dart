@@ -71,9 +71,14 @@ class _PlayerLoadingOverlayState extends State<PlayerLoadingOverlay>
         ? GetIt.instance<UserPreferences>()
         : null;
 
+    final playbackLogoEnabled =
+        prefs?.get(UserPreferences.showLoadingAnimationDuringPlayback) ??
+            true;
     final image = widget.customImage ??
-        prefs?.get(UserPreferences.loadingAnimationImage) ??
-        LoadingAnimationImage.moonfinLogo;
+        (playbackLogoEnabled
+            ? prefs?.get(UserPreferences.loadingAnimationImage) ??
+                LoadingAnimationImage.moonfinLogo
+            : LoadingAnimationImage.none);
 
     final sizePref = prefs?.get(UserPreferences.loadingAnimationSize) ??
         LoadingAnimationSize.medium;

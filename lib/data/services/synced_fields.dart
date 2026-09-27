@@ -329,6 +329,7 @@ final List<SyncedField> syncedFields = <SyncedField>[
   SyncedField('showBookDiscoverTab', UserPreferences.showBookDiscoverTab, SyncCodec.boolean),
   SyncedField('showDescriptionOnPause', UserPreferences.showDescriptionOnPause, SyncCodec.boolean),
   SyncedField('showLoadingAnimationText', UserPreferences.showLoadingAnimationText, SyncCodec.boolean),
+  SyncedField('showLoadingAnimationDuringPlayback', UserPreferences.showLoadingAnimationDuringPlayback, SyncCodec.boolean),
   SyncedField('showMediaDetailsOnLibraryPage', UserPreferences.showMediaDetailsOnLibraryPage, SyncCodec.boolean),
   SyncedField('showSeerrAvailabilityBadges', UserPreferences.showSeerrAvailabilityBadges, SyncCodec.boolean),
   SyncedField('showSeerrButton', UserPreferences.showSeerrButton, SyncCodec.boolean),

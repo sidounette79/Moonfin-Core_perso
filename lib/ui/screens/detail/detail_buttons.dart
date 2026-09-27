@@ -33,6 +33,11 @@ enum DetailButton {
   playlist('playlist'),
   download('download'),
   deleteFiles('deleteFiles'),
+  // 27.09, Sid: "le bouton supprimer c'était sur la page d'un film ou d'un
+  // épisode" - distinct from deleteFiles (removes a downloaded offline
+  // copy): this deletes the item from the server itself, same action the
+  // album/playlist page already had via _confirmDeleteServerItem.
+  deleteServer('deleteServer'),
   goToSeries('goToSeries'),
   seerrWatchlist('seerrWatchlist'),
   seerrReportIssue('seerrReportIssue'),
@@ -137,6 +142,7 @@ enum DetailButton {
     DetailButton.playlist => Icons.playlist_add,
     DetailButton.download => Icons.download_for_offline,
     DetailButton.deleteFiles => Icons.delete_outline,
+    DetailButton.deleteServer => Icons.delete_forever,
     DetailButton.goToSeries => Icons.tv,
     DetailButton.seerrRequest || DetailButton.seerrRequest4k => Icons.add,
     DetailButton.seerrWatchlist => Icons.bookmark_border,
@@ -160,6 +166,7 @@ enum DetailButton {
     DetailButton.playlist => l10n.addToPlaylist,
     DetailButton.download => l10n.download,
     DetailButton.deleteFiles => l10n.deleteDownloadedFiles,
+    DetailButton.deleteServer => l10n.delete,
     DetailButton.goToSeries => l10n.goToSeries,
     DetailButton.seerrRequest => l10n.request,
     DetailButton.seerrRequest4k => l10n.request4k,

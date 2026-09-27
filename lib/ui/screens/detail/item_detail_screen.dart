@@ -2016,6 +2016,9 @@ class _DetailContentState extends State<_DetailContent> {
         onRequestFocus: _requestSectionFocus,
         downTarget: metadataFocusNode ?? movieDownTarget,
         autoPlay: widget.autoPlay,
+        onDelete: item.canDelete
+            ? () => _confirmDeleteServerItem(context, item)
+            : null,
       ),
       if (_hasMetadata(item)) ...[
         const SizedBox(height: 24),
@@ -2590,6 +2593,9 @@ class _DetailContentState extends State<_DetailContent> {
         onRequestFocus: _requestSectionFocus,
         downTarget: metadataFocusNode ?? episodeDownTarget,
         autoPlay: widget.autoPlay,
+        onDelete: item.canDelete
+            ? () => _confirmDeleteServerItem(context, item)
+            : null,
       ),
       if (_hasMetadata(item)) ...[
         const SizedBox(height: 24),
@@ -4897,6 +4903,13 @@ class DetailActionButtons extends StatefulWidget {
   final bool? actionsExpanded;
   final ValueChanged<bool>? onActionsExpandedChanged;
 
+  /// Deletes the item from the server (not a downloaded offline copy, see
+  /// [DetailButton.deleteFiles] for that). Null hides the button - same
+  /// null-means-hidden pattern _AlbumActions already used for
+  /// onDeletePlaylist, since only the caller knows whether the item type/
+  /// permissions actually allow it.
+  final VoidCallback? onDelete;
+
   const DetailActionButtons({
     super.key,
     required this.viewModel,
@@ -4920,6 +4933,7 @@ class DetailActionButtons extends StatefulWidget {
     this.onFocusExtra,
     this.actionsExpanded,
     this.onActionsExpandedChanged,
+    this.onDelete,
   });
 
   @override
@@ -7305,6 +7319,12 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           shows(DetailButton.deleteFiles) &&
           _availableOffline)
         DetailButton.deleteFiles: _DeleteDownloadButton(item: item),
+      if (widget.onDelete != null && shows(DetailButton.deleteServer))
+        DetailButton.deleteServer: _DetailActionButton(
+          label: l10n.delete,
+          icon: Icons.delete_forever,
+          onPressed: widget.onDelete!,
+        ),
       if ((item.type == 'Episode' || item.type == 'Season') &&
           item.seriesId != null &&
           shows(DetailButton.goToSeries))

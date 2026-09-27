@@ -613,6 +613,7 @@ class UserPreferences extends ChangeNotifier {
     'loading_animation_speed',
     'custom_font_family',
     'show_loading_animation_text',
+    'show_loading_animation_during_playback',
   };
 
   bool _isScopedPreference<T>(Preference<T> pref) {
@@ -3041,6 +3042,16 @@ class UserPreferences extends ChangeNotifier {
 
   static final showLoadingAnimationText = Preference(
     key: 'show_loading_animation_text',
+    defaultValue: true,
+  );
+
+  // 28.09, Sid: "désactiver l'affichage du logo quand un média charge" -
+  // distinct from loadingAnimationImage/none, which turns the animation
+  // off everywhere (app-loading screens included). This only mutes it in
+  // PlayerLoadingOverlay (video/audio buffering) - see that widget's
+  // fallback chain.
+  static final showLoadingAnimationDuringPlayback = Preference(
+    key: 'show_loading_animation_during_playback',
     defaultValue: true,
   );
 

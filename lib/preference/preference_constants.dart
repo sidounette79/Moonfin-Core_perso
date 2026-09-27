@@ -981,6 +981,7 @@ enum CustomFontFamily {
   montserrat,
   nunito,
   spaceGrotesk,
+  comfortaa,
 }
 
 enum LoadingAnimationImage {

@@ -138,6 +138,18 @@ class _LoadingAnimationScreenState extends State<_LoadingAnimationScreen> {
                   icon: Icons.text_fields,
                   onChanged: () => setState(() {}),
                 ),
+                // 28.09, Sid: "désactiver l'affichage du logo quand un
+                // média charge" - hardcoded label (personal-fork feature,
+                // same reasoning as the CARBA TV font-family label above:
+                // adding a real l10n key needs `flutter gen-l10n`, not set
+                // up here).
+                SwitchPreferenceTile(
+                  preference:
+                      UserPreferences.showLoadingAnimationDuringPlayback,
+                  title: 'Afficher pendant le chargement d\'un média',
+                  icon: Icons.movie_creation_outlined,
+                  onChanged: () => setState(() {}),
+                ),
               ],
             ),
           ],

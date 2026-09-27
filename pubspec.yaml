@@ -325,6 +325,9 @@ flutter:
     - family: CustomFontSpaceGrotesk
       fonts:
         - asset: assets/fonts/SpaceGrotesk-Variable.ttf
+    - family: CustomFontComfortaa
+      fonts:
+        - asset: assets/fonts/Comfortaa-Variable.ttf
 
 msix_config:
   display_name: Moonfin

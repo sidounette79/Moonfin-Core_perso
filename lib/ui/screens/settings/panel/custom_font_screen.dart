@@ -23,6 +23,7 @@ class _CustomFontScreenState extends State<_CustomFontScreen> {
         CustomFontFamily.montserrat => 'Montserrat',
         CustomFontFamily.nunito => 'Nunito',
         CustomFontFamily.spaceGrotesk => 'Space Grotesk',
+        CustomFontFamily.comfortaa => 'Comfortaa',
       };
 
   String? _fontFamilyName(CustomFontFamily value) => switch (value) {
@@ -32,6 +33,7 @@ class _CustomFontScreenState extends State<_CustomFontScreen> {
         CustomFontFamily.montserrat => 'CustomFontMontserrat',
         CustomFontFamily.nunito => 'CustomFontNunito',
         CustomFontFamily.spaceGrotesk => 'CustomFontSpaceGrotesk',
+        CustomFontFamily.comfortaa => 'CustomFontComfortaa',
       };
 
   @override
