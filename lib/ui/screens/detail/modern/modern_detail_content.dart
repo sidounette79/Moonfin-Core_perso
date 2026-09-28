@@ -962,7 +962,9 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
         return [
           _ModernTab('seasons', l10n.seasons, _seasonsTab),
           _ModernTab('episodes', l10n.episodes, _seriesEpisodesTab),
-          if (hasCast) cast,
+          // 28.09, Sid: cast moves up next to the Play button on the series
+          // page (see _buildTopCastRow in the hero) - left out here so it
+          // doesn't render twice once tabs are flattened into one flow.
           if (hasCrew) crew,
           if (hasStudios) studios,
           if (item.chapters.isNotEmpty) chapters,
@@ -1313,12 +1315,10 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
                 qualityToggle: true,
                 season: season.indexNumber,
               )
-            : context.push(
-                Destinations.item(
-                  season.id,
-                  serverId: season.serverId,
-                ),
-              ),
+            // 28.09, Sid: used to context.push to the season's own separate
+            // page - now expands + scrolls to this season within the
+            // series page's own (flattened, no-tabs) episode list instead.
+            : _jumpToSeasonEpisodes(season),
       );
     }
     final seasonLabelStyle = textTheme.labelMedium?.copyWith(
@@ -1461,6 +1461,33 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
 
   final Set<int> _expandedSeasons = {};
   bool _initializedExpandedSeasons = false;
+  // 28.09, Sid: "cliquer une pochette de saison doit rester sur la même
+  // page" - one key per season header so tapping a SeasonCard (built
+  // separately, up in the flattened flow) can expand + scroll to that
+  // season's spot in the episode list below, instead of the old
+  // context.push to a whole separate season page.
+  final Map<int, GlobalKey> _seasonHeaderKeys = {};
+
+  void _jumpToSeasonEpisodes(AggregatedItem season) {
+    final seasonNumber = season.indexNumber;
+    if (seasonNumber == null) return;
+    setState(() {
+      _initializedExpandedSeasons = true;
+      _expandedSeasons.add(seasonNumber);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final key = _seasonHeaderKeys[seasonNumber];
+      final ctx = key?.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: 0.05,
+        );
+      }
+    });
+  }
 
   /// All episodes of a Series grouped into collapsible season containers.
   Widget _seriesEpisodesTab(BuildContext context, AggregatedItem item) {
@@ -1507,7 +1534,9 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
       final isFirst = children.isEmpty;
 
       children.add(
-        Padding(
+        KeyedSubtree(
+          key: _seasonHeaderKeys.putIfAbsent(season, () => GlobalKey()),
+          child: Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: FocusableWrapper(
             onNavigateUp: isFirst ? _focusSelectedTab : null,
@@ -1550,6 +1579,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
                 ],
               ),
             ),
+          ),
           ),
         ),
       );
@@ -4211,6 +4241,8 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     final selectedSource = selectedMediaSourceForItem(item, widget.selectedMediaSourceId);
     final showTech = widget.prefs.get(UserPreferences.detailShowTechnicalDetails);
     final techRow = showTech ? _buildTechnicalDetailsRow(context, item, selectedSource) : null;
+    final heroL10n = AppLocalizations.of(context);
+    final showTopCast = item.type == 'Series' && _vm.actors.isNotEmpty;
 
     final seriesLogoHeight = (_landscape ? 90.0 : 64.0) * logoScaleFactor;
     final seriesLogoWidth = (_landscape ? 360.0 : 260.0) * logoScaleFactor;
@@ -4440,7 +4472,9 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
             selectedMediaSourceId: widget.selectedMediaSourceId,
             onSelectedMediaSourceChanged: widget.onSelectedMediaSourceChanged,
             tvPlayFocusNode: widget.initialFocusNode,
-            downTarget: _tabNode(_selectedTab >= 0 ? _selectedTab : 0),
+            downTarget: showTopCast
+                ? _castFirstFocusNode
+                : _tabNode(_selectedTab >= 0 ? _selectedTab : 0),
             upTarget: _overviewFocusNode,
             autoPlay: widget.autoPlay,
             modernStyle: true,
@@ -4461,6 +4495,35 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
             onActionsExpandedChanged: widget.onActionsExpandedChanged,
           ),
         ),
+        // 28.09, Sid: "casting en rangée d'avatars ronds + noms juste sous
+        // le bouton Play" - same DetailCastRow the (now-removed-for-Series)
+        // cast tab used, just relocated. TV focus: up into the action
+        // buttons row is default Focus traversal (untested on a real TV -
+        // flag if the D-pad doesn't land here cleanly).
+        if (showTopCast) ...[
+          const SizedBox(height: 20),
+          Focus(
+            canRequestFocus: false,
+            onFocusChange: (focused) {
+              if (focused && mounted) {
+                widget.onToggleNavbar?.call(false);
+              } else if (!focused && mounted) {
+                widget.onToggleNavbar?.call(true);
+              }
+            },
+            child: HorizontalScrollSection(
+              title: heroL10n.castMembers,
+              contentSpacing: 0,
+              builder: (context, controller) => DetailCastRow(
+                people: _vm.actors,
+                imageApi: _vm.imageApi,
+                serverId: item.serverId,
+                scrollController: controller,
+                firstItemFocusNode: _castFirstFocusNode,
+              ),
+            ),
+          ),
+        ],
       ],
     );
 
@@ -5068,11 +5131,32 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
       }
     }
 
-    final tabContent = (tabs.isEmpty || _selectedTab < 0)
-        ? const SizedBox.shrink()
-        : tabs[_selectedTab].builder(context, item);
+    // 28.09, Sid: "j'aime pas les petits onglets" on the series page - no
+    // tab bar, everything flows continuously instead of hiding behind a
+    // click. Reuses each tab's own builder unchanged (seasons, episodes,
+    // crew, studios, chapters, extras, collections, similar, seerr) just
+    // concatenated in the same order _tabsFor already puts them in, rather
+    // than showing only whichever one is "selected". Scoped to Series only
+    // - every other item type (Season, Episode, albums...) keeps the
+    // existing single-tab behavior untouched.
+    final flattenTabs = item.type == 'Series';
+    final tabContent = flattenTabs
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < tabs.length; i++) ...[
+                if (i > 0) const SizedBox(height: 32),
+                tabs[i].builder(context, item),
+              ],
+            ],
+          )
+        : (tabs.isEmpty || _selectedTab < 0)
+            ? const SizedBox.shrink()
+            : tabs[_selectedTab].builder(context, item);
 
-    final tabBar = DetailsTabBar(
+    final tabBar = flattenTabs
+        ? const SizedBox.shrink()
+        : DetailsTabBar(
       pill: true,
       labels: [for (final t in tabs) t.label],
       selectedIndex: _selectedTab,
