@@ -1,0 +1,73 @@
+name: Build CARBA TV Android
+
+# 28.09, Sid: "donc moi je dois chaque fois lancer le build ?" - separate,
+# minimal workflow so pushing to carba-tv-changes builds the Android APK
+# automatically, without needing the manual "Run workflow" click every
+# time. Deliberately its own file rather than adding a push trigger to
+# build.yml - that workflow's every job (ios, macos, windows...) shares a
+# condition that also runs on any non-workflow_dispatch event, so a push
+# trigger there would rebuild every platform on every push, not just
+# Android.
+
+on:
+  push:
+    branches: [carba-tv-changes]
+
+env:
+  FLUTTER_VERSION: '3.47.2'
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Set up signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_TYPE: ${{ secrets.ANDROID_KEYSTORE_TYPE }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "No Android keystore secret; skipping release signing (debug-signed build)."
+            exit 0
+          fi
+
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
+
+          cat > android/keystore.properties <<EOF
+          storeFile=../release.keystore
+          storeType=$STORE_TYPE
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+          if [ -n "$STORE_TYPE" ]; then
+            keytool -list -v -keystore android/app/release.keystore -storetype "$STORE_TYPE" -storepass "$STORE_PASSWORD" >/dev/null
+          else
+            keytool -list -v -keystore android/app/release.keystore -storepass "$STORE_PASSWORD" >/dev/null
+          fi
+
+      - name: Build
+        run: |
+          chmod +x build-android.sh
+          ./build-android.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: |
+            Moonfin_Android_v*.*
+            Moonfin_AndroidTV_v*.*
