@@ -1865,6 +1865,13 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
     if (item.communityRating != null) {
       parts.add('★ ${item.communityRating!.toStringAsFixed(1)}');
     }
+    // 28.09, Sid: "étiquette qui a demandé quoi" - same plain Emby Tags
+    // field Emby's own list view shows as a 3rd line (e.g.
+    // "1-sidounette"), not a live Seerr lookup - the data's already on
+    // the item once Tags is requested (see _browseFields above).
+    if (item.tags.isNotEmpty) {
+      parts.add(item.tags.join(', '));
+    }
     return parts.isEmpty ? null : parts.join('  ');
   }
 

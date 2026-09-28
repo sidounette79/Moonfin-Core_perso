@@ -49,7 +49,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
   // are only wanted for the focused one, and resolveTmdbId fetches that id on
   // its own behind a cache, so the grid doesn't carry ProviderIds.
   static const _browseFields =
-      'PrimaryImageAspectRatio,SortName,Type,IsFolder,UserData,CommunityRating,OfficialRating,RunTimeTicks,ProductionYear,ImageTags,BackdropImageTags,ParentBackdropItemId,ParentBackdropImageTags,ParentThumbItemId,ParentThumbImageTag,SeriesId,SeriesPrimaryImageTag,Album,AlbumId,AlbumArtist,Artists,Genres,Studios';
+      'PrimaryImageAspectRatio,SortName,Type,IsFolder,UserData,CommunityRating,OfficialRating,RunTimeTicks,ProductionYear,ImageTags,BackdropImageTags,ParentBackdropItemId,ParentBackdropImageTags,ParentThumbItemId,ParentThumbImageTag,SeriesId,SeriesPrimaryImageTag,Album,AlbumId,AlbumArtist,Artists,Genres,Studios,Tags';
   // Cap image tags to one per type (server returns all by default)
   static const _imageTypes = 'Primary,Backdrop,Thumb,Banner';
   static const _imageTypeLimit = 1;
@@ -859,7 +859,10 @@ class LibraryBrowseViewModel extends ChangeNotifier {
         startIndex: startIndex,
         limit: pageSize,
         recursive: recursive,
-        fields: 'PrimaryImageAspectRatio,SortName',
+        // 28.09, Sid: "étiquette qui a demandé quoi" - Tags added so
+        // AggregatedItem.tags (rawData['Tags']) actually has data to read;
+        // Emby silently omits fields nobody asked for.
+        fields: 'PrimaryImageAspectRatio,SortName,Tags',
         isFavorite: _favoriteFilter ? true : null,
       );
     } else if (isArtistBrowse) {
@@ -873,7 +876,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
         startIndex: startIndex,
         limit: pageSize,
         recursive: recursive,
-        fields: 'PrimaryImageAspectRatio,SortName',
+        fields: 'PrimaryImageAspectRatio,SortName,Tags',
         isFavorite: _favoriteFilter ? true : null,
       );
     } else {

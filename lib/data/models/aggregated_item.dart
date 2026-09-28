@@ -63,6 +63,13 @@ class AggregatedItem {
 
   List<String> get genres => _toListOfStrings(rawData['Genres']);
 
+  // 28.09, Sid: "étiquette qui a demandé quoi" - a plain Emby Tag (e.g.
+  // "1-sidounette"), same data already shown as a 3rd text line under
+  // rating/runtime in Emby's own list view - confirmed via screenshot it's
+  // not a live Seerr lookup, it's already on the item itself. Just never
+  // had a getter to read it out.
+  List<String> get tags => _toListOfStrings(rawData['Tags']);
+
   String? get primaryImageTag =>
       (rawData['ImageTags'] as Map?)?['Primary'] as String?;
 
