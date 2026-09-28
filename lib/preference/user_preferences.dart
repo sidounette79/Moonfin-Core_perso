@@ -1743,6 +1743,16 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: true,
   );
 
+  // 28.09, Sid: wants an Emby-style "Afficher les champs" picker instead of
+  // this one on/off toggle - comma-separated LibraryCardField enum names,
+  // in display order. Empty means "just the year", matching
+  // useDetailedSubHeadings=false's old behavior.
+  static final libraryCardFields = Preference(
+    key: 'pref_library_card_fields',
+    defaultValue:
+        'year,parentalRating,runtime,resolution,communityRating,tags',
+  );
+
   static final hideBackdropsInLibraries = Preference(
     key: 'pref_hide_backdrops_in_libraries',
     defaultValue: false,

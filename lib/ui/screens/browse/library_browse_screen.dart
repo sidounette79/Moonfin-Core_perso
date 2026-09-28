@@ -1843,36 +1843,84 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
       return parts.isEmpty ? null : parts.join('  ');
     }
 
-    final useDetailed = _prefs.get(UserPreferences.useDetailedSubHeadings);
-    if (!useDetailed) {
-      return item.productionYear != null ? '${item.productionYear}' : null;
-    }
-
-    if (item.productionYear != null) parts.add('${item.productionYear}');
-    if (item.officialRating != null) parts.add(item.officialRating!);
-    final rt = item.runtime;
-    if (rt != null) {
-      final h = rt.inHours;
-      final m = rt.inMinutes % 60;
-      if (h > 0) {
-        parts.add('${h}h ${m}m');
-      } else {
-        parts.add('${m}m');
-      }
-    }
-    final resolution = item.videoResolution;
-    if (resolution != null) parts.add('• $resolution');
-    if (item.communityRating != null) {
-      parts.add('★ ${item.communityRating!.toStringAsFixed(1)}');
-    }
-    // 28.09, Sid: "étiquette qui a demandé quoi" - same plain Emby Tags
-    // field Emby's own list view shows as a 3rd line (e.g.
-    // "1-sidounette"), not a live Seerr lookup - the data's already on
-    // the item once Tags is requested (see _browseFields above).
-    if (item.tags.isNotEmpty) {
-      parts.add(item.tags.join(', '));
+    // 28.09, Sid: "comme dans Emby, un menu vue avec les champs qu'on peut
+    // activer" - replaced the old all-or-nothing useDetailedSubHeadings
+    // toggle with a per-field picker (_showLibraryCardFieldsDialog below),
+    // matching Emby's own "Afficher les champs" screen. Field order here
+    // is fixed (matches the picker's own order); which fields are enabled
+    // is the only thing the preference carries.
+    for (final field in _enabledLibraryCardFields) {
+      final text = _libraryCardFieldText(item, field);
+      if (text != null) parts.add(text);
     }
     return parts.isEmpty ? null : parts.join('  ');
+  }
+
+  List<LibraryCardField> get _enabledLibraryCardFields {
+    final raw = _prefs.get(UserPreferences.libraryCardFields);
+    if (raw.isEmpty) return const [];
+    return [
+      for (final name in raw.split(','))
+        if (LibraryCardField.values.any((f) => f.name == name))
+          LibraryCardField.values.firstWhere((f) => f.name == name),
+    ];
+  }
+
+  String? _libraryCardFieldText(AggregatedItem item, LibraryCardField field) {
+    switch (field) {
+      case LibraryCardField.year:
+        return item.productionYear != null ? '${item.productionYear}' : null;
+      case LibraryCardField.parentalRating:
+        return item.officialRating;
+      case LibraryCardField.runtime:
+        final rt = item.runtime;
+        if (rt == null) return null;
+        final h = rt.inHours;
+        final m = rt.inMinutes % 60;
+        return h > 0 ? '${h}h ${m}m' : '${m}m';
+      case LibraryCardField.resolution:
+        final resolution = item.videoResolution;
+        return resolution != null ? '• $resolution' : null;
+      case LibraryCardField.communityRating:
+        return item.communityRating != null
+            ? '★ ${item.communityRating!.toStringAsFixed(1)}'
+            : null;
+      case LibraryCardField.criticRating:
+        return item.criticRating != null ? '🍅 ${item.criticRating}' : null;
+      case LibraryCardField.personalRating:
+        return item.personalRating?.toStringAsFixed(1);
+      case LibraryCardField.genres:
+        return item.genres.isNotEmpty ? item.genres.join(', ') : null;
+      case LibraryCardField.director:
+        final directors = item.people
+            .where((p) => p['Type'] == 'Director')
+            .map((p) => p['Name'] as String?)
+            .whereType<String>()
+            .toList();
+        return directors.isNotEmpty ? directors.join(', ') : null;
+      case LibraryCardField.studios:
+        final names = item.studios
+            .map((s) => s['Name'] as String?)
+            .whereType<String>()
+            .toList();
+        return names.isNotEmpty ? names.join(', ') : null;
+      case LibraryCardField.tagline:
+        return item.tagline;
+      case LibraryCardField.overview:
+        return item.overview;
+      case LibraryCardField.tags:
+        // 28.09, Sid: "étiquette qui a demandé quoi" - same plain Emby
+        // Tags field Emby's own list view shows as a 3rd line (e.g.
+        // "1-sidounette"), not a live Seerr lookup - the data's already
+        // on the item once Tags is requested (see _browseFields above).
+        return item.tags.isNotEmpty ? item.tags.join(', ') : null;
+      case LibraryCardField.lastPlayedDate:
+        final d = item.lastPlayedDate;
+        return d != null ? '${d.day}.${d.month}.${d.year}' : null;
+      case LibraryCardField.dateCreated:
+        final d = item.dateCreated;
+        return d != null ? '${d.day}.${d.month}.${d.year}' : null;
+    }
   }
 
   void _showFilterSortDialog(BuildContext context) {
@@ -3430,12 +3478,84 @@ class _SettingsDialogState extends State<_SettingsDialog> {
                   accent: _jellyfinBlue,
                   onSurface: onSurface,
                 ),
+            ] else ...[
+              // 28.09, Sid: "comme dans Emby, un menu vue avec les champs
+              // qu'on peut activer" - per-field card subtitle picker,
+              // personal-fork feature so the label is hardcoded French
+              // rather than routed through gen-l10n (same reasoning as the
+              // CARBA TV font/loading-logo labels added earlier).
+              Divider(color: dividerColor),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 4),
+                child: Text(
+                  'Afficher les champs',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: sectionColor,
+                  ),
+                ),
+              ),
+              for (final field in LibraryCardField.values)
+                _DialogCheckboxTile(
+                  label: _libraryCardFieldLabel(field),
+                  checked: _enabledFields.contains(field),
+                  onTap: () => _toggleField(field),
+                  accent: _jellyfinBlue,
+                  onSurface: onSurface,
+                ),
             ],
           ],
         ),
       ),
     );
   }
+
+  final _prefs = GetIt.instance<UserPreferences>();
+
+  Set<LibraryCardField> get _enabledFields {
+    final raw = _prefs.get(UserPreferences.libraryCardFields);
+    return {
+      for (final name in raw.split(','))
+        if (LibraryCardField.values.any((f) => f.name == name))
+          LibraryCardField.values.firstWhere((f) => f.name == name),
+    };
+  }
+
+  void _toggleField(LibraryCardField field) {
+    final current = _enabledFields;
+    if (current.contains(field)) {
+      current.remove(field);
+    } else {
+      current.add(field);
+    }
+    // Keeps the fixed enum declaration order regardless of toggle order,
+    // so the rendered subtitle line stays stable.
+    final ordered = LibraryCardField.values.where(current.contains);
+    _prefs.set(
+      UserPreferences.libraryCardFields,
+      ordered.map((f) => f.name).join(','),
+    );
+    setState(() {});
+  }
+
+  String _libraryCardFieldLabel(LibraryCardField field) => switch (field) {
+    LibraryCardField.year => 'Année',
+    LibraryCardField.parentalRating => 'Classification parentale',
+    LibraryCardField.runtime => 'Durée',
+    LibraryCardField.resolution => 'Résolution',
+    LibraryCardField.communityRating => 'Note de la communauté',
+    LibraryCardField.criticRating => 'Note de la critique',
+    LibraryCardField.personalRating => 'Ma note',
+    LibraryCardField.genres => 'Genres',
+    LibraryCardField.director => 'Réalisateur',
+    LibraryCardField.studios => 'Studios',
+    LibraryCardField.tagline => 'Slogan',
+    LibraryCardField.overview => 'Synopsis',
+    LibraryCardField.tags => 'Étiquettes',
+    LibraryCardField.lastPlayedDate => 'Date de lecture',
+    LibraryCardField.dateCreated => 'Date de création',
+  };
 
   Widget _scrollDirectionRadioTile(
     LibraryBrowseViewModel vm,

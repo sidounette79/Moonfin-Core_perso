@@ -48,8 +48,11 @@ class LibraryBrowseViewModel extends ChangeNotifier {
   // Genres and Studios stay, since grouping reads them off every item. Ratings
   // are only wanted for the focused one, and resolveTmdbId fetches that id on
   // its own behind a cache, so the grid doesn't carry ProviderIds.
+  // 28.09, Sid: Emby-style per-field card subtitle picker needs
+  // CriticRating/Overview/Taglines/People (for Director)/DateCreated on
+  // top of what the browse grid already requested.
   static const _browseFields =
-      'PrimaryImageAspectRatio,SortName,Type,IsFolder,UserData,CommunityRating,OfficialRating,RunTimeTicks,ProductionYear,ImageTags,BackdropImageTags,ParentBackdropItemId,ParentBackdropImageTags,ParentThumbItemId,ParentThumbImageTag,SeriesId,SeriesPrimaryImageTag,Album,AlbumId,AlbumArtist,Artists,Genres,Studios,Tags';
+      'PrimaryImageAspectRatio,SortName,Type,IsFolder,UserData,CommunityRating,OfficialRating,RunTimeTicks,ProductionYear,ImageTags,BackdropImageTags,ParentBackdropItemId,ParentBackdropImageTags,ParentThumbItemId,ParentThumbImageTag,SeriesId,SeriesPrimaryImageTag,Album,AlbumId,AlbumArtist,Artists,Genres,Studios,Tags,CriticRating,Overview,Taglines,People,DateCreated';
   // Cap image tags to one per type (server returns all by default)
   static const _imageTypes = 'Primary,Backdrop,Thumb,Banner';
   static const _imageTypeLimit = 1;

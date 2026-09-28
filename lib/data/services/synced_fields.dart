@@ -132,6 +132,7 @@ final List<SyncedField> syncedFields = <SyncedField>[
   SyncedField('rewatchIncludeShows', UserPreferences.rewatchIncludeShows, SyncCodec.boolean),
   SyncedField('rewatchIncludeCollections', UserPreferences.rewatchIncludeCollections, SyncCodec.boolean),
   SyncedField('useDetailedSubHeadings', UserPreferences.useDetailedSubHeadings, SyncCodec.boolean),
+  SyncedField('libraryCardFields', UserPreferences.libraryCardFields, SyncCodec.csvList),
   SyncedField('favoritesRowSortBy', UserPreferences.favoritesRowSortBy, SyncCodec.enumName, enumValues: prefs.LibrarySortBy.values),
   SyncedField('favoritesRowSortOrder', UserPreferences.favoritesRowSortOrder, SyncCodec.enumName, enumValues: prefs.SortDirection.values),
   SyncedField('collectionsRowShowEpisodes', UserPreferences.collectionsRowShowEpisodes, SyncCodec.boolean),

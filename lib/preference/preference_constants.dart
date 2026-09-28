@@ -984,6 +984,26 @@ enum CustomFontFamily {
   comfortaa,
 }
 
+/// A single toggleable metadata line on a library card's subtitle, Emby's
+/// own "Afficher les champs" picker (28.09, Sid).
+enum LibraryCardField {
+  year,
+  parentalRating,
+  runtime,
+  resolution,
+  communityRating,
+  criticRating,
+  personalRating,
+  genres,
+  director,
+  studios,
+  tagline,
+  overview,
+  tags,
+  lastPlayedDate,
+  dateCreated,
+}
+
 enum LoadingAnimationImage {
   none,
   moonfinLogo,
