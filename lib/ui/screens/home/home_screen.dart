@@ -3780,6 +3780,19 @@ class _ContentRowsState extends State<_ContentRows>
         220 * metadataScale,
         metadataScale: metadataScale,
       );
+    } else if (row.rowType == HomeRowType.libraryTiles) {
+      // 28.09, Sid (TV): the grid wasn't visible at all and blocked
+      // scrolling past it - this branch never handled the full-grid row
+      // type (only libraryTilesSmall below), so the outer virtualized list
+      // reserved a single card's worth of height for what
+      // _buildLibraryTilesGrid actually renders as a multi-line Wrap,
+      // exactly the "clips or leaves dead space" risk the class comment on
+      // _libraryGridItemsPerLine already flagged before this was ever
+      // tested on a real TV.
+      return _libraryRowExtent(
+        _libraryGridChildHeight(row, posterSize),
+        metadataScale: metadataScale,
+      );
     } else if (row.rowType == HomeRowType.liveTv ||
         row.rowType == HomeRowType.libraryTilesSmall) {
       final squarePosterSide = _squarePosterSide(posterSize);
@@ -4738,7 +4751,7 @@ class _ContentRowsState extends State<_ContentRows>
                 (item.rawData['CollectionType'] as String? ?? '').toLowerCase();
             final icon = isGameLibrary(item.id, collectionType, item.name)
                 ? gameLibraryIcon
-                : _iconForCollectionType(collectionType);
+                : iconForCollectionType(collectionType);
             return Align(
               alignment: Alignment.topCenter,
               child: SizedBox.square(
@@ -4820,7 +4833,7 @@ class _ContentRowsState extends State<_ContentRows>
         (item.rawData['CollectionType'] as String? ?? '').toLowerCase();
     final icon = isGameLibrary(item.id, collectionType, item.name)
         ? gameLibraryIcon
-        : _iconForCollectionType(collectionType);
+        : iconForCollectionType(collectionType);
     return SizedBox.square(
       dimension: squarePosterSide,
       child: GridButtonCard(
@@ -5108,8 +5121,21 @@ class _ContentRowsState extends State<_ContentRows>
           late final double ar;
           late final double width;
           late final String? imageUrl;
+          // 28.09, Sid: "Continuer à regarder" cards were growing into an
+          // episode still on focus and she wants them to stay a plain
+          // poster - this is the same V2 "Modern" row style's expand-on-
+          // focus behavior every other row already uses (not a bug in this
+          // row specifically), so opting resume/nextUp out here is the
+          // targeted fix rather than disabling V2 style globally.
+          final isResumeRow =
+              row.rowType == HomeRowType.resume ||
+              row.rowType == HomeRowType.nextUp;
           final canUseExpandedV2Card =
-              isRowsV2 && effectiveV2Focused && !row.isAudio && !isModernMyMediaStatic;
+              isRowsV2 &&
+              effectiveV2Focused &&
+              !row.isAudio &&
+              !isModernMyMediaStatic &&
+              !isResumeRow;
 
           if (isRowsV2) {
             if (isModernMyMediaStatic) {
@@ -5657,21 +5683,6 @@ class _ContentRowsState extends State<_ContentRows>
       ),
       ),
     );
-  }
-
-  static IconData _iconForCollectionType(String collectionType) {
-    return switch (collectionType) {
-      'movies' => Icons.movie,
-      'tvshows' => Icons.tv,
-      'music' => Icons.music_note,
-      'books' => Icons.book,
-      'photos' => Icons.photo,
-      'homevideos' => Icons.videocam,
-      'livetv' => Icons.live_tv,
-      'playlists' => Icons.playlist_play,
-      'boxsets' => Icons.collections_bookmark,
-      _ => Icons.folder_rounded,
-    };
   }
 
   static bool _isSeerrFilterRow(HomeRow row) =>

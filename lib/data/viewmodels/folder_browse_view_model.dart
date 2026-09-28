@@ -277,6 +277,29 @@ class FolderBrowseViewModel extends ChangeNotifier {
   }
 
   bool isNavigableFolder(AggregatedItem item) {
+    // 28.09, Sid: tapping a properly-identified "Breaking Bad" (Series)
+    // while browsing a Mixed Content library's raw folders kept drilling
+    // into another folder-cascade tier (seasons shown as more "folders")
+    // instead of opening the real series page. Root cause: Emby reports
+    // IsFolder=true for Series/Season/BoxSet too (they structurally
+    // contain children), so the old `if (isFolder) return true` above
+    // caught them before the type check ever ran, and that type check
+    // ALSO explicitly listed them as folders. Once Emby has actually
+    // identified an item as one of these real, typed media entities, it
+    // has its own detail page (itemOrPhoto routes it there) and should
+    // never be treated as a generic folder to descend into again, however
+    // Emby's own IsFolder flag reads.
+    const typedMediaEntities = {
+      'Series',
+      'Season',
+      'BoxSet',
+      'MusicArtist',
+      'MusicAlbum',
+      'AlbumArtist',
+      'BookSeries',
+    };
+    if (typedMediaEntities.contains(item.type)) return false;
+
     final isFolder = item.rawData['IsFolder'] as bool? ?? false;
     if (isFolder) return true;
 
@@ -284,14 +307,7 @@ class FolderBrowseViewModel extends ChangeNotifier {
     return type == 'Folder' ||
         type == 'CollectionFolder' ||
         type == 'UserView' ||
-        type == 'PhotoAlbum' ||
-        type == 'Series' ||
-        type == 'Season' ||
-        type == 'BoxSet' ||
-        type == 'MusicArtist' ||
-        type == 'MusicAlbum' ||
-        type == 'AlbumArtist' ||
-        type == 'BookSeries';
+        type == 'PhotoAlbum';
   }
 
   /// The server's name for [item], except where that name was scraped for

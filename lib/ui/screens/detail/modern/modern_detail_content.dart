@@ -286,7 +286,6 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
   String? _loadedMediaSourceId;
 
   bool _upNextResolvedThisBuild = false;
-  Widget? _upNextCard;
 
   Future<void> _loadPlaybackInfo(AggregatedItem item) async {
     if (_loadingPlaybackInfo) return;
@@ -4759,12 +4758,19 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
   }
 
   Widget? _buildUpNext(BuildContext context, AggregatedItem item) {
-    // Queried several times per build but inserted once; build it once.
+    // 28.09, Sid: on the series page this always duplicates the episode
+    // already shown by the "Reprendre" button above whenever one is in
+    // progress, and when nothing's in progress it's the only way to jump
+    // straight to the next unwatched episode - she decided that's not
+    // worth the duplication either. _computeUpNext is kept and still
+    // called (queried once per build, same as before) so its logic keeps
+    // being exercised rather than bit-rotting, but the result is never
+    // shown - hidden here, not deleted, in case she wants it back later.
     if (!_upNextResolvedThisBuild) {
-      _upNextCard = _computeUpNext(context, item);
+      _computeUpNext(context, item);
       _upNextResolvedThisBuild = true;
     }
-    return _upNextCard;
+    return null;
   }
 
   Widget? _computeUpNext(BuildContext context, AggregatedItem item) {

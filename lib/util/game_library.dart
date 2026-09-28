@@ -106,6 +106,25 @@ String libraryRoute(
 
 const IconData gameLibraryIcon = Icons.sports_esports;
 
+/// A representative icon per Emby/Jellyfin collection type, shared by every
+/// entry point that shows a library without its own artwork (home tiles,
+/// sidebar). Callers combine this with [isGameLibrary], which takes
+/// precedence, the same way [libraryRoute] does.
+IconData iconForCollectionType(String collectionType) {
+  return switch (collectionType) {
+    'movies' => Icons.movie,
+    'tvshows' => Icons.tv,
+    'music' => Icons.music_note,
+    'books' => Icons.book,
+    'photos' => Icons.photo,
+    'homevideos' => Icons.videocam,
+    'livetv' => Icons.live_tv,
+    'playlists' => Icons.playlist_play,
+    'boxsets' => Icons.collections_bookmark,
+    _ => Icons.folder_rounded,
+  };
+}
+
 /// A game's art, served by the Moonbase plugin. Null on a server without the games API.
 ///
 /// The plugin fetches the art from libretro and caches it rather than the client going there

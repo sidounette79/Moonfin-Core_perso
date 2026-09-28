@@ -1092,6 +1092,9 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                       label: lib.name,
                       baseColor: nextLibrarySidebarColor(),
                       showLabel: _showLabels,
+                      icon: isGameLibrary(lib.id, lib.collectionType, lib.name)
+                          ? gameLibraryIcon
+                          : iconForCollectionType(lib.collectionType),
                       onPressed: () {
                         _onNavigate();
                         _markNavigationAwayFromSidebar();
@@ -1150,6 +1153,16 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                                     label: lib.name,
                                     baseColor: nextLibrarySidebarColor(),
                                     showLabel: _showLabels,
+                                    icon:
+                                        isGameLibrary(
+                                          lib.id,
+                                          lib.collectionType,
+                                          lib.name,
+                                        )
+                                        ? gameLibraryIcon
+                                        : iconForCollectionType(
+                                            lib.collectionType,
+                                          ),
                                     onPressed: () {
                                       _onNavigate();
                                       _markNavigationAwayFromSidebar();
@@ -1568,12 +1581,14 @@ class _SidebarLibraryItem extends StatefulWidget {
   final bool showLabel;
   final VoidCallback onPressed;
   final Color? baseColor;
+  final IconData icon;
 
   const _SidebarLibraryItem({
     super.key,
     required this.label,
     required this.showLabel,
     required this.onPressed,
+    required this.icon,
     this.baseColor,
   });
 
@@ -1633,8 +1648,18 @@ class _SidebarLibraryItemState extends State<_SidebarLibraryItem> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               height: desktopSidebar ? 40 : 36,
+              // 28.09, Sid: pinned libraries "se créent un espace... mais
+              // n'apparaissent que quand je vais vraiment dessus" - this
+              // item had no icon at all, only ever a Text gated on
+              // showLabel, so the collapsed sidebar rendered a real but
+              // fully empty slot (SizedBox.shrink) instead of an icon like
+              // every other sidebar entry. Left inset switches to the same
+              // 18px _SidebarItem uses for its icon column when collapsed,
+              // keeping the existing indent (aligned under the label text,
+              // not an icon) once expanded so the nested "Bibliothèques"
+              // dropdown look is unchanged.
               padding: EdgeInsets.only(
-                left: desktopSidebar ? 64 : 58,
+                left: widget.showLabel ? (desktopSidebar ? 64 : 58) : 18,
                 right: 18,
               ),
               decoration: BoxDecoration(
@@ -1664,7 +1689,15 @@ class _SidebarLibraryItemState extends State<_SidebarLibraryItem> {
                       ),
                       overflow: TextOverflow.ellipsis,
                     )
-                  : const SizedBox.shrink(),
+                  : AdaptiveIcon(
+                      widget.icon,
+                      size: desktopSidebar ? 22 : 20,
+                      color: tvFocused
+                          ? Colors.black
+                          : highlighted
+                          ? (useBaseForFocus ? baseColor : focusColor)
+                          : baseColor,
+                    ),
             ),
           ),
         ),

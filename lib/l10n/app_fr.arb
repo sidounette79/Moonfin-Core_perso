@@ -3214,7 +3214,7 @@
     "@customizationProfileDescription": {
         "description": "Description for customization profile"
     },
-    "loadProfile": "Charger le profil",
+    "loadProfile": "Recevoir réglages depuis serveur",
     "@loadProfile": {
         "description": "Button to load a profile"
     },
@@ -3222,7 +3222,7 @@
     "@syncing": {
         "description": "Label while syncing"
     },
-    "syncToProfile": "Synchroniser le profil",
+    "syncToProfile": "Envoyer réglages vers serveur",
     "@syncToProfile": {
         "description": "Button to sync to a profile"
     },

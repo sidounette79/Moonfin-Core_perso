@@ -1315,20 +1315,24 @@ class PluginSyncService extends ChangeNotifier {
   Future<void> _applyServerSettingsUnbatched(
     Map<String, dynamic> resolved,
   ) async {
-    final serverId = (_store.getString('pref_last_server_id') ?? '').trim();
-    if (serverId.isNotEmpty) {
-      // When the server profile carries no API key, keep the locally stored
-      // one. Both fallbacks must run before the field table is applied,
-      // otherwise _applySyncedField has already wiped the local value.
-      _preserveLocalKeyWhenServerEmpty(resolved, 'tmdbApiKey', UserPreferences.tmdbApiKey);
-      _preserveLocalKeyWhenServerEmpty(resolved, 'mdblistApiKey', UserPreferences.mdblistApiKey);
+    // 28.09, Sid: "j'ai synchronisé mon appareil avec le serveur et après,
+    // c'est redevenu comme avant" - real bug found: this whole block,
+    // including the loop that applies all 299 synced fields, was gated
+    // behind `serverId.isNotEmpty` even though neither
+    // _preserveLocalKeyWhenServerEmpty (reads a plain local preference,
+    // doesn't use serverId at all) nor the field-sync loop needs a
+    // non-empty serverId to be correct. Whenever pref_last_server_id
+    // happened to read back empty (e.g. a preference-store init race on
+    // app launch), every single synced field was silently skipped - no
+    // error, sync looked like it ran, nothing actually changed.
+    _preserveLocalKeyWhenServerEmpty(resolved, 'tmdbApiKey', UserPreferences.tmdbApiKey);
+    _preserveLocalKeyWhenServerEmpty(resolved, 'mdblistApiKey', UserPreferences.mdblistApiKey);
 
-      // Everything describable as a key, preference and codec comes from one table, so
-      // the send and receive directions can't drift apart. The settings that need
-      // real logic follow below.
-      for (final field in syncedFields) {
-        _applySyncedField(resolved, field);
-      }
+    // Everything describable as a key, preference and codec comes from one table, so
+    // the send and receive directions can't drift apart. The settings that need
+    // real logic follow below.
+    for (final field in syncedFields) {
+      _applySyncedField(resolved, field);
     }
 
     _applySinceYouWatchedNumRows(resolved);
