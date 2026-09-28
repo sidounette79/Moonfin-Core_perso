@@ -35,6 +35,7 @@ import '../../../../util/focus/dpad_keys.dart';
 import '../../../../util/focus/focus_scroll.dart';
 import '../../../navigation/destinations.dart';
 import '../../../navigation/playback_launcher.dart';
+import '../detail_delete_action.dart';
 import '../../../widgets/horizontal_scroll_section.dart';
 import '../../../widgets/logo_view.dart';
 import '../../../widgets/marquee_text.dart';
@@ -4477,6 +4478,14 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
                 : _tabNode(_selectedTab >= 0 ? _selectedTab : 0),
             upTarget: _overviewFocusNode,
             autoPlay: widget.autoPlay,
+            // 28.09, Sid: "bouton supprimer un épisode - pas vu apparaître"
+            // - the classic detail screen got this button, Modern (what
+            // she actually uses) never did, since DetailActionButtons is
+            // one shared widget but each style's own hero has to pass
+            // onDelete itself. Real gap, not a settings issue.
+            onDelete: item.canDelete
+                ? () => confirmDeleteServerItem(context, _vm, item)
+                : null,
             modernStyle: true,
             fullWidthPrimary: !_landscape,
             maxVisibleButtonsOverride: null,

@@ -4041,13 +4041,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'Choisissez le profil à charger, modifier et synchroniser. Global s’applique partout sauf si un profil d’appareil le remplace. Le point vert indique le profil de votre appareil actuel.';
 
   @override
-  String get loadProfile => 'Charger le profil';
+  String get loadProfile => 'Recevoir réglages depuis serveur';
 
   @override
   String get syncing => 'Synchronisation…';
 
   @override
-  String get syncToProfile => 'Synchroniser le profil';
+  String get syncToProfile => 'Envoyer réglages vers serveur';
 
   @override
   String get resetProfile => 'Réinitialiser le profil';
