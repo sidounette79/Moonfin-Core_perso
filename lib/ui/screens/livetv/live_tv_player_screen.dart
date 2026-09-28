@@ -1772,11 +1772,11 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
           // still hidden (once it's up, left/right already means
           // "move between its buttons" below - overloading both would
           // make the OSD unusable via D-pad).
-          if (PlatformDetection.isTV) {
-            unawaited(_zapChannel(-1));
-            return KeyEventResult.handled;
-          }
-          _showInfo();
+          // 28.09: also wanted on mobile for the car (Android Auto/a
+          // paired remote sends the same arrow key events there, a
+          // touchscreen alone never does - no behavior change for a
+          // phone used by hand).
+          unawaited(_zapChannel(-1));
           return KeyEventResult.handled;
         }
         if (PlatformDetection.isTV) {
@@ -1787,11 +1787,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowRight:
         if (!_infoVisible) {
-          if (PlatformDetection.isTV) {
-            unawaited(_zapChannel(1));
-            return KeyEventResult.handled;
-          }
-          _showInfo();
+          unawaited(_zapChannel(1));
           return KeyEventResult.handled;
         }
         if (PlatformDetection.isTV) {
