@@ -82,8 +82,13 @@ android {
 
     flavorDimensions += "device"
     productFlavors {
+        // 28.09, Sid: "on peut appeler ça CARBA TV" - display name only.
+        // Deliberately NOT touching baseAppId: changing the package id
+        // would make Android treat it as a brand new app (exactly what
+        // she's trying to get away from with the keystore fix below - a
+        // changed id forces a fresh install same as a changed signature).
         val baseAppId = "org.moonfin.androidtv"
-        val baseAppName = "Moonfin"
+        val baseAppName = "CARBA TV"
         // Optional application-id suffix for on-device testing, set through the
         // environment so an unset build is byte-identical to before:
         //   MOONFIN_TEST_ID_SUFFIX=.hwtest flutter build apk --flavor androidTv --debug
