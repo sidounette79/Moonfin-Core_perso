@@ -1227,14 +1227,29 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     VoidCallback? onNavigateDown,
   }) {
     final filters = GuideFilter.values;
+    // 28.09, Sid: her own named channel groups tack onto the end of the
+    // existing filter rail (Tous/Films/Séries/.../Favoris/Masquées) rather
+    // than a separate picker screen - reuses the same selectable-chip UI.
+    final groupNames = _vm.channelGroups.keys.toList();
+    final selectedGroupName = _vm.selectedGroupName;
     return Padding(
       padding: padding,
       child: EpgFilterRail(
-        labels: [for (final f in filters) _filterLabel(f)],
-        selectedIndex: filters.indexOf(_vm.filter),
+        labels: [
+          for (final f in filters) _filterLabel(f),
+          for (final g in groupNames) g,
+        ],
+        selectedIndex: selectedGroupName != null
+            ? filters.length + groupNames.indexOf(selectedGroupName)
+            : filters.indexOf(_vm.filter),
         onSelect: (i) {
           _cancelPendingVerticalMove();
-          _vm.setFilter(filters[i]);
+          if (i < filters.length) {
+            _vm.selectGroup(null);
+            _vm.setFilter(filters[i]);
+          } else {
+            _vm.selectGroup(groupNames[i - filters.length]);
+          }
         },
         apple: _apple,
         focusNodeFor: _filterFocusNodeFor,
@@ -1676,6 +1691,9 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       GuideFilter.kids => l10n.kids,
       GuideFilter.premiere => l10n.premiere,
       GuideFilter.favorites => l10n.favorites,
+      // 28.09, Sid: personal-fork feature, hardcoded French label like the
+      // other CARBA TV-only additions this session (no gen-l10n entry).
+      GuideFilter.hidden => 'Masquées',
     };
   }
 
@@ -2456,6 +2474,8 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     final pageContext = context;
     final channel = _vm.channelForId(program.channelId);
     final isFavoriteChannel = channel?.isFavorite ?? false;
+    final isHiddenChannel =
+        channel != null && _vm.isChannelHidden(channel.id);
     final hasTimer = program.hasTimer;
     final hasSeriesTimer = program.hasSeriesTimer;
     final now = DateTime.now();
@@ -2672,6 +2692,42 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
                     : l10n.favoriteChannel,
               ),
             ),
+            // 28.09, Sid: "un peu comme dans TiviMate" - hide/show + group
+            // assignment, personal-fork feature so hardcoded French labels
+            // like the other CARBA TV-only additions this session.
+            if (channel != null) ...[
+              adaptiveDialogAction(
+                onPressed: () async {
+                  if (dialogActionInProgress) return;
+                  dialogActionInProgress = true;
+                  if (isHiddenChannel) {
+                    await _vm.unhideChannel(channel.id);
+                  } else {
+                    await _vm.hideChannel(channel.id);
+                  }
+                  if (!pageContext.mounted || !dialogContext.mounted) return;
+                  Navigator.of(dialogContext).pop();
+                  ScaffoldMessenger.of(pageContext).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isHiddenChannel
+                            ? 'Chaîne affichée'
+                            : 'Chaîne masquée',
+                      ),
+                    ),
+                  );
+                },
+                child: Text(isHiddenChannel ? 'Afficher' : 'Masquer'),
+              ),
+              adaptiveDialogAction(
+                onPressed: () {
+                  if (dialogActionInProgress) return;
+                  Navigator.of(dialogContext).pop();
+                  _showChannelGroupPicker(channel.id);
+                },
+                child: const Text('Ajouter à un groupe'),
+              ),
+            ],
             adaptiveDialogAction(
               autofocus: !isRecordingNow,
               focusNode: isRecordingNow ? null : defaultActionFocusNode,
@@ -2698,6 +2754,87 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
         );
       },
     ).whenComplete(defaultActionFocusNode.dispose);
+  }
+
+  // 28.09, Sid: "un peu comme dans TiviMate" - assign a channel to one or
+  // more of her own named groups, or create a new one on the spot.
+  void _showChannelGroupPicker(String channelId) {
+    final newGroupController = TextEditingController();
+    showFocusRestoringDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final groups = _vm.channelGroups;
+          return AlertDialog.adaptive(
+            backgroundColor: AppColorScheme.surface,
+            title: const Text(
+              'Ajouter à un groupe',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: SizedBox(
+              width: 320,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (groups.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        'Aucun groupe pour l\'instant.',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                  for (final groupName in groups.keys)
+                    CheckboxListTile(
+                      title: Text(
+                        groupName,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      value: groups[groupName]!.contains(channelId),
+                      onChanged: (checked) async {
+                        if (checked == true) {
+                          await _vm.addChannelToGroup(groupName, channelId);
+                        } else {
+                          await _vm.removeChannelFromGroup(
+                            groupName,
+                            channelId,
+                          );
+                        }
+                        setDialogState(() {});
+                      },
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: TextField(
+                      controller: newGroupController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        hintText: 'Nouveau groupe',
+                        hintStyle: TextStyle(color: Colors.white54),
+                      ),
+                      onSubmitted: (name) async {
+                        final trimmed = name.trim();
+                        if (trimmed.isEmpty) return;
+                        await _vm.createChannelGroup(trimmed);
+                        await _vm.addChannelToGroup(trimmed, channelId);
+                        newGroupController.clear();
+                        setDialogState(() {});
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              adaptiveDialogAction(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Fermer'),
+              ),
+            ],
+          );
+        },
+      ),
+    ).whenComplete(newGroupController.dispose);
   }
 }
 

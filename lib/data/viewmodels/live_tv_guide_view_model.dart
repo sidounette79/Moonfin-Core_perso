@@ -185,6 +185,10 @@ enum GuideFilter {
   kids,
   premiere,
   favorites,
+  // 28.09, Sid: TiviMate-style "hide a channel" - its own filter tab to
+  // review/unhide, same idea as favorites (locally computed, no server
+  // category fetch needed).
+  hidden,
 }
 
 enum GuideState { loading, ready, error }
@@ -377,6 +381,65 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   GuideFilter _filter = GuideFilter.all;
   GuideFilter get filter => _filter;
 
+  UserPreferences get _prefs => GetIt.instance<UserPreferences>();
+
+  // 28.09, Sid: TiviMate-style hidden channels + manual groups. A selected
+  // group (dynamic, user-named - can't be a GuideFilter enum value) takes
+  // priority over the fixed-category filter when set.
+  Set<String> get _hiddenChannelIds =>
+      _prefs.getHiddenLiveTvChannelIds().keys.toSet();
+
+  Map<String, List<String>> get channelGroups => _prefs.getLiveTvChannelGroups();
+
+  String? _selectedGroupName;
+  String? get selectedGroupName => _selectedGroupName;
+
+  void selectGroup(String? name) {
+    if (_selectedGroupName == name) return;
+    _selectedGroupName = name;
+    _notifyListeners();
+  }
+
+  bool isChannelHidden(String channelId) =>
+      _hiddenChannelIds.contains(channelId);
+
+  Future<void> hideChannel(String channelId) async {
+    await _prefs.hideLiveTvChannel(channelId);
+    _notifyListeners();
+  }
+
+  Future<void> unhideChannel(String channelId) async {
+    await _prefs.unhideLiveTvChannel(channelId);
+    _notifyListeners();
+  }
+
+  Future<void> addChannelToGroup(String groupName, String channelId) async {
+    await _prefs.addChannelToGroup(groupName, channelId);
+    _notifyListeners();
+  }
+
+  Future<void> removeChannelFromGroup(String groupName, String channelId) async {
+    await _prefs.removeChannelFromGroup(groupName, channelId);
+    _notifyListeners();
+  }
+
+  Future<void> createChannelGroup(String name) async {
+    await _prefs.createLiveTvChannelGroup(name);
+    _notifyListeners();
+  }
+
+  Future<void> deleteChannelGroup(String name) async {
+    if (_selectedGroupName == name) _selectedGroupName = null;
+    await _prefs.deleteLiveTvChannelGroup(name);
+    _notifyListeners();
+  }
+
+  Future<void> renameChannelGroup(String oldName, String newName) async {
+    if (_selectedGroupName == oldName) _selectedGroupName = newName;
+    await _prefs.renameLiveTvChannelGroup(oldName, newName);
+    _notifyListeners();
+  }
+
   // Seeded from the injected clock in the constructor, so the initial value
   // is testable rather than tied to the real wall clock.
   DateTime _guideDate;
@@ -389,20 +452,37 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   DateTime get windowEnd => _windowEnd;
 
   List<GuideChannel> get filteredChannels {
-    if (_filter == GuideFilter.all) return _channels;
+    if (_filter == GuideFilter.hidden) {
+      final hidden = _hiddenChannelIds;
+      return _channels.where((ch) => hidden.contains(ch.id)).toList();
+    }
+
+    // A selected group narrows whatever the channel would otherwise show
+    // under - still respects hiding a channel from within a group too.
+    final groupName = _selectedGroupName;
+    final hidden = _hiddenChannelIds;
+    Iterable<GuideChannel> base = _channels.where(
+      (ch) => !hidden.contains(ch.id),
+    );
+    if (groupName != null) {
+      final groupIds = channelGroups[groupName]?.toSet() ?? const {};
+      base = base.where((ch) => groupIds.contains(ch.id));
+    }
+
+    if (_filter == GuideFilter.all) return base.toList();
     if (_filter == GuideFilter.favorites) {
-      return _channels.where((ch) => ch.isFavorite).toList();
+      return base.where((ch) => ch.isFavorite).toList();
     }
     if (_categoryLoadedFor != _filter) return const [];
-    return _channels
-        .where((ch) => _categoryPrograms.containsKey(ch.id))
-        .toList();
+    return base.where((ch) => _categoryPrograms.containsKey(ch.id)).toList();
   }
 
   List<GuideProgram> programsForChannel(String channelId) {
     if (_isCategory(_filter)) return _categoryPrograms[channelId] ?? const [];
     final all = _programsByChannel[channelId] ?? [];
-    if (_filter == GuideFilter.all || _filter == GuideFilter.favorites) {
+    if (_filter == GuideFilter.all ||
+        _filter == GuideFilter.favorites ||
+        _filter == GuideFilter.hidden) {
       return all;
     }
     return all.where(_matchesFilter).toList();
@@ -448,10 +528,13 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     GuideFilter.kids => p.isKids,
     GuideFilter.premiere => p.isPremiere,
     GuideFilter.favorites => true,
+    GuideFilter.hidden => true,
   };
 
   static bool _isCategory(GuideFilter filter) =>
-      filter != GuideFilter.all && filter != GuideFilter.favorites;
+      filter != GuideFilter.all &&
+      filter != GuideFilter.favorites &&
+      filter != GuideFilter.hidden;
 
   static bool _matches(GuideFilter filter, GuideProgram p) => switch (filter) {
     GuideFilter.all => true,
@@ -462,6 +545,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     GuideFilter.kids => p.isKids,
     GuideFilter.premiere => p.isPremiere,
     GuideFilter.favorites => true,
+    GuideFilter.hidden => true,
   };
 
   Future<void> toggleChannelFavorite(String channelId) async {
@@ -620,6 +704,13 @@ class LiveTvGuideViewModel extends ChangeNotifier {
           .map((c) => c.id)
           .toList();
       unawaited(ensureProgramsForChannels(favIds));
+    } else if (value == GuideFilter.hidden) {
+      final hidden = _hiddenChannelIds;
+      final hiddenIds = _channels
+          .where((c) => hidden.contains(c.id))
+          .map((c) => c.id)
+          .toList();
+      unawaited(ensureProgramsForChannels(hiddenIds));
     }
   }
 

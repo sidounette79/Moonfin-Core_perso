@@ -85,6 +85,8 @@ class SyncedField {
 final List<SyncedField> syncedFields = <SyncedField>[
   SyncedField('hiddenContinueWatchingItems', UserPreferences.hiddenContinueWatchingItems, SyncCodec.text),
   SyncedField('hiddenNextUpSeries', UserPreferences.hiddenNextUpSeries, SyncCodec.text),
+  SyncedField('hiddenLiveTvChannelIds', UserPreferences.hiddenLiveTvChannelIds, SyncCodec.text),
+  SyncedField('liveTvChannelGroups', UserPreferences.liveTvChannelGroups, SyncCodec.text),
   SyncedField('visualTheme', UserPreferences.visualTheme, SyncCodec.enumName, enumValues: prefs.VisualThemeId.values),
   SyncedField('customThemeId', UserPreferences.customThemeId, SyncCodec.text),
   SyncedField('customFontFamily', UserPreferences.customFontFamily, SyncCodec.enumName, enumValues: prefs.CustomFontFamily.values),

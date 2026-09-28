@@ -3586,6 +3586,100 @@ class UserPreferences extends ChangeNotifier {
     }
   }
 
+  // 28.09, Sid: "un peu comme dans TiviMate" - hide channels from the guide
+  // entirely (own GuideFilter.hidden category to review/unhide, same idea
+  // as the continue-watching/next-up hide-lists above) and group them into
+  // her own named custom lists.
+  static final hiddenLiveTvChannelIds = Preference<String>(
+    key: 'hidden_live_tv_channel_ids',
+    defaultValue: '{}',
+  );
+
+  Map<String, String> getHiddenLiveTvChannelIds() {
+    try {
+      final jsonStr = get(hiddenLiveTvChannelIds);
+      final map = jsonDecode(jsonStr) as Map;
+      return map.cast<String, String>();
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> hideLiveTvChannel(String channelId) async {
+    final ids = getHiddenLiveTvChannelIds();
+    ids[channelId] = DateTime.now().toUtc().toIso8601String();
+    await set(hiddenLiveTvChannelIds, jsonEncode(ids));
+  }
+
+  Future<void> unhideLiveTvChannel(String channelId) async {
+    final ids = getHiddenLiveTvChannelIds();
+    if (ids.remove(channelId) != null) {
+      await set(hiddenLiveTvChannelIds, jsonEncode(ids));
+    }
+  }
+
+  /// Name -> ordered channel ids. A plain Map (not a class) so it survives
+  /// jsonEncode/Decode without a model layer - group order is the order
+  /// keys were inserted in, which Dart's LinkedHashMap (json's default map
+  /// type) already preserves.
+  static final liveTvChannelGroups = Preference<String>(
+    key: 'live_tv_channel_groups',
+    defaultValue: '{}',
+  );
+
+  Map<String, List<String>> getLiveTvChannelGroups() {
+    try {
+      final jsonStr = get(liveTvChannelGroups);
+      final map = jsonDecode(jsonStr) as Map;
+      return map.map(
+        (k, v) => MapEntry(k as String, (v as List).cast<String>()),
+      );
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> _saveLiveTvChannelGroups(Map<String, List<String>> groups) =>
+      set(liveTvChannelGroups, jsonEncode(groups));
+
+  Future<void> createLiveTvChannelGroup(String name) async {
+    final groups = getLiveTvChannelGroups();
+    groups.putIfAbsent(name, () => <String>[]);
+    await _saveLiveTvChannelGroups(groups);
+  }
+
+  Future<void> renameLiveTvChannelGroup(String oldName, String newName) async {
+    final groups = getLiveTvChannelGroups();
+    final channelIds = groups.remove(oldName);
+    if (channelIds == null) return;
+    groups[newName] = channelIds;
+    await _saveLiveTvChannelGroups(groups);
+  }
+
+  Future<void> deleteLiveTvChannelGroup(String name) async {
+    final groups = getLiveTvChannelGroups();
+    if (groups.remove(name) != null) {
+      await _saveLiveTvChannelGroups(groups);
+    }
+  }
+
+  Future<void> addChannelToGroup(String groupName, String channelId) async {
+    final groups = getLiveTvChannelGroups();
+    final channelIds = groups.putIfAbsent(groupName, () => <String>[]);
+    if (!channelIds.contains(channelId)) {
+      channelIds.add(channelId);
+      await _saveLiveTvChannelGroups(groups);
+    }
+  }
+
+  Future<void> removeChannelFromGroup(String groupName, String channelId) async {
+    final groups = getLiveTvChannelGroups();
+    final channelIds = groups[groupName];
+    if (channelIds != null && channelIds.remove(channelId)) {
+      await _saveLiveTvChannelGroups(groups);
+    }
+  }
+
   List<AggregatedItem> filterContinueWatching(List<AggregatedItem> items) {
     final hidden = getHiddenContinueWatchingItems();
     if (hidden.isEmpty) return items;
