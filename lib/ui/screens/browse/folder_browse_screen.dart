@@ -186,7 +186,7 @@ class _FolderBrowseScreenState extends State<FolderBrowseScreen> {
     return null;
   }
 
-  void _onItemTap(AggregatedItem item) {
+  Future<void> _onItemTap(AggregatedItem item) async {
     final now = DateTime.now();
     final isDuplicateTap =
         _lastTappedItemId == item.id &&
@@ -197,6 +197,26 @@ class _FolderBrowseScreenState extends State<FolderBrowseScreen> {
     _lastItemTapAt = now;
 
     if (_vm.isNavigableFolder(item)) {
+      // 28.09, Sid: "pour tout et partout" - a folder that only ever
+      // wraps a single real item (her whole library is one-folder-per-
+      // movie) skips straight to that item's real page instead of one
+      // more folder screen showing just it alone.
+      if (item.childCount == 1) {
+        final resolved = await _vm.resolveSingleItemChain(item);
+        if (resolved != null && !_vm.isNavigableFolder(resolved)) {
+          if (!mounted) return;
+          context.push(
+            Destinations.itemOrPhoto(
+              resolved.id,
+              serverId: resolved.serverId,
+              type: resolved.type,
+              channelId: resolved.channelId,
+            ),
+          );
+          return;
+        }
+      }
+      if (!mounted) return;
       context.push(
         Destinations.folder(item.id, serverId: item.serverId),
       );

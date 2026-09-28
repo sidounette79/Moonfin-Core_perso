@@ -276,6 +276,54 @@ class FolderBrowseViewModel extends ChangeNotifier {
     }
   }
 
+  /// 28.09, Sid: her libraries are organized one-folder-per-movie ("Forrest
+  /// Gump/Forrest.Gump.1994.mkv"), so every single movie needed an extra
+  /// tap through an otherwise-pointless one-item folder before reaching
+  /// its real detail page - confirmed she wants this everywhere, including
+  /// folders nested inside other single-item folders, so this unwraps
+  /// repeatedly (bounded) rather than a single level.
+  Future<AggregatedItem?> resolveSingleItemChain(AggregatedItem start) async {
+    var current = start;
+    for (var depth = 0; depth < 8; depth++) {
+      if (!isNavigableFolder(current) || current.childCount != 1) {
+        return depth == 0 ? null : current;
+      }
+      final child = await _fetchSingleChild(current.id);
+      if (child == null) return depth == 0 ? null : current;
+      current = child;
+    }
+    return current;
+  }
+
+  Future<AggregatedItem?> _fetchSingleChild(String folderId) async {
+    try {
+      final response = await _client.itemsApi.getItems(
+        parentId: folderId,
+        recursive: false,
+        sortBy: 'SortName',
+        sortOrder: 'Ascending',
+        startIndex: 0,
+        limit: 2,
+        fields: _fields,
+        enableImageTypes: _imageTypes,
+        imageTypeLimit: _imageTypeLimit,
+        enableTotalRecordCount: false,
+      );
+      final rawItems = (response['Items'] as List?) ?? [];
+      if (rawItems.length != 1) return null;
+      final raw = rawItems.first as Map<String, dynamic>;
+      return AggregatedItem(
+        id: raw['Id']?.toString() ?? '',
+        serverId: (_serverId != null && _serverId.isNotEmpty)
+            ? _serverId
+            : _client.baseUrl,
+        rawData: raw,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   bool isNavigableFolder(AggregatedItem item) {
     // 28.09, Sid: tapping a properly-identified "Breaking Bad" (Series)
     // while browsing a Mixed Content library's raw folders kept drilling
