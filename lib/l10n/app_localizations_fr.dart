@@ -4513,10 +4513,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Trie les rangées d\'accueil « Séries récemment sorties » par série, dernière saison ou date de diffusion du dernier épisode';
 
   @override
-  String get myMedia => 'Mes médias';
+  String get myMedia => 'Mes bibliothèques';
 
   @override
-  String get myMediaSmall => 'Mes médias (petit)';
+  String get myMediaSmall => 'Mes bibliothèques (petit)';
 
   @override
   String get continueWatching => 'Continuer de regarder';
@@ -10665,7 +10665,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get modernCardsOnMyMediaRow =>
-      'Visuels modernes dans la rangée Mes médias';
+      'Visuels modernes dans la rangée Mes bibliothèques';
 
   @override
   String get modernCardsOnMyMediaRowDescription =>

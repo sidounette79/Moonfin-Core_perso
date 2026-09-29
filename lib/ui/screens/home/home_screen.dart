@@ -76,6 +76,8 @@ import '../../widgets/navigation_layout.dart';
 import '../../widgets/responsive_layout.dart';
 import '../../widgets/seasonal_effects.dart';
 import '../../widgets/settings/settings_panel.dart';
+import '../../widgets/debug/nav_debug_overlay.dart';
+import '../../../util/debug/nav_debug_log.dart';
 import '../../widgets/top_toolbar.dart';
 import '../../navigation/home_refresh_bus.dart';
 import '../../widgets/bounded_network_image.dart';
@@ -3254,19 +3256,33 @@ class _ContentRowsState extends State<_ContentRows>
     int fromRowIndex,
     int direction,
   ) async {
-    if (_verticalNavInFlight) return;
+    if (_verticalNavInFlight) {
+      NavDebugLog.log(
+        'focusAdjacent from=$fromRowIndex dir=$direction -> SKIPPED, _verticalNavInFlight already true',
+      );
+      return;
+    }
     // The user is moving rows, so the delayed realign on return must not
     // drag them back to the row they arrived on.
     _returnScrollRowId = null;
     _verticalNavInFlight = true;
     final maxRow = rows.length - 1;
     var target = fromRowIndex + direction;
+    NavDebugLog.log(
+      'focusAdjacent from=$fromRowIndex dir=$direction maxRow=$maxRow firstTarget=$target',
+    );
     try {
       while (target >= 0 && target <= maxRow) {
         final candidate = rows[target];
         final hasItems = _rowHasFocusableItems(candidate);
+        NavDebugLog.log(
+          '  candidate row=$target type=${candidate.rowType} isLoading=${candidate.isLoading} items=${candidate.items.length} hasItems=$hasItems',
+        );
         if (hasItems) {
           final targetState = _rowStateOf(target);
+          NavDebugLog.log(
+            '  -> targeting row=$target, rowState=${targetState != null ? "found" : "NULL (using memory fallback)"}',
+          );
           if (targetState != null) {
             targetState.requestFocusAt(0);
           } else {
@@ -3360,6 +3376,9 @@ class _ContentRowsState extends State<_ContentRows>
         target += direction;
       }
 
+      NavDebugLog.log(
+        '  loop exhausted, no focusable row found in that direction (target=$target, maxRow=$maxRow)',
+      );
       if (direction < 0) {
         if (_isMediaBarIncluded()) {
           _verticalNavInFlight = false;
@@ -3389,8 +3408,14 @@ class _ContentRowsState extends State<_ContentRows>
     required List<HomeRow> rows,
     required bool isUp,
   }) {
+    NavDebugLog.log(
+      'onVerticalNav row=$rowIndex ${isUp ? "UP" : "DOWN"} rows.len=${rows.length}',
+    );
     _markUserGesture();
-    if (!_allowVerticalNavNow()) return true;
+    if (!_allowVerticalNavNow()) {
+      NavDebugLog.log('  -> throttled by _allowVerticalNavNow(), no-op');
+      return true;
+    }
     if (isUp) {
       if (rowIndex == 0) {
         if (_isMediaBarIncluded()) {
@@ -4658,6 +4683,7 @@ class _ContentRowsState extends State<_ContentRows>
             return const SizedBox.shrink();
           },
         ),
+        if (PlatformDetection.isTV) const NavDebugOverlay(),
       ],
     ),
   );

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../../util/debug/nav_debug_log.dart';
 import '../../../util/focus/dpad_keys.dart';
 import '../../../util/focus/key_event_utils.dart';
 import '../../../util/focus/scroll_utils.dart';
@@ -331,6 +332,12 @@ class LockedFocusRowState<T> extends State<LockedFocusRow<T>> {
       return handled ? KeyEventResult.handled : KeyEventResult.ignored;
     }
     if (key.isDownKey) {
+      // 29.09, temporary: see nav_debug_log.dart - confirms the event
+      // actually reaches this row's Focus node at all before blaming
+      // anything further down the call chain.
+      NavDebugLog.log(
+        'LockedFocusRow[${widget.hubKey}] DOWN key received, hasCallback=${widget.onVerticalNavigation != null}',
+      );
       final handled = widget.onVerticalNavigation?.call(false) ?? false;
       return handled ? KeyEventResult.handled : KeyEventResult.ignored;
     }
