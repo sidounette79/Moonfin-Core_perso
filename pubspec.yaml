@@ -5,7 +5,16 @@ version: 2.6.0+30000153
 
 moonfin:
   android_tv_version: 2.6.0
-  android_tv_build_number: 2000019
+  # 29.09: this used to track upstream Moonfin's own small counter
+  # (2000012 -> 2000019), completely separate from the `version:` line
+  # above's much larger one. Some earlier build installed on Sid's TV
+  # with versionCode 30000153 (matching the `version:` scheme, not this
+  # one) - every following TV build after that silently failed to
+  # install ("une version plus récente est déjà installée") since
+  # 2000019 < 30000153 to Android. Now on the same large-number scheme
+  # as `version:` above, permanently - always bump higher than that line
+  # on every future TV release.
+  android_tv_build_number: 30000200
   beta: false
   beta_number: 1
 
