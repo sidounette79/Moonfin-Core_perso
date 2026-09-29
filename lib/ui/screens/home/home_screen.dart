@@ -4155,10 +4155,23 @@ class _ContentRowsState extends State<_ContentRows>
     // MediaType belongs in the key: a Seerr genre card takes the TMDB genre id
     // as its item id, and a genre in both the movie row and the series row has
     // the same id in each, so the second row would reuse the first row's image.
+    //
+    // 29-30.09, Sid: "la pochette reste noire [after returning from
+    // playback], je dois aller à gauche ou droite pour que ça revienne" -
+    // this cache was keyed on item id alone, so once resolved, an item's
+    // URL never changed again for the rest of this screen's lifetime even
+    // if Emby's own tag for that image changed underneath it (a stale tag
+    // can 404 once the old image is gone). Folding the actual tags into the
+    // key means a real tag change naturally produces a new key instead of
+    // silently reusing a URL that may no longer resolve.
     final key =
         '${item.serverId}|${item.id}|${item.rawData['MediaType']}'
         '|${imageType.index}|${height.round()}'
-        '|$useSeriesThumbs|${requestScale.toStringAsFixed(2)}|$isMyMediaRow';
+        '|$useSeriesThumbs|${requestScale.toStringAsFixed(2)}|$isMyMediaRow'
+        '|${item.rawData['ImageTags']}|${item.rawData['BackdropImageTags']}'
+        '|${item.rawData['ParentThumbImageTag']}'
+        '|${item.rawData['ParentBackdropImageTags']}'
+        '|${item.rawData['SeriesPrimaryImageTag']}';
     final cached = _rowImageUrlCache[key];
     if (cached != null || _rowImageUrlCache.containsKey(key)) {
       return cached;
