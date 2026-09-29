@@ -28,6 +28,23 @@ class EmbyAdminSystemApi implements AdminSystemApi {
 
   @override
   Future<Map<String, dynamic>> getNamedConfiguration(String key) async {
+    // 29.09, Sid, real device test: "network" threw a real Emby-side C#
+    // exception ("Sequence contains no matching element") - confirmed via
+    // Emby's own web dashboard that the data exists and is editable there,
+    // so this isn't a missing-feature case. Unlike Jellyfin, which split
+    // network settings into their own named configuration section (added
+    // later, a Jellyfin-only architecture change), Emby never split
+    // network settings out at all - they're just part of the single root
+    // ServerConfiguration returned by plain /System/Configuration. The
+    // screen that calls this (admin_networking_screen.dart) only reads a
+    // fixed set of known keys (EnableRemoteAccess, HttpServerPortNumber,
+    // LocalNetworkAddresses, ...) from whatever map it gets back, so
+    // handing it the full config here is safe - extra unrelated fields are
+    // simply never touched.
+    if (key == 'network') {
+      final response = await _dio.get('/System/Configuration');
+      return response.data as Map<String, dynamic>;
+    }
     final response = await _dio.get('/System/Configuration/$key');
     return response.data as Map<String, dynamic>;
   }
@@ -37,6 +54,14 @@ class EmbyAdminSystemApi implements AdminSystemApi {
     String key,
     Map<String, dynamic> config,
   ) async {
+    // Mirrors getNamedConfiguration above: Emby has no separate "network"
+    // section to POST to, so this writes the (already-full, only
+    // known-fields-edited) config object back to the single root
+    // configuration endpoint instead.
+    if (key == 'network') {
+      await _dio.post('/System/Configuration', data: config);
+      return;
+    }
     await _dio.post('/System/Configuration/$key', data: config);
   }
 
