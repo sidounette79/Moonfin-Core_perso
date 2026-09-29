@@ -68,7 +68,28 @@ class AggregatedItem {
   // rating/runtime in Emby's own list view - confirmed via screenshot it's
   // not a live Seerr lookup, it's already on the item itself. Just never
   // had a getter to read it out.
-  List<String> get tags => _toListOfStrings(rawData['Tags']);
+  //
+  // 29.09: real bug found via a live curl against Sid's Emby with a
+  // dedicated API key she generated for this - confirmed with a real item
+  // (Kandahar) whose tag ("sidounette") is provably in Emby's own database
+  // (ItemLinks2, Type=4) but always came back rawData['Tags'] == null.
+  // Emby's actual API response never had a plain "Tags" array at all - the
+  // real field is "TagItems", a list of {Name, Id} objects (same shape a
+  // People/cast entry uses), not the flat string array Jellyfin uses. Reads
+  // TagItems first (confirmed real Emby shape), falls back to the old flat
+  // Tags field for Jellyfin/older-Emby compatibility.
+  List<String> get tags {
+    final tagItems = rawData['TagItems'];
+    if (tagItems is List) {
+      return tagItems
+          .whereType<Map>()
+          .map((e) => e['Name']?.toString())
+          .whereType<String>()
+          .where((name) => name.isNotEmpty)
+          .toList();
+    }
+    return _toListOfStrings(rawData['Tags']);
+  }
 
   String? get primaryImageTag =>
       (rawData['ImageTags'] as Map?)?['Primary'] as String?;

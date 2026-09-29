@@ -93,10 +93,6 @@ bool _isCompact(BuildContext context) =>
     (PlatformDetection.useMobileUi ||
         MediaQuery.sizeOf(context).width < _kCompactBreakpoint);
 
-// 29.09, temporary: see its one call site in _cardSubtitleLines. Flip to
-// false (or delete both) once the real Tags value is confirmed.
-const kDebugTagsField = true;
-
 double _desktopUiScaleFactor() {
   return GetIt.instance<UserPreferences>()
       .get(UserPreferences.desktopUiScale)
@@ -1940,12 +1936,12 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
       LibraryCardField.criticRating,
       LibraryCardField.personalRating,
     ],
-    // 29.09, Sid: "je m'en fous de l'espace vide, je veux juste voir les
-    // étiquettes quand y en a" - tags had its own dedicated line, mostly
-    // empty since few items carry one; folded into the date line instead
-    // (which she confirmed reliably shows), so a present tag rides along
-    // an already-populated line instead of reserving one of its own.
-    [LibraryCardField.tags, LibraryCardField.lastPlayedDate, LibraryCardField.dateCreated],
+    // 29.09, Sid: la ligne dédiée avait été repliée dans la ligne de date
+    // quand le tag remontait toujours null (bug maintenant corrigé, voir
+    // AggregatedItem.tags) - remise sur sa propre ligne maintenant que
+    // l'étiquette s'affiche vraiment.
+    [LibraryCardField.tags],
+    [LibraryCardField.lastPlayedDate, LibraryCardField.dateCreated],
     [
       LibraryCardField.genres,
       LibraryCardField.director,
@@ -1976,15 +1972,6 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
       }
       if (parts.isNotEmpty) lines.add(parts.join('  '));
     }
-    // 29.09, temporary: Sid confirmed via a real Emby screenshot that e.g.
-    // "Chicago Fire" has the tag "huntarr-missing", but the grid isn't
-    // showing it despite Tags being requested and enabled - this prints
-    // exactly what Moonfin actually received for the item's raw Tags field,
-    // to find out whether it's a fetch/parse bug or something else, without
-    // needing to touch the Emby server directly. Remove once found.
-    if (kDebugTagsField) {
-      lines.add('DEBUG Tags=${item.rawData['Tags']}');
-    }
     return lines;
   }
 
@@ -1994,11 +1981,10 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
   /// a given field.
   int get _librarySubtitleLineCount {
     final enabled = _enabledLibraryCardFields.toSet();
-    if (enabled.isEmpty) return kDebugTagsField ? 1 : 0;
+    if (enabled.isEmpty) return 0;
     return _librarySubtitleLineGroups
-            .where((group) => group.any(enabled.contains))
-            .length +
-        (kDebugTagsField ? 1 : 0);
+        .where((group) => group.any(enabled.contains))
+        .length;
   }
 
   Widget? _buildSubtitleColumn(AggregatedItem item) {
