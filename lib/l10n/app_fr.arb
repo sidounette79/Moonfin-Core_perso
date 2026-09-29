@@ -3595,11 +3595,11 @@
     "@recentlyReleased": {
         "description": "Home section: recently released"
     },
-    "myMedia": "Mes médias",
+    "myMedia": "Mes bibliothèques",
     "@myMedia": {
         "description": "Home section: my media"
     },
-    "myMediaSmall": "Mes médias (petit)",
+    "myMediaSmall": "Mes bibliothèques (petit)",
     "@myMediaSmall": {
         "description": "Home section: my media small"
     },
@@ -11158,7 +11158,7 @@
     },
     "settingsDisplayNoHdrDetected": "Aucun format HDR détecté",
     "settingsDisplayMarkedSdr": "Écran enregistré comme SDR",
-    "modernCardsOnMyMediaRow": "Visuels modernes dans la rangée Mes médias",
+    "modernCardsOnMyMediaRow": "Visuels modernes dans la rangée Mes bibliothèques",
     "modernCardsOnMyMediaRowDescription": "Affiche des affiches personnalisables qui s'agrandissent à la sélection. Désactivez pour toujours afficher la miniature au format paysage.",
     "audiobookFullTimeline": "Timeline complète",
     "dateCreatedFormat": "Ajouté le {date}",
