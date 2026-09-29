@@ -764,6 +764,17 @@ class _ContentRowsState extends State<_ContentRows>
   // trailing row's state, killing focus if it lived there.
   final Map<String, GlobalKey> _rowKeys = {};
   final Map<String, GlobalKey> _rowContainerKeys = {};
+  // 29.09: the "Mes bibliothèques" grid (HomeRowType.libraryTiles) renders
+  // as a plain Wrap of GridButtonCard, not a LockedFocusRow like every
+  // other row - see _buildLibraryTilesGrid's own comment. That row never
+  // had a _rowKeys entry, so _rowStateOf(rowIndex) always returned null for
+  // it, and _requestRowFocusFromMemory's fallback (also _rowStateOf-based)
+  // failed the same way - confirmed via NavDebugLog on Sid's real TV
+  // tonight: "rowState=NULL (using memory fallback)" on every attempt to
+  // D-pad down past Continue Watching into this row. These give it its own
+  // focus target per tile so _focusLibraryGridRow below has something to
+  // request focus on.
+  final Map<String, List<FocusNode>> _libraryGridFocusNodes = {};
   final Map<String, ScrollController> _rowHorizontalControllers = {};
   final Map<String, double> _rowHorizontalOffsetsById = {};
   List<HomeRow>? _cachedExtentRows;
@@ -1385,6 +1396,11 @@ class _ContentRowsState extends State<_ContentRows>
 
   @override
   void dispose() {
+    for (final nodes in _libraryGridFocusNodes.values) {
+      for (final node in nodes) {
+        node.dispose();
+      }
+    }
     HardwareKeyboard.instance.removeHandler(_handleGlobalHardwareKey);
     _rowPrefetchDebounce?.cancel();
     _mobilePressedV2Key.dispose();
@@ -3131,6 +3147,16 @@ class _ContentRowsState extends State<_ContentRows>
 
   bool _requestRowFocusFromMemory(int rowIndex, {int? preferredIndex}) {
     if (!_mayRestoreHomeFocus()) return false;
+    final rows = widget.viewModel.rows;
+    if (rowIndex >= 0 &&
+        rowIndex < rows.length &&
+        rows[rowIndex].rowType == HomeRowType.libraryTiles) {
+      return _focusLibraryGridRow(
+        rowIndex,
+        rows[rowIndex],
+        preferredIndex: preferredIndex ?? 0,
+      );
+    }
     final state = _rowStateOf(rowIndex);
     if (state == null) return false;
     if (preferredIndex != null) {
@@ -4860,9 +4886,47 @@ class _ContentRowsState extends State<_ContentRows>
   /// shared V2/classic/preview pipeline - same [GridButtonCard] tile as
   /// [_buildLibraryButtonsRow], just laid out with [Wrap] instead of
   /// [LockedFocusRow]. Height MUST match [_libraryGridChildHeight].
+  /// The per-tile focus nodes this row's [GridButtonCard]s attach to, so
+  /// D-pad entry/exit from outside the row (see [_focusLibraryGridRow]) has
+  /// something concrete to target - a plain [Wrap] has no
+  /// [LockedFocusRowState] equivalent the rest of the vertical-nav pipeline
+  /// can call in to.
+  List<FocusNode> _libraryGridNodesFor(HomeRow row) {
+    final existing = _libraryGridFocusNodes[row.id];
+    if (existing != null && existing.length == row.items.length) {
+      return existing;
+    }
+    for (final node in existing ?? const <FocusNode>[]) {
+      node.dispose();
+    }
+    final nodes = List<FocusNode>.generate(
+      row.items.length,
+      (i) => FocusNode(debugLabel: 'LibraryGridTile:${row.id}:$i'),
+    );
+    _libraryGridFocusNodes[row.id] = nodes;
+    return nodes;
+  }
+
+  /// Entry point for this row from outside (D-pad down from the row above,
+  /// up from the row below, or the initial-focus/return-from-memory paths) -
+  /// the libraryTiles counterpart to a [LockedFocusRowState]'s
+  /// requestFocusAt/requestFocusFromMemory.
+  bool _focusLibraryGridRow(
+    int rowIndex,
+    HomeRow row, {
+    int preferredIndex = 0,
+  }) {
+    if (row.items.isEmpty) return false;
+    final nodes = _libraryGridNodesFor(row);
+    final clamped = preferredIndex.clamp(0, nodes.length - 1);
+    nodes[clamped].requestFocus();
+    return true;
+  }
+
   Widget _buildLibraryTilesGrid({
     required HomeRow row,
     required int rowIndex,
+    required List<HomeRow> rows,
     required PosterSize posterSize,
     required Color focusColor,
     required bool cardExpansion,
@@ -4870,6 +4934,7 @@ class _ContentRowsState extends State<_ContentRows>
   }) {
     final squarePosterSide = _squarePosterSide(posterSize);
     final childHeight = _libraryGridChildHeight(row, posterSize);
+    final nodes = _libraryGridNodesFor(row);
     return _buildTitledRow(
       key: _rowContainerKey(rowIndex),
       title: _localizedRowTitle(row, l10n),
@@ -4882,12 +4947,45 @@ class _ContentRowsState extends State<_ContentRows>
           spacing: 12.0,
           runSpacing: 12.0,
           children: [
-            for (final item in row.items)
+            for (final (i, item) in row.items.indexed)
               _buildLibraryGridTile(
                 item,
                 squarePosterSide,
                 focusColor,
                 cardExpansion,
+                focusNode: nodes[i],
+                onKeyEvent: (node, event) {
+                  if (!PlatformDetection.isTV || !event.isActionable) {
+                    return KeyEventResult.ignored;
+                  }
+                  if (event.logicalKey.isUpKey) {
+                    NavDebugLog.log(
+                      'libraryGrid[$rowIndex] tile=$i UP key received',
+                    );
+                    final handled = _onRowVerticalNavigation(
+                      rowIndex: rowIndex,
+                      rows: rows,
+                      isUp: true,
+                    );
+                    return handled
+                        ? KeyEventResult.handled
+                        : KeyEventResult.ignored;
+                  }
+                  if (event.logicalKey.isDownKey) {
+                    NavDebugLog.log(
+                      'libraryGrid[$rowIndex] tile=$i DOWN key received',
+                    );
+                    final handled = _onRowVerticalNavigation(
+                      rowIndex: rowIndex,
+                      rows: rows,
+                      isUp: false,
+                    );
+                    return handled
+                        ? KeyEventResult.handled
+                        : KeyEventResult.ignored;
+                  }
+                  return KeyEventResult.ignored;
+                },
               ),
           ],
         ),
@@ -4899,8 +4997,10 @@ class _ContentRowsState extends State<_ContentRows>
     AggregatedItem item,
     double squarePosterSide,
     Color focusColor,
-    bool cardExpansion,
-  ) {
+    bool cardExpansion, {
+    FocusNode? focusNode,
+    KeyEventResult Function(FocusNode, KeyEvent)? onKeyEvent,
+  }) {
     final collectionType =
         (item.rawData['CollectionType'] as String? ?? '').toLowerCase();
     final icon = isGameLibrary(item.id, collectionType, item.name)
@@ -4915,6 +5015,8 @@ class _ContentRowsState extends State<_ContentRows>
         height: squarePosterSide,
         focusColor: focusColor,
         cardFocusExpansion: cardExpansion,
+        focusNode: focusNode,
+        onKeyEvent: onKeyEvent,
         onTap: () => _navigateToLibrary(context, item),
         onLongPress: () =>
             showContextMenu(context, item, onChanged: () => setState(() {})),
@@ -4940,6 +5042,7 @@ class _ContentRowsState extends State<_ContentRows>
       return _buildLibraryTilesGrid(
         row: row,
         rowIndex: rowIndex,
+        rows: rows,
         posterSize: posterSize,
         focusColor: focusColor,
         cardExpansion: cardExpansion,

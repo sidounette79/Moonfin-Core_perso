@@ -9,6 +9,7 @@ import '../../../data/services/media_server_client_factory.dart';
 import '../../../data/viewmodels/folder_browse_view_model.dart';
 import '../../../preference/user_preferences.dart';
 import '../../../util/focus/dpad_keys.dart';
+import '../../../util/platform_detection.dart';
 import '../../navigation/destinations.dart';
 import '../../widgets/focus/request_initial_focus.dart';
 import '../../widgets/media_card.dart';
@@ -451,6 +452,22 @@ class _FolderBrowseScreenState extends State<FolderBrowseScreen> {
               playedPercentage: item.playedPercentage,
               watchedBehavior: watchedBehavior,
               onTap: () => _onItemTap(item),
+              onKeyEvent: (_, event) {
+                // 29.09, Sid: "le pad gauche pour revenir à la barre de
+                // navigation ne fonctionne pas" - this grid never had any
+                // of the custom D-pad edge handling library_browse_screen
+                // has (it was fixed there earlier tonight, but this
+                // separate nested-folder screen was never touched).
+                if (PlatformDetection.isTV &&
+                    event.isActionable &&
+                    event.logicalKey.isLeftKey &&
+                    index % crossAxisCount == 0) {
+                  if (NavigationLayout.focusNavbar()) {
+                    return KeyEventResult.handled;
+                  }
+                }
+                return KeyEventResult.ignored;
+              },
             );
           },
         );

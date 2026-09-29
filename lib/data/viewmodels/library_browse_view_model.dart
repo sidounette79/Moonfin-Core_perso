@@ -1754,6 +1754,56 @@ class LibraryBrowseViewModel extends ChangeNotifier {
     };
   }
 
+  // 29.09, Sid: "Bibliothèques contenu mixtes, ya toujours une page en
+  // trop avec la page des dossiers" - resolveSingleItemChain already
+  // existed and worked in FolderBrowseViewModel (the nested drill-down
+  // screen), but the very FIRST tap from this top-level library view
+  // never had it at all, so a library root organized one-folder-per-movie
+  // still always showed one full extra folder screen before the real
+  // unwrap logic even got a chance to run one level down. Same logic,
+  // duplicated here rather than shared, since the two view models' fields/
+  // client plumbing differ enough that extracting a common helper would
+  // touch more than this fix needs tonight.
+  Future<AggregatedItem?> resolveSingleItemChain(AggregatedItem start) async {
+    var current = start;
+    for (var depth = 0; depth < 8; depth++) {
+      if (!isNavigableFolder(current)) {
+        return depth == 0 ? null : current;
+      }
+      final child = await _fetchSingleChild(current.id);
+      if (child == null) return depth == 0 ? null : current;
+      current = child;
+    }
+    return current;
+  }
+
+  Future<AggregatedItem?> _fetchSingleChild(String folderId) async {
+    try {
+      final response = await _client.itemsApi.getItems(
+        parentId: folderId,
+        recursive: false,
+        sortBy: 'SortName',
+        sortOrder: 'Ascending',
+        startIndex: 0,
+        limit: 2,
+        fields: _browseFields,
+        enableImageTypes: _imageTypes,
+        imageTypeLimit: _imageTypeLimit,
+        enableTotalRecordCount: false,
+      );
+      final rawItems = (response['Items'] as List?) ?? [];
+      if (rawItems.length != 1) return null;
+      final raw = rawItems.first as Map<String, dynamic>;
+      return AggregatedItem(
+        id: raw['Id']?.toString() ?? '',
+        serverId: _client.baseUrl,
+        rawData: raw,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   String get statusText {
     final parts = <String>[];
     if (_favoriteFilter) parts.add('Favorites');

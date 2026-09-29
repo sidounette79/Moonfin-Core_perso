@@ -93,6 +93,10 @@ bool _isCompact(BuildContext context) =>
     (PlatformDetection.useMobileUi ||
         MediaQuery.sizeOf(context).width < _kCompactBreakpoint);
 
+// 29.09, temporary: see its one call site in _cardSubtitleLines. Flip to
+// false (or delete both) once the real Tags value is confirmed.
+const kDebugTagsField = true;
+
 double _desktopUiScaleFactor() {
   return GetIt.instance<UserPreferences>()
       .get(UserPreferences.desktopUiScale)
@@ -450,8 +454,28 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
     });
   }
 
-  void _onItemTap(AggregatedItem item) {
+  Future<void> _onItemTap(AggregatedItem item) async {
     if (_vm.isNavigableFolder(item)) {
+      // 29.09, Sid: "ya toujours une page en trop avec la page des
+      // dossiers" - the nested folder screen already unwraps a folder
+      // that only ever wraps a single real item, but this top-level tap
+      // (library root -> first folder) never attempted it at all, so a
+      // library organized one-folder-per-movie always showed one full
+      // extra folder screen no matter what happened deeper in.
+      final resolved = await _vm.resolveSingleItemChain(item);
+      if (resolved != null && !_vm.isNavigableFolder(resolved)) {
+        if (!mounted) return;
+        context.push(
+          Destinations.itemOrPhoto(
+            resolved.id,
+            serverId: resolved.serverId,
+            type: resolved.type,
+            channelId: resolved.channelId,
+          ),
+        );
+        return;
+      }
+      if (!mounted) return;
       context.push(Destinations.folder(item.id));
       return;
     }
@@ -1942,6 +1966,15 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
       }
       if (parts.isNotEmpty) lines.add(parts.join('  '));
     }
+    // 29.09, temporary: Sid confirmed via a real Emby screenshot that e.g.
+    // "Chicago Fire" has the tag "huntarr-missing", but the grid isn't
+    // showing it despite Tags being requested and enabled - this prints
+    // exactly what Moonfin actually received for the item's raw Tags field,
+    // to find out whether it's a fetch/parse bug or something else, without
+    // needing to touch the Emby server directly. Remove once found.
+    if (kDebugTagsField) {
+      lines.add('DEBUG Tags=${item.rawData['Tags']}');
+    }
     return lines;
   }
 
@@ -1951,10 +1984,11 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
   /// a given field.
   int get _librarySubtitleLineCount {
     final enabled = _enabledLibraryCardFields.toSet();
-    if (enabled.isEmpty) return 0;
+    if (enabled.isEmpty) return kDebugTagsField ? 1 : 0;
     return _librarySubtitleLineGroups
-        .where((group) => group.any(enabled.contains))
-        .length;
+            .where((group) => group.any(enabled.contains))
+            .length +
+        (kDebugTagsField ? 1 : 0);
   }
 
   Widget? _buildSubtitleColumn(AggregatedItem item) {
