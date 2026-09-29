@@ -15,6 +15,7 @@ import '../../data/services/blocked_content_gate.dart';
 import '../../data/services/library_scope_service.dart';
 import '../../data/services/media_server_client_factory.dart';
 import '../../data/repositories/seerr_repository.dart';
+import '../../data/repositories/sofa_repository.dart';
 import '../../data/repositories/tmdb_repository.dart';
 import '../../data/repositories/user_views_repository.dart';
 import '../../data/repositories/search_repository.dart';
@@ -209,6 +210,10 @@ void _registerUserScopedSingletons() {
   );
   _getIt.registerLazySingleton(
     () => TmdbRepository(_getIt<MediaServerClient>()),
+    dispose: (repository) => repository.dispose(),
+  );
+  _getIt.registerLazySingleton(
+    () => SofaRepository(),
     dispose: (repository) => repository.dispose(),
   );
   _getIt.registerLazySingleton(

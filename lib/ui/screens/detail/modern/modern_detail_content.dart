@@ -51,6 +51,7 @@ import '../../../widgets/quick_return_wrapper.dart';
 import '../../../widgets/top_toolbar.dart';
 import '../../../widgets/skeleton/skeleton_home_row.dart';
 import '../../../../data/repositories/seerr_repository.dart';
+import '../../../../data/repositories/sofa_repository.dart';
 import '../../../../data/repositories/tmdb_repository.dart';
 import '../../../../data/services/seerr/seerr_api_models.dart';
 import '../../../../data/services/plugin_sync_service.dart';
@@ -208,6 +209,13 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
   // fallback when the plugin is unavailable or has no logo.
   List<StudioCompany> _tmdbStudios = const [];
   String? _tmdbStudiosItemId;
+
+  // 29-30.09: French overview/name override fetched from Sofa when Emby's
+  // own text is stuck in English despite a French library setting - see
+  // sofa_repository.dart. Keyed by item id so a stale item's text is never
+  // shown while the new item's own fetch is still in flight.
+  String? _frenchOverview;
+  String? _frenchOverviewItemId;
 
   final Map<String, FocusNode> _trackFocusNodes = {};
   final List<FocusNode> _tabFocusNodes = [];
@@ -564,6 +572,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     }
     _loadSeriesLogo();
     _loadStudioLogos();
+    _loadFrenchOverview();
     _loadSeerrAppearances().then((_) {
       if (mounted) _selectRandomBackdrop();
     });
@@ -629,6 +638,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
       setState(() {});
       _loadSeriesLogo();
       _loadStudioLogos();
+      _loadFrenchOverview();
       _loadSeerrAppearances().then((_) {
         if (mounted) _selectRandomBackdrop();
       });
@@ -720,6 +730,30 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
         });
       }
     } catch (_) {}
+  }
+
+  // 29-30.09: ask Sofa for a French overview when Emby's own text might be
+  // stuck in English (see sofa_repository.dart's doc comment for why).
+  // Scoped to Series/Movie - Sofa has no per-Season overview of its own to
+  // offer, and episode text isn't wired yet.
+  Future<void> _loadFrenchOverview() async {
+    final item = _vm.item;
+    if (item == null || _frenchOverviewItemId == item.id) return;
+    if (item.type != 'Series' && item.type != 'Movie') return;
+    _frenchOverviewItemId = item.id;
+
+    final tmdbId = item.tmdbId;
+    if (tmdbId == null) return;
+
+    final result = await GetIt.instance<SofaRepository>().getFrenchOverview(
+      tmdbId: tmdbId,
+      type: item.type == 'Series' ? 'tv' : 'movie',
+    );
+    if (!mounted || result == null || _vm.item?.id != item.id) return;
+    final overview = result.overview;
+    if (overview != null && overview.isNotEmpty) {
+      setState(() => _frenchOverview = overview);
+    }
   }
 
   // Fetch the item's production companies from TMDB so the Studios tab can show
@@ -3969,7 +4003,10 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     final isSeason = item.type == 'Season';
     final logoTag = item.logoImageTag ?? (isEpisode ? item.seriesLogoImageTag : null);
     final logoId = logoTag != null ? (item.logoImageTag != null ? item.id : item.seriesId) : null;
-    final overview = cleanOverview(item.overview?.trim());
+    final overview = cleanOverview(
+      (_frenchOverviewItemId == item.id ? _frenchOverview : null)?.trim() ??
+          item.overview?.trim(),
+    );
     final hideTitleAndLogo = _landscape && _buildUpNext(context, item) != null;
     final hasUpNext = _landscape && _buildUpNext(context, item) != null;
     final showRatings = _vm.ratings.isNotEmpty ||
