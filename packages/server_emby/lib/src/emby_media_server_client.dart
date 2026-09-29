@@ -14,6 +14,7 @@ import 'api/emby_live_tv_api.dart';
 import 'api/emby_instant_mix_api.dart';
 import 'api/emby_display_preferences_api.dart';
 import 'api/emby_users_api.dart';
+import 'api/emby_admin_users_api.dart';
 import 'api/emby_trickplay_api.dart';
 
 class EmbyMediaServerClient extends MediaServerClient {
@@ -174,8 +175,7 @@ class EmbyMediaServerClient extends MediaServerClient {
       throw UnsupportedError('Admin not supported on Emby yet');
 
   @override
-  AdminUsersApi get adminUsersApi =>
-      throw UnsupportedError('Admin not supported on Emby yet');
+  late final AdminUsersApi adminUsersApi = EmbyAdminUsersApi(_dio);
 
   @override
   AdminLibraryApi get adminLibraryApi =>
