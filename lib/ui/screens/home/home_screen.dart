@@ -3401,9 +3401,18 @@ class _ContentRowsState extends State<_ContentRows>
         );
         if (hasItems) {
           final targetState = _rowStateOf(target);
-          NavDebugLog.log(
-            '  -> targeting row=$target, rowState=${targetState != null ? "found" : "NULL (using memory fallback)"}',
-          );
+          if (targetState == null) {
+            final rowId = _rowIdForIndex(target);
+            final key = _rowKeys[rowId];
+            NavDebugLog.log(
+              '  -> targeting row=$target id=$rowId hasKey=${key != null} '
+              'hasContext=${key?.currentContext != null} '
+              'widgetType=${key?.currentWidget?.runtimeType} '
+              'rowState=NULL (using memory fallback)',
+            );
+          } else {
+            NavDebugLog.log('  -> targeting row=$target, rowState=found');
+          }
           if (targetState != null) {
             targetState.requestFocusAt(0);
           } else {
@@ -5030,6 +5039,19 @@ class _ContentRowsState extends State<_ContentRows>
     final squarePosterSide = _squarePosterSide(posterSize);
     final childHeight = _libraryGridChildHeight(row, posterSize);
     final nodes = _libraryGridNodesFor(row);
+    // 29.09, Sid: "toujours pas le pad gauche pour atteindre la barre de
+    // navigation" - this grid never had any left-edge handling at all
+    // (only UP/DOWN were wired tonight), unlike every GridView-based
+    // screen's crossAxisCount-based version of the same fix. Wrap has no
+    // fixed column count of its own, so this reuses the same per-line
+    // count _libraryGridChildHeight already computes for layout, to find
+    // which tiles sit in the first visual column.
+    final availableWidth =
+        MediaQuery.sizeOf(context).width - (_kHomeRowLabelInset + 20.0);
+    final itemsPerLine = _libraryGridItemsPerLine(
+      availableWidth,
+      squarePosterSide,
+    );
     return _buildTitledRow(
       key: _rowContainerKey(rowIndex),
       title: _localizedRowTitle(row, l10n),
@@ -5052,6 +5074,13 @@ class _ContentRowsState extends State<_ContentRows>
                 onKeyEvent: (node, event) {
                   if (!PlatformDetection.isTV || !event.isActionable) {
                     return KeyEventResult.ignored;
+                  }
+                  if (event.logicalKey.isLeftKey &&
+                      itemsPerLine > 0 &&
+                      i % itemsPerLine == 0) {
+                    if (NavigationLayout.focusNavbar()) {
+                      return KeyEventResult.handled;
+                    }
                   }
                   if (event.logicalKey.isUpKey) {
                     NavDebugLog.log(

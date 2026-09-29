@@ -775,9 +775,30 @@ class LibraryBrowseViewModel extends ChangeNotifier {
       recursive = true;
       includeTypes = ['Book', 'Audio', 'AudioBook'];
       sortBy = 'SortName';
-    } else if (isHomeVideosLibrary || isMixedContentLibrary) {
+    } else if (isHomeVideosLibrary) {
+      // Kept as a raw, non-recursive folder browse on purpose - Home Videos
+      // libraries are exactly the case where the actual on-disk folder
+      // structure needs to stay navigable (unidentified content Emby never
+      // typed as Movie/Series).
       recursive = false;
       sortBy = 'IsFolder,$sortBy';
+    } else if (isMixedContentLibrary) {
+      // 29.09, Sid: wants a Mixed Content library (e.g. "CARBA OLD",
+      // organized one-folder-per-title on disk) to browse like Emby's own
+      // app does - a flat grid of every identified Movie/Series regardless
+      // of folder depth, not the raw folder maze the non-recursive branch
+      // above produces. Same recursive shape the 'movies'/'tvshows'
+      // collectionType cases already use, just without a fixed
+      // CollectionType to switch on (Mixed Content reports null/'mixed').
+      recursive = true;
+      includeTypes = ['Movie', 'Series'];
+      if (groupCollections) {
+        includeTypes.add('BoxSet');
+        collapseBoxSets = true;
+      } else {
+        excludeTypes = ['BoxSet'];
+        collapseBoxSets = false;
+      }
     }
 
     // A genre tag sits on anything the tree holds, so an unscoped browse comes

@@ -882,7 +882,16 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
       .toDouble();
     return Scaffold(
       backgroundColor: _navyBackground,
-      body: Stack(
+      // 29.09, Sid: "aucune première page de bibliothèque n'a la barre de
+      // navigation" - confirmed real, not a focus bug: every other screen
+      // that shows the sidebar (folder_browse_screen.dart, item_detail_
+      // screen.dart, home_screen.dart, ...) wraps itself in
+      // NavigationLayout; this one never did, so D-pad left had nothing to
+      // hand focus to and the sidebar simply never rendered here at all.
+      body: NavigationLayout(
+        activeRoute: '/library/${widget.libraryId}',
+        showBackButton: true,
+        child: Stack(
         children: [
           if (hasBackdrop)
             Positioned.fill(
@@ -968,6 +977,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
             ],
           ),
         ],
+        ),
       ),
     );
   }
