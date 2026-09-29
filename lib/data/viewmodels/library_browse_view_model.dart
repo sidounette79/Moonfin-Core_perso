@@ -52,7 +52,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
   // CriticRating/Overview/Taglines/People (for Director)/DateCreated on
   // top of what the browse grid already requested.
   static const _browseFields =
-      'PrimaryImageAspectRatio,SortName,Type,IsFolder,UserData,CommunityRating,OfficialRating,RunTimeTicks,ProductionYear,ImageTags,BackdropImageTags,ParentBackdropItemId,ParentBackdropImageTags,ParentThumbItemId,ParentThumbImageTag,SeriesId,SeriesPrimaryImageTag,Album,AlbumId,AlbumArtist,Artists,Genres,Studios,Tags,CriticRating,Overview,Taglines,People,DateCreated';
+      'PrimaryImageAspectRatio,SortName,Type,IsFolder,UserData,CommunityRating,OfficialRating,RunTimeTicks,ProductionYear,ImageTags,BackdropImageTags,ParentBackdropItemId,ParentBackdropImageTags,ParentThumbItemId,ParentThumbImageTag,SeriesId,SeriesPrimaryImageTag,Album,AlbumId,AlbumArtist,Artists,Genres,Studios,Tags,CriticRating,Overview,Taglines,People,DateCreated,RecursiveItemCount';
   // Cap image tags to one per type (server returns all by default)
   static const _imageTypes = 'Primary,Backdrop,Thumb,Banner';
   static const _imageTypeLimit = 1;
@@ -346,6 +346,15 @@ class LibraryBrowseViewModel extends ChangeNotifier {
     List<AggregatedItem> items,
   ) async {
     items = withoutBlockedItems(items);
+    // 29.09, Sid: "Chicago Fire ou Unité spéciale les dossiers sont vides
+    // (la nouvelle saison commence la semaine prochaine)" - Emby still
+    // lists a renewed show once it's tracked, even with zero episode files
+    // on disk yet. RecursiveItemCount is 0 in that case (Emby only counts
+    // real episodes, no placeholder/virtual ones on this setup), so an
+    // empty Series tile is never anything but dead weight in the grid.
+    items = items.where(
+      (item) => item.type != 'Series' || (item.recursiveItemCount ?? 1) > 0,
+    ).toList();
     if (!isPlaylistBrowse) return items;
 
     // A playlist the summary can't settle costs a request of its own, so keep a
