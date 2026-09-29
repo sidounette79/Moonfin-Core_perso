@@ -767,8 +767,29 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
   }
 
   void _focusSelectedTab() {
-    // On TV _selectedTab starts at -1 (no tab chosen); guard the list index.
-    if (_selectedTab < 0) return;
+    // 29.09, Sid: "je descends... j'arrive a une grille... bloquée, je ne
+    // peux pas remonter avec pad UP" - confirmed real: series pages lost
+    // their tab bar (continuous-flow "Nouveau"-adjacent layout, done
+    // earlier this session) so _selectedTab stays at its TV default of -1
+    // forever on them, and this returned here doing nothing - but every
+    // one of its 9+ onKeyEvent call sites still unconditionally reports
+    // KeyEventResult.handled regardless, so the key press was silently
+    // swallowed instead of actually moving focus anywhere. Falls back to
+    // the same overview/action-row/initial chain _buildUpNextCard's own
+    // onNavigateLeft already uses for exactly this "no tab bar to return
+    // to" case.
+    if (_selectedTab < 0) {
+      if (_overviewFocusNode.context != null &&
+          _overviewFocusNode.canRequestFocus) {
+        _overviewFocusNode.requestFocus();
+      } else if (_actionRowRightFocusNode.context != null &&
+          _actionRowRightFocusNode.canRequestFocus) {
+        _actionRowRightFocusNode.requestFocus();
+      } else {
+        widget.initialFocusNode?.requestFocus();
+      }
+      return;
+    }
     _tabNode(_selectedTab).requestFocus();
   }
 
