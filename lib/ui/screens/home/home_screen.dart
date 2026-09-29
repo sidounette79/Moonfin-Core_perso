@@ -45,6 +45,7 @@ import '../../widgets/exit_confirmation_dialog.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../widgets/quick_return_wrapper.dart';
 import '../../../util/app_exit.dart';
+import '../../../util/episode_playability.dart';
 import '../../../util/overview_text.dart';
 import '../../../util/global_shortcut_focus.dart';
 import '../../widgets/focus/context_menu_sheet.dart';
@@ -777,6 +778,16 @@ class _ContentRowsState extends State<_ContentRows>
   final Map<String, List<FocusNode>> _libraryGridFocusNodes = {};
   final Map<String, ScrollController> _rowHorizontalControllers = {};
   final Map<String, double> _rowHorizontalOffsetsById = {};
+  // 29.09, Sid: "j'en lance un et finalement je reviens en arrière, il
+  // vient se mettre en tête de liste mais la liste ne bouge pas" - a
+  // resumed item jumping to the front of Continue Watching/Next Up is
+  // exactly the point of that row, but the row's own ScrollController
+  // (cached per row.id, see _rowHorizontalController below) keeps
+  // whatever pixel offset it had before, so the reordered front item
+  // lands off-screen to the left instead of back at the start. Tracked
+  // here so _resetScrollOnResumeReorder can tell a real reorder (the
+  // first item's identity changed) apart from an ordinary refresh.
+  final Map<String, String?> _rowFirstItemIds = {};
   List<HomeRow>? _cachedExtentRows;
   PosterSize? _cachedExtentPosterSize;
   double? _cachedExtentDesktopScale;
@@ -1283,12 +1294,38 @@ class _ContentRowsState extends State<_ContentRows>
   void _onViewModelChanged() {
     _invalidateStaticRowHeightCache();
     _updateOffsets();
+    _resetScrollOnResumeReorder();
     if (mounted) setState(() {});
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _checkAllRowsFillViewport();
       _scheduleRowPrefetch();
     });
+  }
+
+  /// Snaps Continue Watching/Next Up back to the start when the item that
+  /// just resumed jumps to the front of the row, so she isn't left staring
+  /// at whatever the row happened to be scrolled to before.
+  void _resetScrollOnResumeReorder() {
+    for (final row in widget.viewModel.rows) {
+      if (row.rowType != HomeRowType.resume &&
+          row.rowType != HomeRowType.nextUp) {
+        continue;
+      }
+      final newFirstId = row.items.isNotEmpty ? row.items.first.id : null;
+      final previousFirstId = _rowFirstItemIds[row.id];
+      _rowFirstItemIds[row.id] = newFirstId;
+      if (previousFirstId == null ||
+          newFirstId == null ||
+          previousFirstId == newFirstId) {
+        continue;
+      }
+      final controller = _rowHorizontalControllers[row.id];
+      if (controller != null && controller.hasClients) {
+        controller.jumpTo(0);
+      }
+      _rowHorizontalOffsetsById[row.id] = 0.0;
+    }
   }
 
   void _onMediaBarStateChanged() {
@@ -2035,9 +2072,23 @@ class _ContentRowsState extends State<_ContentRows>
       manager: manager,
       destination: Destinations.videoPlayer,
       startPlayback: (launchSession) async {
+        // 29.09, Sid: "quand un épisode que j'ai repris grâce à continuer
+        // à regarder se termine, ça ne passe pas à l'épisode suivant" -
+        // confirmed live (it fell back to the home screen instead).
+        // Real cause: this only ever queued the single tapped episode, so
+        // PlaybackManager's own auto-advance (queueService.next()) always
+        // had nothing to advance to. Mirrors item_detail_screen.dart's
+        // 'Episode' case in _playInternal - fetch the rest of the season
+        // so there's a real queue to advance through, same as every other
+        // episode play button in the app already does.
+        final queue = await _episodeQueueForDirectPlay(item);
+        if (!context.mounted) return false;
+        final startIndex = queue.indexWhere((e) => e.id == item.id);
+        final idx = startIndex >= 0 ? startIndex : 0;
+        final selected = queue[idx];
         final forceTranscode = await shouldForceTranscodeForDolbyVisionQueue(
           context,
-          [item],
+          [selected],
         );
         if (!context.mounted) return false;
         return runWithDolbyVisionStartupFallbackPrompt(
@@ -2046,7 +2097,8 @@ class _ContentRowsState extends State<_ContentRows>
           () => runPlaybackStart(
             launchSession,
             () => manager.playItems(
-              [item],
+              queue,
+              startIndex: idx,
               startPosition: startPosition,
               enableDirectPlay: !forceTranscode,
               enableDirectStream: !forceTranscode,
@@ -2055,6 +2107,49 @@ class _ContentRowsState extends State<_ContentRows>
         );
       },
     );
+  }
+
+  /// The rest of the season's episodes, so ending playback has somewhere
+  /// real to auto-advance to. Falls back to just [item] alone (no
+  /// auto-advance, the previous behavior) when it isn't an episode or the
+  /// fetch fails - same try/catch-and-carry-on the reference implementation
+  /// in item_detail_screen.dart uses.
+  Future<List<AggregatedItem>> _episodeQueueForDirectPlay(
+    AggregatedItem item,
+  ) async {
+    final seriesId = item.seriesId;
+    if (item.type != 'Episode' || seriesId == null || seriesId.isEmpty) {
+      return [item];
+    }
+    final client = _clientForItem(item);
+    if (client == null) return [item];
+    try {
+      final data = await client.itemsApi.getEpisodes(
+        seriesId,
+        seasonId: item.seasonId,
+        fields: 'Overview,RunTimeTicks,UserData',
+      );
+      final rawItems =
+          (data['Items'] as List?)
+              ?.whereType<Map>()
+              .map((raw) => raw.cast<String, dynamic>())
+              .toList() ??
+          const <Map<String, dynamic>>[];
+      final episodes = rawItems
+          .where((raw) => (raw['Id']?.toString() ?? '').isNotEmpty)
+          .map(
+            (raw) => AggregatedItem(
+              id: raw['Id']?.toString() ?? '',
+              serverId: item.serverId,
+              rawData: raw,
+            ),
+          )
+          .where((e) => e.id == item.id || isEligibleNextEpisodeCandidate(e))
+          .toList();
+      return episodes.isNotEmpty ? episodes : [item];
+    } catch (_) {
+      return [item];
+    }
   }
 
   String _buildPreviewUrl(
