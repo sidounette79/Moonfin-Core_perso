@@ -692,6 +692,14 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
       node.dispose();
     }
     _featuresFirstFocusNodes.clear();
+    for (final node in _seasonHeaderFocusNodes.values) {
+      node.dispose();
+    }
+    _seasonHeaderFocusNodes.clear();
+    for (final node in _seasonEpisodeFocusNodes.values) {
+      node.dispose();
+    }
+    _seasonEpisodeFocusNodes.clear();
     super.dispose();
   }
 
@@ -1489,6 +1497,29 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
   // context.push to a whole separate season page.
   final Map<int, GlobalKey> _seasonHeaderKeys = {};
 
+  // 29.09, Sid: "je peux pas remonter... c'est comme si la page était
+  // découpée en 3 parties non liées" - only the FIRST season header/episode
+  // had any up-navigation wired at all (via _episodesFirstFocusNode). A
+  // returning viewer's expanded season (nextUp, or one opened via its
+  // SeasonCard poster) is rarely season 1, so its header AND every one of
+  // its episode cards had zero up-target, falling to Flutter's default
+  // traversal - which is exactly the "unrelated parts" she felt. Every
+  // season header and every episode card now gets its own real FocusNode,
+  // chained: episode[0] of a season -> that season's own header; episode[i]
+  // -> episode[i-1]; header of season N -> header of season N-1 (or
+  // _focusSelectedTab for the very first header, unchanged).
+  final Map<int, FocusNode> _seasonHeaderFocusNodes = {};
+  final Map<String, FocusNode> _seasonEpisodeFocusNodes = {};
+
+  FocusNode _seasonHeaderFocusNode(int season) => _seasonHeaderFocusNodes
+      .putIfAbsent(season, () => FocusNode(debugLabel: 'seasonHeader_$season'));
+
+  FocusNode _seasonEpisodeFocusNode(String episodeId) =>
+      _seasonEpisodeFocusNodes.putIfAbsent(
+        episodeId,
+        () => FocusNode(debugLabel: 'seasonEpisode_$episodeId'),
+      );
+
   void _jumpToSeasonEpisodes(AggregatedItem season) {
     final seasonNumber = season.indexNumber;
     if (seasonNumber == null) return;
@@ -1548,11 +1579,15 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     }
 
     final children = <Widget>[];
+    FocusNode? previousSeasonHeaderFocusNode;
     for (final entry in seasonGroups.entries) {
       final season = entry.key;
       final eps = entry.value;
       final isExpanded = _expandedSeasons.contains(season);
       final isFirst = children.isEmpty;
+      final headerFocusNode =
+          isFirst ? _episodesFirstFocusNode : _seasonHeaderFocusNode(season);
+      final fallbackUpFocusNode = previousSeasonHeaderFocusNode;
 
       children.add(
         KeyedSubtree(
@@ -1560,8 +1595,12 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
           child: Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: FocusableWrapper(
-            onNavigateUp: isFirst ? _focusSelectedTab : null,
-            focusNode: isFirst ? _episodesFirstFocusNode : null,
+            onNavigateUp: isFirst
+                ? _focusSelectedTab
+                : (fallbackUpFocusNode != null
+                    ? fallbackUpFocusNode.requestFocus
+                    : _focusSelectedTab),
+            focusNode: headerFocusNode,
             onSelect: () {
               setState(() {
                 if (_expandedSeasons.contains(season)) {
@@ -1606,12 +1645,16 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
       );
 
       if (isExpanded) {
+        FocusNode? previousEpisodeFocusNode;
         children.add(
           Padding(
             padding: const EdgeInsets.only(left: 12, bottom: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: eps.map((episode) {
+                final episodeFocusNode = _seasonEpisodeFocusNode(episode.id);
+                final upFocusNode = previousEpisodeFocusNode ?? headerFocusNode;
+                previousEpisodeFocusNode = episodeFocusNode;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: DetailEpisodeCard(
@@ -1619,6 +1662,15 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
                     imageApi: _vm.imageApi,
                     onChanged: () => _vm.load(),
                     isActive: episode.id == _vm.nextUp?.id,
+                    focusNode: episodeFocusNode,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent &&
+                          event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                        upFocusNode.requestFocus();
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
+                    },
                   ),
                 );
               }).toList(),
@@ -1626,6 +1678,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
           ),
         );
       }
+      previousSeasonHeaderFocusNode = headerFocusNode;
     }
 
     return Focus(
