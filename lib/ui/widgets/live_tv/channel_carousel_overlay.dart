@@ -720,11 +720,17 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
       GuideFilter.kids => l10n.kids,
       GuideFilter.premiere => l10n.premiere,
       GuideFilter.favorites => l10n.favorites,
+      // 28.09: personal-fork feature, hardcoded French label like the
+      // matching one in live_tv_guide_screen.dart's own _filterLabel.
+      GuideFilter.hidden => 'Masquées',
     };
   }
 
   List<String> _categoryLabels(GuideProgram program) => [
-    for (final tag in program.categoryTags) _filterLabel(tag),
+    // 28.09: hidden isn't a real category tag a program ever carries
+    // (channel-level, not genre-derived) - excluded here too.
+    for (final tag in program.categoryTags)
+      if (tag != GuideFilter.hidden) _filterLabel(tag),
   ];
 
   String _timeRange(GuideProgram program) =>

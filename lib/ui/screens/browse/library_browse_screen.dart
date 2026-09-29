@@ -233,8 +233,20 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
   // every focus move, so hold the answer until the items, the preferences or
   // the locale actually change.
   bool get _hasSubtitles => _hasSubtitlesCache ??= _vm.items.any(
-        (item) => (_cardSubtitle(item)?.isNotEmpty ?? false),
+        (item) =>
+            (_cardSubtitle(item)?.isNotEmpty ?? false) ||
+            (_cardSubtitleLines(item)?.isNotEmpty ?? false),
       );
+
+  /// How many subtitle lines every cell in the grid reserves room for -
+  /// the field picker's own grouping when it applies (grid-wide, so every
+  /// cell stays uniformly sized), else the old single-line 0/1 behaviour
+  /// for Playlist/MusicAlbum/folder/playlist-browse subtitles.
+  int get _effectiveSubtitleLineCount {
+    final fieldLines = _librarySubtitleLineCount;
+    if (fieldLines > 0) return fieldLines;
+    return _hasSubtitles ? 1 : 0;
+  }
 
   @override
   void didChangeDependencies() {
@@ -1204,7 +1216,8 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
             crossAxisCount;
         final ar = _gridBaseAspectRatio();
         final desktopTextScale = MediaQuery.textScalerOf(context).scale(1.0);
-        final textHeight = (_hasSubtitles ? 50.0 : 26.0) * desktopTextScale;
+        final textHeight =
+            (26.0 + _effectiveSubtitleLineCount * 24.0) * desktopTextScale;
         final imageHeight = cellWidth / ar;
         final cellHeight = imageHeight + textHeight;
         final childAspectRatio = cellWidth / cellHeight;
@@ -1484,6 +1497,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
         animeMarkerItemId: item.id,
         title: item.name,
         subtitle: _cardSubtitle(item),
+        subtitleWidget: _buildSubtitleColumn(item),
         imageUrl: _imageUrl(item, cellWidth: cellWidth),
         width: double.infinity,
         aspectRatio: itemAspectRatio,
@@ -1599,7 +1613,8 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
     final ar = _gridBaseAspectRatio();
     final watchedBehavior = _prefs.get(UserPreferences.watchedIndicatorBehavior);
     final desktopTextScale = MediaQuery.textScalerOf(context).scale(1.0);
-    final textHeight = (_hasSubtitles ? 42.0 : 24.0) * desktopTextScale;
+    final textHeight =
+        (24.0 + _effectiveSubtitleLineCount * 18.0) * desktopTextScale;
     final rowCardHeight = cardWidth / ar + textHeight;
     final rowContainerHeight = rowCardHeight + _kGroupedRowFocusPadding;
 
@@ -1666,7 +1681,8 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
         final vertPadding = isMobile ? 12.0 : 20.0;
         final ar = _gridBaseAspectRatio();
         final desktopTextScale = MediaQuery.textScalerOf(context).scale(1.0);
-        final textHeight = (_hasSubtitles ? 46.0 : 30.0) * desktopTextScale;
+        final textHeight =
+            (30.0 + _effectiveSubtitleLineCount * 16.0) * desktopTextScale;
 
         final cellWidth = _cardWidth();
         final spacing = cardFocusExpansion && !isMobile
@@ -1739,6 +1755,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
                       return MediaCard(
                         title: item.name,
                         subtitle: _cardSubtitle(item),
+                        subtitleWidget: _buildSubtitleColumn(item),
                         imageUrl: _imageUrl(item, cellWidth: actualCellWidth),
                         width: double.infinity,
                         aspectRatio: _itemAspectRatio(item),
@@ -1800,6 +1817,9 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
     );
   }
 
+  /// Single-line subtitle for every case OUTSIDE the field picker (Playlist/
+  /// MusicAlbum/folder/playlist-browse item counts) - returns null for a
+  /// normal item, meaning [_cardSubtitleLines] applies instead.
   String? _cardSubtitle(AggregatedItem item) {
     if (item.type == 'Playlist') {
       final count = item.childCount ?? item.recursiveItemCount;
@@ -1809,7 +1829,6 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
       return null;
     }
 
-    final parts = <String>[];
     if (item.type == 'MusicAlbum') {
       if (item.artists.isNotEmpty) return item.artists.join(', ');
       if (item.albumArtists.isNotEmpty) {
@@ -1825,6 +1844,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
     }
 
     if (_vm.isNavigableFolder(item)) {
+      final parts = <String>[];
       if (item.childCount != null) {
         parts.add(
           AppLocalizations.of(context).itemCountLabel(item.childCount!),
@@ -1837,23 +1857,101 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
 
     if (_vm.isPlaylistBrowse) {
       final count = item.childCount ?? item.recursiveItemCount;
-      if (count != null) {
-        parts.add(AppLocalizations.of(context).itemCountLabel(count));
-      }
-      return parts.isEmpty ? null : parts.join('  ');
+      return count != null
+          ? AppLocalizations.of(context).itemCountLabel(count)
+          : null;
     }
 
-    // 28.09, Sid: "comme dans Emby, un menu vue avec les champs qu'on peut
-    // activer" - replaced the old all-or-nothing useDetailedSubHeadings
-    // toggle with a per-field picker (_showLibraryCardFieldsDialog below),
-    // matching Emby's own "Afficher les champs" screen. Field order here
-    // is fixed (matches the picker's own order); which fields are enabled
-    // is the only thing the preference carries.
-    for (final field in _enabledLibraryCardFields) {
-      final text = _libraryCardFieldText(item, field);
-      if (text != null) parts.add(text);
+    return null;
+  }
+
+  // 28.09, Sid: "comme dans Emby, un menu vue avec les champs qu'on peut
+  // activer" (picker in _SettingsDialog above) then, once she saw it with
+  // several fields on: "tout se met sur la même ligne donc je ne vois
+  // rien - il faut ouvrir le champ sur plusieurs lignes... figer date
+  // note(s), en dessous étiquettes, en dessous date(s), le reste en
+  // dessous". Fixed 4-line grouping rather than one line per field
+  // (would make the card enormous) or a single joined line (the bug she
+  // just hit) - a group's line is simply skipped when none of its fields
+  // are enabled/have data. [_librarySubtitleLineGroups] (below) mirrors
+  // this exact grouping to size the grid cell's reserved text height.
+  static const _librarySubtitleLineGroups = <List<LibraryCardField>>[
+    [
+      LibraryCardField.year,
+      LibraryCardField.parentalRating,
+      LibraryCardField.runtime,
+      LibraryCardField.resolution,
+      LibraryCardField.communityRating,
+      LibraryCardField.criticRating,
+      LibraryCardField.personalRating,
+    ],
+    [LibraryCardField.tags],
+    [LibraryCardField.lastPlayedDate, LibraryCardField.dateCreated],
+    [
+      LibraryCardField.genres,
+      LibraryCardField.director,
+      LibraryCardField.studios,
+      LibraryCardField.tagline,
+      LibraryCardField.overview,
+    ],
+  ];
+
+  /// Null for anything [_cardSubtitle] already handles (Playlist/
+  /// MusicAlbum/folder/playlist-browse) - only ever called for those when
+  /// this returns null.
+  List<String>? _cardSubtitleLines(AggregatedItem item) {
+    if (item.type == 'Playlist' ||
+        item.type == 'MusicAlbum' ||
+        _vm.isNavigableFolder(item) ||
+        _vm.isPlaylistBrowse) {
+      return null;
     }
-    return parts.isEmpty ? null : parts.join('  ');
+    final enabled = _enabledLibraryCardFields.toSet();
+    final lines = <String>[];
+    for (final group in _librarySubtitleLineGroups) {
+      final parts = <String>[];
+      for (final field in group) {
+        if (!enabled.contains(field)) continue;
+        final text = _libraryCardFieldText(item, field);
+        if (text != null) parts.add(text);
+      }
+      if (parts.isNotEmpty) lines.add(parts.join('  '));
+    }
+    return lines;
+  }
+
+  /// Grid-wide (not per-item) line count, from which fields are enabled
+  /// only - drives the reserved text height so every cell in the grid
+  /// stays the same size regardless of which items actually have data for
+  /// a given field.
+  int get _librarySubtitleLineCount {
+    final enabled = _enabledLibraryCardFields.toSet();
+    if (enabled.isEmpty) return 0;
+    return _librarySubtitleLineGroups
+        .where((group) => group.any(enabled.contains))
+        .length;
+  }
+
+  Widget? _buildSubtitleColumn(AggregatedItem item) {
+    final lines = _cardSubtitleLines(item);
+    if (lines == null || lines.isEmpty) return null;
+    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
+      color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+      shadows: const [Shadow(blurRadius: 4, color: Colors.black54)],
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final line in lines)
+          Text(
+            line,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
+      ],
+    );
   }
 
   List<LibraryCardField> get _enabledLibraryCardFields {

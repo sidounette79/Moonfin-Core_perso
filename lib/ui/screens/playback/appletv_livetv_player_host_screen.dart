@@ -445,17 +445,22 @@ class _AppleTvLiveTvPlayerHostScreenState
 
   List<String> _categoryLabels(GuideProgram program, AppLocalizations l10n) {
     return [
+      // 28.09: hidden/favorites aren't real category tags a program ever
+      // carries (they're channel-level, not genre-derived) - excluded
+      // rather than given a nonsense label.
       for (final tag in program.categoryTags)
-        switch (tag) {
-          GuideFilter.all => l10n.all,
-          GuideFilter.movies => l10n.movies,
-          GuideFilter.series => l10n.series,
-          GuideFilter.sports => l10n.sports,
-          GuideFilter.news => l10n.news,
-          GuideFilter.kids => l10n.kids,
-          GuideFilter.premiere => l10n.premiere,
-          GuideFilter.favorites => l10n.favorites,
-        },
+        if (tag != GuideFilter.hidden)
+          switch (tag) {
+            GuideFilter.all => l10n.all,
+            GuideFilter.movies => l10n.movies,
+            GuideFilter.series => l10n.series,
+            GuideFilter.sports => l10n.sports,
+            GuideFilter.news => l10n.news,
+            GuideFilter.kids => l10n.kids,
+            GuideFilter.premiere => l10n.premiere,
+            GuideFilter.favorites => l10n.favorites,
+            GuideFilter.hidden => '',
+          },
     ];
   }
 
