@@ -23,6 +23,7 @@ import '../../../ui/mixins/focus_state_mixin.dart';
 import '../../../util/artwork_request_size.dart';
 import '../home/home_row_prefetch.dart';
 import '../../../util/focus/dpad_keys.dart';
+import '../../widgets/navigation_layout.dart';
 import '../../../util/focus/grid_focus_node_mixin.dart';
 import '../../../util/focus/grid_section_target.dart';
 import '../../../util/platform_detection.dart';
@@ -131,6 +132,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
   final _homeButtonFocusNode = FocusNode(debugLabel: 'library_home_button');
   Timer? _backdropDebounce;
   bool? _hasSubtitlesCache;
+
   final _prefs = GetIt.instance<UserPreferences>();
   final _backgroundService = GetIt.instance<BackgroundService>();
   StreamSubscription<String?>? _backgroundSub;
@@ -1534,6 +1536,17 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
         onHoverStart: isMobile ? null : () => _onItemFocused(item),
         onHoverEnd: isMobile ? null : () => _vm.setFocusedItem(null),
         onKeyEvent: (_, event) {
+          // 29.09, Sid: "la barre de navigation devrait toujours être
+          // accessible quand je vais tout à gauche" - same left-edge
+          // hand-off NavigationLayout.focusNavbar() already gives the
+          // "Nouveau" detail screens for their own top edge, just never
+          // wired in here.
+          if (PlatformDetection.isTV &&
+              event.isActionable &&
+              event.logicalKey.isLeftKey &&
+              positionInSection % crossAxisCount == 0) {
+            if (NavigationLayout.focusNavbar()) return KeyEventResult.handled;
+          }
           if (PlatformDetection.isTV &&
               event.isActionable &&
               event.logicalKey.isUpKey) {
@@ -1773,6 +1786,14 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
                         onHoverStart: () => _onItemFocused(item),
                         onHoverEnd: () => _vm.setFocusedItem(null),
                         onKeyEvent: (_, event) {
+                          if (PlatformDetection.isTV &&
+                              event.isActionable &&
+                              event.logicalKey.isLeftKey &&
+                              index % rowCount == 0) {
+                            if (NavigationLayout.focusNavbar()) {
+                              return KeyEventResult.handled;
+                            }
+                          }
                           if (!_vm.hasMore && !_vm.loadingMore) {
                             return KeyEventResult.ignored;
                           }
@@ -1885,8 +1906,12 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
       LibraryCardField.criticRating,
       LibraryCardField.personalRating,
     ],
-    [LibraryCardField.tags],
-    [LibraryCardField.lastPlayedDate, LibraryCardField.dateCreated],
+    // 29.09, Sid: "je m'en fous de l'espace vide, je veux juste voir les
+    // étiquettes quand y en a" - tags had its own dedicated line, mostly
+    // empty since few items carry one; folded into the date line instead
+    // (which she confirmed reliably shows), so a present tag rides along
+    // an already-populated line instead of reserving one of its own.
+    [LibraryCardField.tags, LibraryCardField.lastPlayedDate, LibraryCardField.dateCreated],
     [
       LibraryCardField.genres,
       LibraryCardField.director,

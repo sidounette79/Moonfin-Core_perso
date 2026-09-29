@@ -200,21 +200,22 @@ class _FolderBrowseScreenState extends State<FolderBrowseScreen> {
       // 28.09, Sid: "pour tout et partout" - a folder that only ever
       // wraps a single real item (her whole library is one-folder-per-
       // movie) skips straight to that item's real page instead of one
-      // more folder screen showing just it alone.
-      if (item.childCount == 1) {
-        final resolved = await _vm.resolveSingleItemChain(item);
-        if (resolved != null && !_vm.isNavigableFolder(resolved)) {
-          if (!mounted) return;
-          context.push(
-            Destinations.itemOrPhoto(
-              resolved.id,
-              serverId: resolved.serverId,
-              type: resolved.type,
-              channelId: resolved.channelId,
-            ),
-          );
-          return;
-        }
+      // more folder screen showing just it alone. 29.09: no longer gated
+      // on item.childCount == 1 first - Emby's ChildCount isn't reliable
+      // enough for plain on-disk folders (see resolveSingleItemChain's
+      // own comment), so this now always attempts it.
+      final resolved = await _vm.resolveSingleItemChain(item);
+      if (resolved != null && !_vm.isNavigableFolder(resolved)) {
+        if (!mounted) return;
+        context.push(
+          Destinations.itemOrPhoto(
+            resolved.id,
+            serverId: resolved.serverId,
+            type: resolved.type,
+            channelId: resolved.channelId,
+          ),
+        );
+        return;
       }
       if (!mounted) return;
       context.push(

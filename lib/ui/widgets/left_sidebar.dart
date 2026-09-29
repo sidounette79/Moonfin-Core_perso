@@ -946,145 +946,9 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                     context.go(Destinations.home);
                   },
                 ),
-                _SidebarItem(
-                  key: const ValueKey('sidebar-search'),
-                  icon: Icons.search_rounded,
-                  label: l10n.search,
-                  baseColor: nextMainSidebarColor(),
-                  showLabel: _showLabels,
-                  onPressed: () {
-                    _onNavigate();
-                    if (_isActive(Destinations.search)) {
-                      _exitSidebarToContent();
-                      return;
-                    }
-                    _markNavigationAwayFromSidebar();
-                    context.navigateTopLevel(Destinations.search);
-                  },
-                ),
-                if (showShuffle)
-                  _SidebarItem(
-                    key: const ValueKey('sidebar-shuffle'),
-                    icon: Icons.shuffle_rounded,
-                    label: l10n.shuffle,
-                    baseColor: nextMainSidebarColor(),
-                    showLabel: _showLabels,
-                    onPressed: () {
-                      _onNavigate();
-                      showShuffleOverlay(context);
-                    },
-                  ),
-                if (showGenres)
-                  _SidebarItem(
-                    key: const ValueKey('sidebar-genres'),
-                    baseColor: nextMainSidebarColor(),
-                    iconBuilder: (size, color) => Image.asset(
-                      'assets/icons/genres.png',
-                      width: size,
-                      height: size,
-                      color: color,
-                    ),
-                    label: l10n.genres,
-                    showLabel: _showLabels,
-                    onPressed: () {
-                      _onNavigate();
-                      if (_isActive(Destinations.allGenres)) {
-                        _exitSidebarToContent();
-                        return;
-                      }
-                      _markNavigationAwayFromSidebar();
-                      context.navigateTopLevel(Destinations.allGenres);
-                    },
-                  ),
-                if (showFavorites)
-                  _SidebarItem(
-                    key: const ValueKey('sidebar-favorites'),
-                    icon: Icons.favorite_rounded,
-                    label: l10n.favorites,
-                    baseColor: nextMainSidebarColor(),
-                    showLabel: _showLabels,
-                    onPressed: () {
-                      _onNavigate();
-                      if (_isActive(Destinations.allFavorites)) {
-                        _exitSidebarToContent();
-                        return;
-                      }
-                      _markNavigationAwayFromSidebar();
-                      context.navigateTopLevel(Destinations.allFavorites);
-                    },
-                  ),
-                if (showLiveTv)
-                  _SidebarItem(
-                    key: const ValueKey('sidebar-livetv'),
-                    icon: Icons.live_tv_rounded,
-                    label: l10n.liveTv,
-                    baseColor: nextMainSidebarColor(),
-                    showLabel: _showLabels,
-                    onPressed: () {
-                      _onNavigate();
-                      if (_isActive(Destinations.liveTvGuide)) {
-                        _exitSidebarToContent();
-                        return;
-                      }
-                      _markNavigationAwayFromSidebar();
-                      context.navigateTopLevel(Destinations.liveTvGuide);
-                    },
-                  ),
-                if (showFolders)
-                  _SidebarItem(
-                    key: const ValueKey('sidebar-folders'),
-                    icon: Icons.folder_rounded,
-                    label: l10n.folders,
-                    baseColor: nextMainSidebarColor(),
-                    showLabel: _showLabels,
-                    onPressed: () {
-                      _onNavigate();
-                      if (_isActive(Destinations.folderView)) {
-                        _exitSidebarToContent();
-                        return;
-                      }
-                      _markNavigationAwayFromSidebar();
-                      context.navigateTopLevel(Destinations.folderView);
-                    },
-                  ),
-                if (showSyncPlay)
-                  _SidebarItem(
-                    key: const ValueKey('sidebar-syncplay'),
-                    icon: Icons.groups_rounded,
-                    label: l10n.syncPlay,
-                    baseColor: nextMainSidebarColor(),
-                    showLabel: _showLabels,
-                    onPressed: () {
-                      _onNavigate();
-                      _markNavigationAwayFromSidebar();
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const SyncPlayScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                if (!kidsMode &&
-                    _prefs.get(UserPreferences.showSeerrButton) &&
-                    GetIt.instance<PluginSyncService>().seerrAvailable)
-                  _SidebarItem(
-                    key: const ValueKey('sidebar-seerr'),
-                    baseColor: nextMainSidebarColor(),
-                    iconBuilder: (size, color) => seerrPrefs.isSeerrVariant
-                        ? SeerrIcon(size: size, color: color)
-                        : SeerrIcon(size: size, color: color),
-                    label: seerrNavLabel,
-                    showLabel: _showLabels,
-                    onPressed: () {
-                      _onNavigate();
-                      if (_isActive(Destinations.seerrDiscover)) {
-                        _exitSidebarToContent();
-                        return;
-                      }
-                      _markNavigationAwayFromSidebar();
-                      context.navigateTopLevel(Destinations.seerrDiscover);
-                    },
-                  ),
+                // 29.09, Sid: "on peut les mettre juste après accueil et
+                // donc avant recherche?" - moved up from further down the
+                // rail (used to sit after the Seerr entry).
                 if (showLibraries && pinnedLibraries.isNotEmpty)
                   for (final lib in pinnedLibraries)
                     _SidebarLibraryItem(
@@ -1108,6 +972,46 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                         );
                       },
                     ),
+                // 29.09, Sid: full reorder - "cest tellement chiant de
+                // taper sur la télé, on utilise jamais rechercher" -
+                // Accueil > épinglées > TV en direct > Paramètres >
+                // Bibliothèques déroulantes > Seerr > (le reste) >
+                // Recherche tout à la fin.
+                if (showLiveTv)
+                  _SidebarItem(
+                    key: const ValueKey('sidebar-livetv'),
+                    icon: Icons.live_tv_rounded,
+                    label: l10n.liveTv,
+                    baseColor: nextMainSidebarColor(),
+                    showLabel: _showLabels,
+                    onPressed: () {
+                      _onNavigate();
+                      if (_isActive(Destinations.liveTvGuide)) {
+                        _exitSidebarToContent();
+                        return;
+                      }
+                      _markNavigationAwayFromSidebar();
+                      context.navigateTopLevel(Destinations.liveTvGuide);
+                    },
+                  ),
+                _SidebarItem(
+                  key: const ValueKey('sidebar-settings'),
+                  icon: Icons.settings_rounded,
+                  label: l10n.settings,
+                  baseColor: nextMainSidebarColor(),
+                  focusNode: _settingsFocusNode,
+                  showLabel: _showLabels,
+                  onPressed: () async {
+                    _onNavigate();
+                    await SettingsPanel.open(
+                      context,
+                      const SettingsSidePanel(),
+                    );
+                    if (!mounted) return;
+                    _markNavigationAwayFromSidebar();
+                    _settingsFocusNode.requestFocus();
+                  },
+                ),
                 if (showLibraries && navLibraries.isNotEmpty) ...[
                   _SidebarItem(
                     key: const ValueKey('sidebar-libraries'),
@@ -1182,6 +1086,112 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                         : const SizedBox.shrink(),
                   ),
                 ],
+                if (!kidsMode &&
+                    _prefs.get(UserPreferences.showSeerrButton) &&
+                    GetIt.instance<PluginSyncService>().seerrAvailable)
+                  _SidebarItem(
+                    key: const ValueKey('sidebar-seerr'),
+                    baseColor: nextMainSidebarColor(),
+                    iconBuilder: (size, color) => seerrPrefs.isSeerrVariant
+                        ? SeerrIcon(size: size, color: color)
+                        : SeerrIcon(size: size, color: color),
+                    label: seerrNavLabel,
+                    showLabel: _showLabels,
+                    onPressed: () {
+                      _onNavigate();
+                      if (_isActive(Destinations.seerrDiscover)) {
+                        _exitSidebarToContent();
+                        return;
+                      }
+                      _markNavigationAwayFromSidebar();
+                      context.navigateTopLevel(Destinations.seerrDiscover);
+                    },
+                  ),
+                if (showShuffle)
+                  _SidebarItem(
+                    key: const ValueKey('sidebar-shuffle'),
+                    icon: Icons.shuffle_rounded,
+                    label: l10n.shuffle,
+                    baseColor: nextMainSidebarColor(),
+                    showLabel: _showLabels,
+                    onPressed: () {
+                      _onNavigate();
+                      showShuffleOverlay(context);
+                    },
+                  ),
+                if (showGenres)
+                  _SidebarItem(
+                    key: const ValueKey('sidebar-genres'),
+                    baseColor: nextMainSidebarColor(),
+                    iconBuilder: (size, color) => Image.asset(
+                      'assets/icons/genres.png',
+                      width: size,
+                      height: size,
+                      color: color,
+                    ),
+                    label: l10n.genres,
+                    showLabel: _showLabels,
+                    onPressed: () {
+                      _onNavigate();
+                      if (_isActive(Destinations.allGenres)) {
+                        _exitSidebarToContent();
+                        return;
+                      }
+                      _markNavigationAwayFromSidebar();
+                      context.navigateTopLevel(Destinations.allGenres);
+                    },
+                  ),
+                if (showFavorites)
+                  _SidebarItem(
+                    key: const ValueKey('sidebar-favorites'),
+                    icon: Icons.favorite_rounded,
+                    label: l10n.favorites,
+                    baseColor: nextMainSidebarColor(),
+                    showLabel: _showLabels,
+                    onPressed: () {
+                      _onNavigate();
+                      if (_isActive(Destinations.allFavorites)) {
+                        _exitSidebarToContent();
+                        return;
+                      }
+                      _markNavigationAwayFromSidebar();
+                      context.navigateTopLevel(Destinations.allFavorites);
+                    },
+                  ),
+                if (showFolders)
+                  _SidebarItem(
+                    key: const ValueKey('sidebar-folders'),
+                    icon: Icons.folder_rounded,
+                    label: l10n.folders,
+                    baseColor: nextMainSidebarColor(),
+                    showLabel: _showLabels,
+                    onPressed: () {
+                      _onNavigate();
+                      if (_isActive(Destinations.folderView)) {
+                        _exitSidebarToContent();
+                        return;
+                      }
+                      _markNavigationAwayFromSidebar();
+                      context.navigateTopLevel(Destinations.folderView);
+                    },
+                  ),
+                if (showSyncPlay)
+                  _SidebarItem(
+                    key: const ValueKey('sidebar-syncplay'),
+                    icon: Icons.groups_rounded,
+                    label: l10n.syncPlay,
+                    baseColor: nextMainSidebarColor(),
+                    showLabel: _showLabels,
+                    onPressed: () {
+                      _onNavigate();
+                      _markNavigationAwayFromSidebar();
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const SyncPlayScreen(),
+                        ),
+                      );
+                    },
+                  ),
                 // The slot is taken here rather than inside the builder, so
                 // the rows below keep their colour whether or not anything is
                 // saved right now.
@@ -1199,21 +1209,19 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                     label: l10n.serverMessages,
                   ),
                 _SidebarItem(
-                  key: const ValueKey('sidebar-settings'),
-                  icon: Icons.settings_rounded,
-                  label: l10n.settings,
+                  key: const ValueKey('sidebar-search'),
+                  icon: Icons.search_rounded,
+                  label: l10n.search,
                   baseColor: nextMainSidebarColor(),
-                  focusNode: _settingsFocusNode,
                   showLabel: _showLabels,
-                  onPressed: () async {
+                  onPressed: () {
                     _onNavigate();
-                    await SettingsPanel.open(
-                      context,
-                      const SettingsSidePanel(),
-                    );
-                    if (!mounted) return;
+                    if (_isActive(Destinations.search)) {
+                      _exitSidebarToContent();
+                      return;
+                    }
                     _markNavigationAwayFromSidebar();
-                    _settingsFocusNode.requestFocus();
+                    context.navigateTopLevel(Destinations.search);
                   },
                 ),
               ];

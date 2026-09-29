@@ -643,7 +643,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
           mediaSourceId: mediaSourceId,
         );
         if (!context.mounted) return false;
-        return _runWithDolbyVisionStartupFallbackPrompt(
+        return runWithDolbyVisionStartupFallbackPrompt(
           context,
           manager,
           () => runPlaybackStart(
@@ -2768,7 +2768,7 @@ class _DetailContentState extends State<_DetailContent> {
           mediaSourceId: mediaSourceId,
         );
         if (!context.mounted) return false;
-        return _runWithDolbyVisionStartupFallbackPrompt(
+        return runWithDolbyVisionStartupFallbackPrompt(
           context,
           manager,
           () => runPlaybackStart(
@@ -9289,7 +9289,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         mediaType == 'Audio';
 
     PlaybackLaunchSession? launchSession;
-    Future<bool> preparePlayback() => _runWithDolbyVisionStartupFallbackPrompt(
+    Future<bool> preparePlayback() => runWithDolbyVisionStartupFallbackPrompt(
       context,
       manager,
       () async {
@@ -9939,7 +9939,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       PlaybackLaunchSession? launchSession,
       ({List<AggregatedItem> queue, bool isAudio, bool forceTranscode})
       prepared,
-    ) => _runWithDolbyVisionStartupFallbackPrompt(
+    ) => runWithDolbyVisionStartupFallbackPrompt(
       context,
       manager,
       () => runPlaybackStart(
@@ -10154,7 +10154,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
             [localTrailer!],
           );
           if (!context.mounted) return false;
-          return _runWithDolbyVisionStartupFallbackPrompt(
+          return runWithDolbyVisionStartupFallbackPrompt(
             context,
             manager,
             () => runPlaybackStart(
@@ -10633,7 +10633,7 @@ _showDolbyVisionDirectPlayStartupFailureDecisionDialog(
   return PlaybackStartupRecoveryDecision.abortPlayback;
 }
 
-Future<bool> _runWithDolbyVisionStartupFallbackPrompt(
+Future<bool> runWithDolbyVisionStartupFallbackPrompt(
   BuildContext context,
   PlaybackManager manager,
   Future<void> Function() playAction,
@@ -10780,9 +10780,12 @@ Future<bool> _anyItemHasCompletedDownload(
 }
 
 /// Whether Android TV playback of [queue] must stream a Dolby Vision
-/// transcode instead of direct playing the original. Public and annotated for
-/// the gate regression tests; every production caller lives in this file.
-@visibleForTesting
+/// transcode instead of direct playing the original. 29.09: the
+/// @visibleForTesting restriction to same-file production callers no
+/// longer holds - home_screen.dart's Continue Watching direct-play needs
+/// the exact same gate every other play button in the app already goes
+/// through (see runWithDolbyVisionStartupFallbackPrompt just below, made
+/// public the same way earlier the same night).
 Future<bool> shouldForceTranscodeForDolbyVisionQueue(
   BuildContext context,
   List<AggregatedItem> queue, {

@@ -55,6 +55,11 @@ import '../../../util/platform_detection.dart';
 import '../../../util/server_url.dart';
 import '../../navigation/app_router.dart';
 import '../../navigation/destinations.dart';
+import '../../navigation/playback_launcher.dart';
+import '../detail/item_detail_screen.dart'
+    show
+        shouldForceTranscodeForDolbyVisionQueue,
+        runWithDolbyVisionStartupFallbackPrompt;
 import '../../../data/models/media_bar_state.dart';
 import '../../../data/viewmodels/media_bar_view_model.dart';
 import '../../widgets/grid_button_card.dart';
@@ -1991,6 +1996,47 @@ class _ContentRowsState extends State<_ContentRows>
     }
 
     return item.playbackPosition;
+  }
+
+  // 29.09, Sid: "toujours la lecture directe quand je pars depuis
+  // 'continuer à regarder'" - tapping a Continue Watching / Next Up card
+  // landed on the tapped item's own detail page (an episode's, not even
+  // the series') requiring a second tap on Reprendre - the whole point of
+  // that row is resuming immediately. Mirrors item_detail_screen.dart's
+  // own _playFromChapter almost verbatim (same now-public
+  // launchPlayerWhilePreparing/runPlaybackStart/
+  // shouldForceTranscodeForDolbyVisionQueue/
+  // runWithDolbyVisionStartupFallbackPrompt pipeline every other play
+  // button in the app already goes through), just with no explicit
+  // media-source selection since this row never offered one.
+  Future<void> _playDirectlyFromRow(AggregatedItem item) async {
+    final manager = _playbackManager;
+    final startPosition = _playbackPositionFromRaw(item) ?? Duration.zero;
+    await launchPlayerWhilePreparing(
+      context,
+      manager: manager,
+      destination: Destinations.videoPlayer,
+      startPlayback: (launchSession) async {
+        final forceTranscode = await shouldForceTranscodeForDolbyVisionQueue(
+          context,
+          [item],
+        );
+        if (!context.mounted) return false;
+        return runWithDolbyVisionStartupFallbackPrompt(
+          context,
+          manager,
+          () => runPlaybackStart(
+            launchSession,
+            () => manager.playItems(
+              [item],
+              startPosition: startPosition,
+              enableDirectPlay: !forceTranscode,
+              enableDirectStream: !forceTranscode,
+            ),
+          ),
+        );
+      },
+    );
   }
 
   String _buildPreviewUrl(
@@ -5088,6 +5134,9 @@ class _ContentRowsState extends State<_ContentRows>
             context.push(Destinations.studio(item.name));
           } else if (item.serverId == 'seerr') {
             _navigateToSeerrItem(context, item);
+          } else if (row.rowType == HomeRowType.resume ||
+              row.rowType == HomeRowType.nextUp) {
+            unawaited(_playDirectlyFromRow(item));
           } else {
             context.push(
               Destinations.itemOrPhoto(

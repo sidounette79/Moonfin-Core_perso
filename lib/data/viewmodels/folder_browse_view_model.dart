@@ -282,10 +282,21 @@ class FolderBrowseViewModel extends ChangeNotifier {
   /// its real detail page - confirmed she wants this everywhere, including
   /// folders nested inside other single-item folders, so this unwraps
   /// repeatedly (bounded) rather than a single level.
+  ///
+  /// 29.09: the first version gated this on `childCount == 1` before ever
+  /// fetching, to skip the round-trip for obviously-multi-item folders -
+  /// but Sid confirmed it never fired at all, on TV or mobile, even for a
+  /// folder holding exactly one movie. Emby's `ChildCount` looks like it
+  /// isn't reliably populated for plain on-disk folders the way it is for
+  /// real libraries/collections (unconfirmed without a live server to
+  /// inspect, but it's the only thing that explains a 100% miss rate).
+  /// Fetching unconditionally instead - one extra lightweight `limit: 2`
+  /// query per folder tap, but no longer trusts a field that apparently
+  /// isn't there.
   Future<AggregatedItem?> resolveSingleItemChain(AggregatedItem start) async {
     var current = start;
     for (var depth = 0; depth < 8; depth++) {
-      if (!isNavigableFolder(current) || current.childCount != 1) {
+      if (!isNavigableFolder(current)) {
         return depth == 0 ? null : current;
       }
       final child = await _fetchSingleChild(current.id);
