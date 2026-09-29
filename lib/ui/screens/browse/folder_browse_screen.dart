@@ -7,6 +7,7 @@ import 'package:server_core/server_core.dart';
 import '../../../data/models/aggregated_item.dart';
 import '../../../data/services/media_server_client_factory.dart';
 import '../../../data/viewmodels/folder_browse_view_model.dart';
+import '../../../preference/preference_constants.dart';
 import '../../../preference/user_preferences.dart';
 import '../../../util/focus/dpad_keys.dart';
 import '../../../util/platform_detection.dart';
@@ -375,15 +376,36 @@ class _FolderBrowseScreenState extends State<FolderBrowseScreen> {
         const spacing = 12.0;
         const targetCardWidth = 170.0;
 
+        // 29.09, Sid: "c'est la barre latérale" - NavigationLayout floats
+        // the sidebar over the content as a Stack/Positioned overlay, not a
+        // side-by-side Row, so every screen has to reserve its own left
+        // inset or the sidebar simply draws over the first column. This
+        // screen used the same 24px on every side, well short of what the
+        // collapsed left-icon sidebar needs - same navbarLeftInset formula
+        // home_screen.dart already uses to clear it correctly.
+        final navPrefs = GetIt.instance<UserPreferences>();
+        final navbarIsTop =
+            navPrefs.get(UserPreferences.navbarPosition) == NavbarPosition.top;
+        final tvTopNavbarInset =
+            navbarIsTop &&
+                PlatformDetection.isTV &&
+                !PlatformDetection.useMobileUi
+            ? 48.0
+            : 0.0;
+        final navbarLeftInset = navbarIsTop ? 16.0 + tvTopNavbarInset : 56.0;
+        final leftPadding = horizontalPadding + navbarLeftInset;
+
         final crossAxisCount =
-            ((constraints.maxWidth - horizontalPadding * 2 + spacing) /
+            ((constraints.maxWidth -
+                        (leftPadding + horizontalPadding) +
+                        spacing) /
                     (targetCardWidth + spacing))
                 .floor()
                 .clamp(2, 10);
 
         final cardWidth =
             (constraints.maxWidth -
-                horizontalPadding * 2 -
+                (leftPadding + horizontalPadding) -
                 (crossAxisCount - 1) * spacing) /
             crossAxisCount;
         _ensureGridMetrics();
@@ -409,7 +431,7 @@ class _FolderBrowseScreenState extends State<FolderBrowseScreen> {
         return GridView.builder(
           controller: _scrollController,
           padding: EdgeInsets.fromLTRB(
-            horizontalPadding,
+            leftPadding,
             16,
             horizontalPadding,
             bottomNavContentPadding(context, 32),
