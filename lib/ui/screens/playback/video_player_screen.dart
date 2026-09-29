@@ -23,6 +23,8 @@ import '../../../playback/subtitle_style.dart';
 import '../../../util/fullscreen_helper.dart';
 import '../../../util/scroll_sensitivity_binding.dart';
 import '../../widgets/player_volume_control.dart';
+import '../../widgets/settings/settings_panel.dart';
+import '../settings/settings_side_panel.dart';
 import '../../widgets/playback/playback_time_row.dart';
 import '../../widgets/playback/seek_icons.dart';
 import '../../widgets/playback/trickplay.dart';
@@ -5820,6 +5822,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             ),
         };
 
+        // 29.09, Sid: "accessoirement aussi depuis le lecteur pour régler
+        // les boutons" - same reasoning as _settingsActionButton on the
+        // detail page: opening Settings normally shows Home behind the
+        // dialog, not the page actually being tuned. Fixed, not part of the
+        // OsdButton switch/prefs system on purpose - it should never be
+        // hideable, unlike the buttons around it.
+        final settingsButton = _controlButton(
+          Icons.settings,
+          onPressed: () =>
+              SettingsPanel.open(context, const SettingsSidePanel()),
+          size: secondaryIconSize,
+          extent: secondaryExtent,
+          tooltip: l10n.settings,
+        );
+
         final secondaryButtons = _wireTvSecondaryEnds([
           for (final button in osdButtonLayout.ordered(
             OsdButton.values,
@@ -5827,6 +5844,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             _prefs,
           ))
             ?byButton[button],
+          settingsButton,
         ]);
 
         final orderedSecondaryButtons = PlatformDetection.isTV

@@ -72,6 +72,7 @@ import '../../navigation/destinations.dart';
 import '../../widgets/adaptive/adaptive_dialog.dart';
 import '../../widgets/adaptive/sf_symbol.dart';
 import '../../widgets/settings/settings_panel.dart';
+import '../../screens/settings/settings_side_panel.dart';
 import '../../widgets/add_to_playlist_dialog.dart';
 import '../../widgets/logo_view.dart';
 import '../../widgets/media_card.dart';
@@ -6586,6 +6587,24 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     return null;
   }
 
+  // 29.09, Sid: "faire un lien depuis les pages de détail vers les
+  // paramètres" - opening Settings from the sidebar/toolbar shows the Home
+  // screen behind the dialog, not the actual page being tuned, so seeing the
+  // effect of a change meant 20+ clicks back and forth. SettingsPanel.open
+  // is already a dialog overlay (not a route change), so opening it straight
+  // from here keeps this exact detail page visible behind it - same call as
+  // top_toolbar.dart's settings button, just triggered from a second place.
+  _DetailActionButton _settingsActionButton(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) {
+    return _DetailActionButton(
+      label: l10n.settings,
+      icon: Icons.settings,
+      onPressed: () => SettingsPanel.open(context, const SettingsSidePanel()),
+    );
+  }
+
   _DetailActionButton _buildDownloadDetailAction(
     BuildContext context,
     AggregatedItem item,
@@ -7471,6 +7490,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         ?byButton[button],
         ?cancelByButton[button],
       ],
+      _settingsActionButton(context, l10n),
     ];
 
     if (isNeon) {
@@ -7513,6 +7533,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           if (cancelByButton[detailButton] case final btn?)
             ?_actionForOverflow(context, btn),
         ],
+        _settingsActionButton(context, l10n),
       ];
 
       // A null primary only means there is nothing to play, and the secondary
