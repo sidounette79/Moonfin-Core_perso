@@ -15,6 +15,16 @@ import 'api/emby_instant_mix_api.dart';
 import 'api/emby_display_preferences_api.dart';
 import 'api/emby_users_api.dart';
 import 'api/emby_admin_users_api.dart';
+import 'api/emby_admin_system_api.dart';
+import 'api/emby_admin_library_api.dart';
+import 'api/emby_admin_environment_api.dart';
+import 'api/emby_admin_tasks_api.dart';
+import 'api/emby_admin_plugins_api.dart';
+import 'api/emby_admin_devices_api.dart';
+import 'api/emby_admin_api_keys_api.dart';
+import 'api/emby_admin_backup_api.dart';
+import 'api/emby_admin_live_tv_api.dart';
+import 'api/emby_admin_items_api.dart';
 import 'api/emby_trickplay_api.dart';
 
 class EmbyMediaServerClient extends MediaServerClient {
@@ -171,47 +181,38 @@ class EmbyMediaServerClient extends MediaServerClient {
   late final ClientLogApi clientLogApi = EmbyClientLogApi(_dio);
 
   @override
-  AdminSystemApi get adminSystemApi =>
-      throw UnsupportedError('Admin not supported on Emby yet');
+  late final AdminSystemApi adminSystemApi = EmbyAdminSystemApi(_dio);
 
   @override
   late final AdminUsersApi adminUsersApi = EmbyAdminUsersApi(_dio);
 
   @override
-  AdminLibraryApi get adminLibraryApi =>
-      throw UnsupportedError('Admin not supported on Emby yet');
+  late final AdminLibraryApi adminLibraryApi = EmbyAdminLibraryApi(_dio);
 
   @override
-  AdminEnvironmentApi get adminEnvironmentApi =>
-      throw UnsupportedError('Admin not supported on Emby yet');
+  late final AdminEnvironmentApi adminEnvironmentApi =
+      EmbyAdminEnvironmentApi(_dio);
 
   @override
-  AdminTasksApi get adminTasksApi =>
-      throw UnsupportedError('Admin not supported on Emby yet');
+  late final AdminTasksApi adminTasksApi = EmbyAdminTasksApi(_dio);
 
   @override
-  AdminPluginsApi get adminPluginsApi =>
-      throw UnsupportedError('Admin not supported on Emby yet');
+  late final AdminPluginsApi adminPluginsApi = EmbyAdminPluginsApi(_dio);
 
   @override
-  AdminDevicesApi get adminDevicesApi =>
-      throw UnsupportedError('Admin not supported on Emby yet');
+  late final AdminDevicesApi adminDevicesApi = EmbyAdminDevicesApi(_dio);
 
   @override
-  AdminApiKeysApi get adminApiKeysApi =>
-      throw UnsupportedError('Admin not supported on Emby yet');
+  late final AdminApiKeysApi adminApiKeysApi = EmbyAdminApiKeysApi(_dio);
 
   @override
-  AdminBackupApi get adminBackupApi =>
-      throw UnsupportedError('Admin not supported on Emby yet');
+  late final AdminBackupApi adminBackupApi = EmbyAdminBackupApi(_dio);
 
   @override
-  AdminLiveTvApi get adminLiveTvApi =>
-      throw UnsupportedError('Admin not supported on Emby yet');
+  late final AdminLiveTvApi adminLiveTvApi = EmbyAdminLiveTvApi(_dio);
 
   @override
-  AdminItemsApi get adminItemsApi =>
-      throw UnsupportedError('Admin not supported on Emby yet');
+  late final AdminItemsApi adminItemsApi = EmbyAdminItemsApi(_dio);
 
   @override
   late final GamesApi gamesApi = MoonbaseGamesApi(
