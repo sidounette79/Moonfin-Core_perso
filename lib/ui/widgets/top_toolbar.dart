@@ -1104,8 +1104,11 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
                     label: l10n.liveTv,
                     baseColor: nextNavColor(),
                     onPressed: () {
-                      if (_isActive(Destinations.liveTvGuide)) return;
-                      context.navigateTopLevel(Destinations.liveTvGuide);
+                      // 30.09: same fix as left_sidebar.dart - was still
+                      // pointing at the old Emby Live TV guide route
+                      // instead of the new direct Xtream channel list.
+                      if (_isActive(Destinations.liveTv)) return;
+                      context.navigateTopLevel(Destinations.liveTv);
                     },
                   ),
                 ),

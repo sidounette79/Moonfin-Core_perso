@@ -98,7 +98,9 @@ String libraryRoute(
         collectionType: (collectionType ?? '').toLowerCase(),
       );
     case 'livetv':
-      return Destinations.liveTvGuide;
+      // 30.09: same fix as the other Live TV entry points - route to the
+      // new direct Xtream channel list, not the old Emby guide.
+      return Destinations.liveTv;
     default:
       return Destinations.library(id, serverId: serverId);
   }

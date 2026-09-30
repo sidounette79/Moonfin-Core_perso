@@ -986,12 +986,19 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                     showLabel: _showLabels,
                     onPressed: () {
                       _onNavigate();
-                      if (_isActive(Destinations.liveTvGuide)) {
+                      // 30.09, Sid: "TV en direct... vide alors que
+                      // l'intégration est bien complétée" - real bug found:
+                      // this still pointed at the old Emby Live TV guide
+                      // route (/live-tv/guide, LiveTvGuideScreen) instead of
+                      // the new direct Xtream channel list now built at the
+                      // parent /live-tv route (see app_router.dart) - the
+                      // route swap never actually reached this entry point.
+                      if (_isActive(Destinations.liveTv)) {
                         _exitSidebarToContent();
                         return;
                       }
                       _markNavigationAwayFromSidebar();
-                      context.navigateTopLevel(Destinations.liveTvGuide);
+                      context.navigateTopLevel(Destinations.liveTv);
                     },
                   ),
                 _SidebarItem(

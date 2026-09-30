@@ -143,7 +143,9 @@ void openBottomNavTab(BuildContext context, BottomNavTab tab) {
     BottomNavTab.search => Destinations.search,
     BottomNavTab.favorites => Destinations.allFavorites,
     BottomNavTab.genres => Destinations.allGenres,
-    BottomNavTab.liveTv => Destinations.liveTvGuide,
+    // 30.09: same fix as left_sidebar.dart/top_toolbar.dart - was still
+    // pointing at the old Emby Live TV guide route.
+    BottomNavTab.liveTv => Destinations.liveTv,
     BottomNavTab.discover => Destinations.seerrDiscover,
     BottomNavTab.folders => Destinations.folderView,
     BottomNavTab.libraries => null,
