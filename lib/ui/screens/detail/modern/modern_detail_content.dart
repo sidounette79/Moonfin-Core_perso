@@ -33,6 +33,8 @@ import '../../../../util/playback_time_label.dart';
 import '../../../../util/platform_detection.dart';
 import '../../../../util/focus/dpad_keys.dart';
 import '../../../../util/focus/focus_scroll.dart';
+import '../../../../util/debug/nav_debug_log.dart';
+import '../../../widgets/debug/nav_debug_overlay.dart';
 import '../../../navigation/destinations.dart';
 import '../../../navigation/playback_launcher.dart';
 import '../detail_delete_action.dart';
@@ -156,6 +158,12 @@ String? studioLogoUrlFor(String studioName, StudioLogoIndex index) {
 /// Mirrors the default content widget's constructor so the swap in
 /// `_ItemDetailScreenState._buildBody` is a drop-in, and reuses the public
 /// action/content widgets so playback and data logic are shared, not duplicated.
+// 30.09, Sid: "si tu veux en mettre une [coccinelle] sur page de détail
+// modele moderne tu peux" - moved from the home screen (see
+// _showHomeNavDebugOverlay in home_screen.dart) to help diagnose the D-pad
+// up/down bug reported on the series detail page.
+const _showModernDetailNavDebugOverlay = true;
+
 class ModernDetailContent extends StatefulWidget {
   final ItemDetailViewModel viewModel;
   final UserPreferences prefs;
@@ -823,15 +831,19 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     if (_selectedTab < 0) {
       if (_overviewFocusNode.context != null &&
           _overviewFocusNode.canRequestFocus) {
+        NavDebugLog.log('_focusSelectedTab: -1, -> overview');
         _overviewFocusNode.requestFocus();
       } else if (_actionRowRightFocusNode.context != null &&
           _actionRowRightFocusNode.canRequestFocus) {
+        NavDebugLog.log('_focusSelectedTab: -1, -> actionRowRight');
         _actionRowRightFocusNode.requestFocus();
       } else {
+        NavDebugLog.log('_focusSelectedTab: -1, -> initialFocusNode');
         widget.initialFocusNode?.requestFocus();
       }
       return;
     }
+    NavDebugLog.log('_focusSelectedTab: -> tab $_selectedTab');
     _tabNode(_selectedTab).requestFocus();
   }
 
@@ -3105,6 +3117,21 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              // 30.09, Sid, comparing Emby's own "Informations du média"
+              // against Moonfin's "Informations du fichier": "emby me
+              // montre volumes/data/videos etc... ça me permet de savoir
+              // où c'est" - the full server path was already resolved
+              // above (path, truncated down to fileName for the line
+              // above) just never actually shown.
+              if (path.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  path,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: Colors.white54,
+                  ),
+                ),
+              ],
               const SizedBox(height: 4),
               Text(
                 l10n.fileSizeFormat(formattedSize, container),
@@ -3967,6 +3994,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     String overview, {
     double maxWidth = 800,
     VoidCallback? onArrowRight,
+    VoidCallback? onArrowDown,
   }) {
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -3975,9 +4003,10 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
       child: ExpandableBiography(
         text: overview,
         toggleFocusNode: _overviewFocusNode,
-        onArrowDown: () {
-          widget.initialFocusNode?.requestFocus();
-        },
+        onArrowDown: onArrowDown ??
+            () {
+              widget.initialFocusNode?.requestFocus();
+            },
         onArrowUp: () {
           NavigationLayout.focusNavbarNotifier.value?.call();
         },
@@ -4009,6 +4038,11 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     );
     final hideTitleAndLogo = _landscape && _buildUpNext(context, item) != null;
     final hasUpNext = _landscape && _buildUpNext(context, item) != null;
+    // 30.09, Sid: portrait's own up-next card (below the overview, above
+    // the action buttons - see its insertion further down). Computed once
+    // here so the overview's onArrowDown and the action buttons' upTarget
+    // can both route through it without disagreeing on whether it exists.
+    final portraitUpNext = !_landscape ? _computeUpNext(context, item) : null;
     final showRatings = _vm.ratings.isNotEmpty ||
         item.communityRating != null ||
         item.criticRating != null ||
@@ -4559,9 +4593,34 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
             overview,
             onArrowRight:
                 hasUpNext ? () => _upNextFocusNode.requestFocus() : null,
+            onArrowDown: portraitUpNext != null
+                ? () {
+                    NavDebugLog.log('overview arrowDown -> portraitUpNext');
+                    _upNextFocusNode.requestFocus();
+                  }
+                : null,
           ),
         ],
         SizedBox(height: techRow != null ? 12 : 24),
+        // 30.09, Sid, comparing Emby's own app against Moonfin's portrait
+        // series page: "j'ai pas les mêmes pages pour série et épisode...
+        // sur Emby, si je vais dans une bibliothèque, je clique sur une
+        // série, je tombe sur l'épisode (s'il y en a en cours)". Emby's
+        // portrait page shows the in-progress/next episode's title and a
+        // resume progress bar right under Reprendre - Moonfin's portrait
+        // never has anywhere. The landscape UpNextCard below is
+        // deliberately hidden (28.09: "duplicates what Reprendre already
+        // shows" - true only in landscape, where the primary button
+        // carries that info some other way), but portrait's Reprendre
+        // never carries it, so there's nothing redundant to guard against
+        // here. Reuses _computeUpNext's already-tested resolution/widget
+        // rather than a new hand-rolled text+progress row.
+        if (!_landscape && portraitUpNext != null) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: portraitUpNext,
+          ),
+        ],
         Focus(
           canRequestFocus: false,
           skipTraversal: true,
@@ -4586,7 +4645,9 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
             downTarget: showTopCast
                 ? _castFirstFocusNode
                 : _tabNode(_selectedTab >= 0 ? _selectedTab : 0),
-            upTarget: _overviewFocusNode,
+            upTarget: portraitUpNext != null
+                ? _upNextFocusNode
+                : _overviewFocusNode,
             autoPlay: widget.autoPlay,
             // 28.09, Sid: "bouton supprimer un épisode - pas vu apparaître"
             // - the classic detail screen got this button, Modern (what
@@ -4963,7 +5024,18 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
           widget.initialFocusNode?.requestFocus();
         }
       },
-      onNavigateDown: _focusSelectedTab,
+      // 30.09: in landscape this card sits below DetailActionButtons (when
+      // _buildUpNext's own 28.09 hide decision is ever reverted), so down
+      // still means "go to the tabs" via _focusSelectedTab. In portrait
+      // it's the only place this card renders today, sitting ABOVE
+      // DetailActionButtons instead, so down has to mean "go to the play
+      // button" - the opposite target.
+      onNavigateDown: _landscape
+          ? _focusSelectedTab
+          : () {
+              NavDebugLog.log('portraitUpNext arrowDown -> initialFocusNode');
+              widget.initialFocusNode?.requestFocus();
+            },
       onTap: () async {
         final manager = GetIt.instance<PlaybackManager>();
         final targetEpisode = episode!;
@@ -5482,11 +5554,17 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
             scrollController: _scrollController,
           );
 
-    return QuickReturnWrapper(
-      scrollController: _scrollController,
-      topFocusNode: widget.initialFocusNode,
-      hideNavbar: true,
-      child: layout,
+    return Stack(
+      children: [
+        QuickReturnWrapper(
+          scrollController: _scrollController,
+          topFocusNode: widget.initialFocusNode,
+          hideNavbar: true,
+          child: layout,
+        ),
+        if (_showModernDetailNavDebugOverlay && PlatformDetection.isTV)
+          const NavDebugOverlay(),
+      ],
     );
   }
 }
