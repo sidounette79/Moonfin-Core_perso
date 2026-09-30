@@ -69,6 +69,13 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   List<String> _recentUsernames = const [];
+  // 30.09, Sid: "il faudrait ajouter l'oeil quand on tape le mot de passe" -
+  // asked for while debugging a real login failure, so she can see exactly
+  // what's being typed instead of guessing. Simple tap toggle; on TV the
+  // CustomTVTextField suffix slot has no D-pad focus wiring of its own
+  // (touch/pointer only there), not worth building a whole new focus chain
+  // for a diagnostic aid.
+  bool _obscurePassword = true;
 
   bool _supportsQuickConnect = false;
   bool _showQuickConnect = true;
@@ -789,7 +796,8 @@ class _LoginScreenState extends State<LoginScreen> {
             controller: _passwordController,
             focusNode: _passwordFocus,
             label: l10n.password,
-            obscureText: true,
+            obscureText: _obscurePassword,
+            showObscureToggle: true,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _login(),
           ),
@@ -825,6 +833,7 @@ class _LoginScreenState extends State<LoginScreen> {
     required FocusNode focusNode,
     required String label,
     bool obscureText = false,
+    bool showObscureToggle = false,
     List<String> recentSuggestions = const [],
     TextInputAction? textInputAction,
     ValueChanged<String>? onSubmitted,
@@ -873,6 +882,20 @@ class _LoginScreenState extends State<LoginScreen> {
               onFieldSubmitted: onSubmitted,
               onVisibilityChanged: (visible) =>
                   _handleTvKeyboardVisibility(visible, tvFieldKey),
+              suffixIcon: showObscureToggle
+                  ? GestureDetector(
+                      onTap: () =>
+                          setState(() => _obscurePassword = !obscureText),
+                      child: Icon(
+                        obscureText
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: focused
+                            ? AppColors.black.withValues(alpha: 0.6)
+                            : _loginForeground(0.6),
+                      ),
+                    )
+                  : null,
             );
           },
         ),
@@ -904,6 +927,16 @@ class _LoginScreenState extends State<LoginScreen> {
           borderRadius: AppRadius.circular(12),
           borderSide: BorderSide(color: _kAccent, width: 2),
         ),
+        suffixIcon: showObscureToggle
+            ? IconButton(
+                icon: Icon(
+                  obscureText ? Icons.visibility_off : Icons.visibility,
+                  color: _loginForeground(0.6),
+                ),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !obscureText),
+              )
+            : null,
       ),
     );
   }
