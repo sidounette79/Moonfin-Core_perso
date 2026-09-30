@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import '../../../data/models/xtream_models.dart';
 import '../../../data/repositories/xtream_repository.dart';
 import '../../../preference/user_preferences.dart';
+import '../../../util/platform_detection.dart';
 import '../../navigation/destinations.dart';
 
 /// 30.09, Sid: direct IPTV (Xtream Codes), bypassing Emby's own Live TV
@@ -70,6 +74,96 @@ class _XtreamProvidersScreenState extends State<XtreamProvidersScreen> {
     await _reload();
   }
 
+  // 30.09, Sid: "as-tu un moyen de faire un backup de cette partie avant le
+  // futur build?" right after selecting every channel by hand on her
+  // phone - a safety net independent of the server sync (which she'd just
+  // found broken). First tried clipboard copy/paste, but "le copier coller
+  // texte depuis un mobile est super chiant" - a real file instead, saved
+  // to wherever she picks (including a NAS share her boxes already mount),
+  // reused the same FilePicker.saveFile pattern already proven for the
+  // admin log viewer's export. Raw JSON preference strings, not the typed
+  // models - a straight round trip, nothing to keep in sync if the models
+  // change later.
+  Future<void> _saveConfigToFile() async {
+    final export = jsonEncode({
+      'xtreamProviders': _prefs.get(UserPreferences.xtreamProviders),
+      'xtreamSelectedCategoryIds': _prefs.get(
+        UserPreferences.xtreamSelectedCategoryIds,
+      ),
+      'xtreamExcludedChannelIds': _prefs.get(
+        UserPreferences.xtreamExcludedChannelIds,
+      ),
+      'm3uProviders': _prefs.get(UserPreferences.m3uProviders),
+    });
+    try {
+      final path = await FilePicker.saveFile(
+        dialogTitle: 'Enregistrer la configuration IPTV',
+        fileName: 'moonfin_iptv_config.json',
+        bytes: Uint8List.fromList(utf8.encode(export)),
+      );
+      if (!mounted) return;
+      // Web hands the blob to the browser and always answers null, so null
+      // only means cancelled everywhere else.
+      if (path == null && !PlatformDetection.isWeb) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Configuration IPTV enregistrée')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Échec de l\'enregistrement: $e')),
+      );
+    }
+  }
+
+  Future<void> _loadConfigFromFile() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        dialogTitle: 'Charger une configuration IPTV',
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        withData: true,
+      );
+      final bytes = result?.files.single.bytes;
+      if (bytes == null) return;
+      final decoded = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+      final xtreamProviders = decoded['xtreamProviders'];
+      final xtreamSelectedCategoryIds = decoded['xtreamSelectedCategoryIds'];
+      final xtreamExcludedChannelIds = decoded['xtreamExcludedChannelIds'];
+      final m3uProviders = decoded['m3uProviders'];
+      if (xtreamProviders is! String ||
+          xtreamSelectedCategoryIds is! String ||
+          xtreamExcludedChannelIds is! String ||
+          m3uProviders is! String) {
+        throw const FormatException('missing field');
+      }
+      await _prefs.set(UserPreferences.xtreamProviders, xtreamProviders);
+      await _prefs.set(
+        UserPreferences.xtreamSelectedCategoryIds,
+        xtreamSelectedCategoryIds,
+      );
+      await _prefs.set(
+        UserPreferences.xtreamExcludedChannelIds,
+        xtreamExcludedChannelIds,
+      );
+      await _prefs.set(UserPreferences.m3uProviders, m3uProviders);
+      await _reload();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Configuration IPTV restaurée')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Ce fichier ne contient pas une configuration IPTV valide: $e',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -80,6 +174,16 @@ class _XtreamProvidersScreenState extends State<XtreamProvidersScreen> {
             icon: const Icon(Icons.live_tv),
             tooltip: 'Voir les chaînes',
             onPressed: () => context.push(Destinations.xtreamChannels),
+          ),
+          IconButton(
+            icon: const Icon(Icons.save_alt),
+            tooltip: 'Enregistrer la configuration dans un fichier',
+            onPressed: _saveConfigToFile,
+          ),
+          IconButton(
+            icon: const Icon(Icons.file_open),
+            tooltip: 'Charger une configuration depuis un fichier',
+            onPressed: _loadConfigFromFile,
           ),
         ],
       ),
