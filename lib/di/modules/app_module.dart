@@ -17,6 +17,7 @@ import '../../data/services/media_server_client_factory.dart';
 import '../../data/repositories/seerr_repository.dart';
 import '../../data/repositories/sofa_repository.dart';
 import '../../data/repositories/tmdb_repository.dart';
+import '../../data/repositories/xtream_repository.dart';
 import '../../data/repositories/user_views_repository.dart';
 import '../../data/repositories/search_repository.dart';
 import '../../data/repositories/item_mutation_repository.dart';
@@ -107,6 +108,13 @@ void registerAppModule() {
   // it belongs here - registered once, never needing a reset.
   _getIt.registerLazySingleton(
     () => SofaRepository(),
+    dispose: (repository) => repository.dispose(),
+  );
+  // No per-user dependency either (providers/credentials live in
+  // UserPreferences, not tied to the Emby session) - same reasoning as
+  // SofaRepository just above.
+  _getIt.registerLazySingleton(
+    () => XtreamRepository(),
     dispose: (repository) => repository.dispose(),
   );
   _getIt.registerLazySingleton(

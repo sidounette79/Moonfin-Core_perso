@@ -8,6 +8,7 @@ import 'package:server_core/server_core.dart' hide ImageType;
 
 import '../data/models/aggregated_item.dart';
 import '../data/models/series_track_preference.dart';
+import '../data/models/xtream_models.dart';
 import '../playback/audio_capability_profile.dart';
 import '../util/device_performance.dart';
 import '../util/idiom/app_ui_idiom.dart';
@@ -295,6 +296,11 @@ class UserPreferences extends ChangeNotifier {
     'auto_download_storage_notice_shown',
     // Newly synced settings. Anything that goes to the server profile has to be stored
     // per server and user, or one server's value is read back on the next.
+    // 30.09: real IPTV account credentials, not just preferences - scoping
+    // these matters more than most, so a different Emby server login never
+    // reads back another one's Xtream logins.
+    'xtream_providers',
+    'xtream_selected_category_ids',
     'all_genres_image_type',
     'ass_enabled',
     'audio_night_mode',
@@ -3678,6 +3684,96 @@ class UserPreferences extends ChangeNotifier {
     if (channelIds != null && channelIds.remove(channelId)) {
       await _saveLiveTvChannelGroups(groups);
     }
+  }
+
+  // 30.09, Sid: direct Xtream Codes IPTV, bypassing Emby's own Live TV
+  // entirely ("TiviMate-style") - she can have several provider accounts
+  // (several IPTV subscriptions) at once, each with its own list of
+  // enabled category ids (a provider's catalog is mostly noise - hundreds
+  // of categories she has zero interest in, same reasoning as the
+  // SelectedLiveCategoryIds the Xtream Tuner Emby plugin already uses).
+  // Credentials live in plain UserPreferences like every other setting
+  // here (not the secure credential store) since this mirrors Moonfin's
+  // existing Emby-server-credentials pattern, not a new security tier.
+  static final xtreamProviders = Preference<String>(
+    key: 'xtream_providers',
+    defaultValue: '[]',
+  );
+
+  List<XtreamProvider> getXtreamProviders() {
+    try {
+      final list = jsonDecode(get(xtreamProviders)) as List;
+      return list
+          .whereType<Map>()
+          .map((e) => XtreamProvider.fromJson(e.cast<String, dynamic>()))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> saveXtreamProviders(List<XtreamProvider> providers) =>
+      set(xtreamProviders, jsonEncode(providers.map((p) => p.toJson()).toList()));
+
+  Future<void> addOrUpdateXtreamProvider(XtreamProvider provider) async {
+    final providers = getXtreamProviders();
+    final index = providers.indexWhere((p) => p.id == provider.id);
+    if (index >= 0) {
+      providers[index] = provider;
+    } else {
+      providers.add(provider);
+    }
+    await saveXtreamProviders(providers);
+  }
+
+  Future<void> removeXtreamProvider(String providerId) async {
+    final providers = getXtreamProviders()
+      ..removeWhere((p) => p.id == providerId);
+    await saveXtreamProviders(providers);
+    final selected = getXtreamSelectedCategoryIds();
+    if (selected.remove(providerId) != null) {
+      await _saveXtreamSelectedCategoryIds(selected);
+    }
+  }
+
+  /// providerId -> enabled category ids. A provider absent from this map
+  /// means "not curated yet" (nothing selected, so nothing shown) rather
+  /// than "show everything" - hundreds of default categories dumped on
+  /// screen unfiltered is worse than an empty list prompting her to go
+  /// pick some.
+  static final xtreamSelectedCategoryIds = Preference<String>(
+    key: 'xtream_selected_category_ids',
+    defaultValue: '{}',
+  );
+
+  Map<String, List<String>> getXtreamSelectedCategoryIds() {
+    try {
+      final map = jsonDecode(get(xtreamSelectedCategoryIds)) as Map;
+      return map.map(
+        (k, v) => MapEntry(k as String, (v as List).cast<String>()),
+      );
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> _saveXtreamSelectedCategoryIds(
+    Map<String, List<String>> selected,
+  ) => set(xtreamSelectedCategoryIds, jsonEncode(selected));
+
+  Future<void> setXtreamCategorySelected(
+    String providerId,
+    String categoryId,
+    bool selected,
+  ) async {
+    final map = getXtreamSelectedCategoryIds();
+    final ids = map.putIfAbsent(providerId, () => <String>[]);
+    if (selected) {
+      if (!ids.contains(categoryId)) ids.add(categoryId);
+    } else {
+      ids.remove(categoryId);
+    }
+    await _saveXtreamSelectedCategoryIds(map);
   }
 
   List<AggregatedItem> filterContinueWatching(List<AggregatedItem> items) {
