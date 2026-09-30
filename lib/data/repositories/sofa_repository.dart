@@ -75,6 +75,56 @@ class SofaRepository {
     }
   }
 
+  // 30.09, Sid — Moonbase (Emby's own settings-sync plugin) only carries
+  // settings it natively recognizes and silently drops anything custom
+  // Moonfin needs (IPTV providers, pinned libraries) - confirmed by hand,
+  // pushed to Global from her phone, pulled on TV, nothing arrived. This
+  // is Moonfin's own channel through Sofa instead - Sofa just stores and
+  // hands back whatever JSON blob it's given, scoped by Emby user (see
+  // apps/server/src/routes/moonfin-sync.ts on the Sofa side). Auth
+  // delegates to Emby itself: the caller's own Emby access token, already
+  // in hand for every other request this app makes, rather than a new
+  // secret to mint and have her copy in by hand.
+  Future<String?> getMoonfinSyncSettings(String embyAccessToken) async {
+    try {
+      final response = await _dio.get(
+        '$_baseUrl/api/moonfin-sync/settings',
+        options: Options(
+          headers: {'X-Emby-Token': embyAccessToken},
+          sendTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 8),
+        ),
+      );
+      final data = response.data;
+      if (data is Map && data['data'] is String) {
+        return data['data'] as String;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool> setMoonfinSyncSettings(String embyAccessToken, String data) async {
+    try {
+      await _dio.put(
+        '$_baseUrl/api/moonfin-sync/settings',
+        data: {'data': data},
+        options: Options(
+          headers: {
+            'X-Emby-Token': embyAccessToken,
+            'Content-Type': 'application/json',
+          },
+          sendTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 8),
+        ),
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   void dispose() {
     _dio.close(force: true);
   }

@@ -11,6 +11,7 @@ import 'package:jellyfin_preference/jellyfin_preference.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../data/repositories/seerr_repository.dart';
+import '../../data/repositories/sofa_repository.dart';
 import 'server_messages_service.dart';
 import 'storage_path_service.dart';
 import 'synced_fields.dart';
@@ -105,6 +106,14 @@ class PluginSyncService extends ChangeNotifier {
   bool _isSyncingFromServer = false;
   Timer? _pushDebounceTimer;
   static const _pushDebounce = Duration(milliseconds: 1000);
+
+  // 30.09, Sid — Moonfin's own settings channel through Sofa, independent
+  // of Moonbase's own availability/toggle (this channel exists precisely
+  // because Moonbase drops the custom fields it carries - see
+  // alwaysGlobal on SyncedField). Own debounce timer so it never depends
+  // on _pushDebounceTimer/_pluginAvailable's Moonbase-specific gating.
+  Timer? _sofaPushDebounceTimer;
+  SofaRepository get _sofaRepo => GetIt.instance<SofaRepository>();
 
   /// Profile JSON as last pushed to, or applied from, each server and profile.
   /// A push whose payload matches its entry is skipped, which is what stops an
@@ -359,6 +368,11 @@ class PluginSyncService extends ChangeNotifier {
   Future<void> syncOnLogin(MediaServerClient client, {String? serverId}) async {
     _readingProfileOnSignIn = true;
     try {
+      // 30.09, Sid — Moonbase-independent: this channel exists precisely
+      // because Moonbase drops the custom fields it carries, so it runs
+      // regardless of whether Moonbase itself is available this login.
+      unawaited(_pullSofaSyncedFields(client));
+
       _activeThemeCacheServerId = serverId;
       await _hydrateCachedThemes(client, serverId: serverId);
 
@@ -1983,8 +1997,73 @@ class PluginSyncService extends ChangeNotifier {
     };
   }
 
+  // 30.09, Sid: "on crée un auto sync moon vers sofa vers moon" - Moonbase
+  // drops any field it doesn't natively recognize (confirmed by hand:
+  // pushed IPTV providers to Global from her phone, pulled on TV, nothing
+  // arrived), so alwaysGlobal fields go through Sofa's own tiny settings
+  // store instead (apps/server/src/routes/moonfin-sync.ts). Raw local
+  // preference values, not run through _encodeSyncedField - that encoding
+  // is Moonbase's own wire format, unrelated to this channel, which
+  // Moonfin owns end to end on both sides.
+  Map<String, dynamic> _buildSofaSyncedFields() {
+    return {
+      for (final field in syncedFields)
+        if (!field.receiveOnly && field.alwaysGlobal)
+          field.serverKey: _prefs.get(field.pref),
+    };
+  }
+
+  Future<void> _pushSofaSyncedFields(MediaServerClient client) async {
+    final token = client.accessToken;
+    if (token == null || token.isEmpty) return;
+    final payload = _buildSofaSyncedFields();
+    if (payload.isEmpty) return;
+    await _sofaRepo.setMoonfinSyncSettings(token, jsonEncode(payload));
+  }
+
+  Future<void> _pullSofaSyncedFields(MediaServerClient client) async {
+    final token = client.accessToken;
+    if (token == null || token.isEmpty) return;
+    final json = await _sofaRepo.getMoonfinSyncSettings(token);
+    if (json == null) return;
+    Map<String, dynamic> decoded;
+    try {
+      decoded = jsonDecode(json) as Map<String, dynamic>;
+    } catch (_) {
+      return;
+    }
+    _isSyncingFromServer = true;
+    try {
+      for (final field in syncedFields) {
+        if (!field.alwaysGlobal) continue;
+        final value = decoded[field.serverKey];
+        if (value is String) {
+          await _prefs.set(field.pref as Preference<String>, value);
+        }
+      }
+    } finally {
+      _isSyncingFromServer = false;
+    }
+  }
+
+  void _schedulePushSofaSyncedFields() {
+    _sofaPushDebounceTimer?.cancel();
+    _sofaPushDebounceTimer = Timer(_pushDebounce, () {
+      final client = GetIt.instance.isRegistered<MediaServerClient>()
+          ? GetIt.instance<MediaServerClient>()
+          : null;
+      if (client == null) return;
+      unawaited(_pushSofaSyncedFields(client));
+    });
+  }
+
   void _onPrefsChanged() {
     if (_isSyncingFromServer) return;
+
+    // Independent of Moonbase's own availability/toggle below - see
+    // _schedulePushSofaSyncedFields's own comment.
+    _schedulePushSofaSyncedFields();
+
     if (!_pluginAvailable || !_prefs.get(UserPreferences.pluginSyncEnabled)) {
       return;
     }
