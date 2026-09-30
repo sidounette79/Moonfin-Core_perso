@@ -110,6 +110,15 @@ class EpgChannelMatcher {
       ..sort((a, b) => a.start.compareTo(b.start));
   }
 
+  /// A stable cross-provider grouping key for a channel's own display name
+  /// (call-sign when present, normalized name otherwise) - used by
+  /// ChannelGroup to find "the same channel" across different Xtream/M3U
+  /// providers, independent of whether either one has an XMLTV match.
+  static String groupingKey(String name) {
+    final cleaned = _cleanChannelName(name);
+    return _extractCallSign(name) ?? cleaned;
+  }
+
   static String _normalize(String name) {
     var result = name.toLowerCase();
     result = result.replaceAll(_qualityTagPattern, '');

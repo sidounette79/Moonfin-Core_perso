@@ -6,6 +6,7 @@ import 'package:get_it/get_it.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
+import '../../../data/models/channel_group.dart';
 import '../../../data/models/playable_channel.dart';
 import '../../screensaver/screensaver_controller.dart';
 
@@ -36,6 +37,16 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
   static const _openTimeout = Duration(seconds: 12);
   static const _osdAutoHideDelay = Duration(seconds: 5);
 
+  // 30.09, Sid: "Smart Channels" - when the same channel is configured
+  // across more than one provider, a stall this long tries the next
+  // source instead of just sitting there buffering. Longer than
+  // clubTivi's own 3s default (github.com/clubanderson/clubTivi, Apache
+  // 2.0 - see THIRD_PARTY_NOTICES.md): IPTV streams here see brief,
+  // self-resolving rebuffers often enough that 3s would fail over on
+  // plenty of stalls that were about to recover on their own.
+  static const _stallThreshold = Duration(seconds: 8);
+  static const _maxFailoverAttempts = 3;
+
   final _screensaverController = GetIt.instance<ScreensaverController>();
   final _focusNode = FocusNode(debugLabel: 'xtreamPlayer');
 
@@ -53,7 +64,27 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
   List<EpgEntryData> _epg = const [];
   int _openToken = 0;
 
+  late final List<ChannelGroup> _groups = ChannelGroup.groupChannels(
+    widget.channels,
+  );
+  Timer? _stallTimer;
+  int _alternativeIndex = 0;
+  int _failoverAttempts = 0;
+
   PlayableChannel get _current => widget.channels[_currentIndex];
+
+  ChannelGroup _groupFor(PlayableChannel channel) => _groups.firstWhere(
+    (g) => g.alternatives.contains(channel),
+    orElse: () => ChannelGroup(key: '', alternatives: [channel]),
+  );
+
+  /// The source actually feeding the player right now - [_current] unless
+  /// a Smart Channels failover has switched to one of its alternatives.
+  PlayableChannel get _activeSource {
+    final group = _groupFor(_current);
+    if (_alternativeIndex >= group.alternatives.length) return _current;
+    return group.alternatives[_alternativeIndex];
+  }
 
   @override
   void initState() {
@@ -62,10 +93,24 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
     _player = Player(configuration: const PlayerConfiguration(libass: false));
     _controller = VideoController(_player!);
     _bufferingSub = _player!.stream.buffering.listen((b) {
-      if (mounted) setState(() => _buffering = b);
+      if (!mounted) return;
+      setState(() => _buffering = b);
+      if (b) {
+        _stallTimer ??= Timer(_stallThreshold, _tryFailover);
+      } else {
+        _stallTimer?.cancel();
+        _stallTimer = null;
+        _failoverAttempts = 0;
+      }
     });
     _errorSub = _player!.stream.error.listen((message) {
       if (!mounted) return;
+      final group = _groupFor(_current);
+      if (group.alternatives.length > 1 &&
+          _failoverAttempts < _maxFailoverAttempts) {
+        unawaited(_tryFailover());
+        return;
+      }
       setState(() {
         _loading = false;
         _error = message;
@@ -78,6 +123,7 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
   @override
   void dispose() {
     _osdHideTimer?.cancel();
+    _stallTimer?.cancel();
     _bufferingSub?.cancel();
     _errorSub?.cancel();
     _screensaverController.setPlaybackActive(false);
@@ -101,6 +147,10 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
 
   Future<void> _openChannel(int index) async {
     final token = ++_openToken;
+    _stallTimer?.cancel();
+    _stallTimer = null;
+    _alternativeIndex = 0;
+    _failoverAttempts = 0;
     setState(() {
       _currentIndex = index;
       _loading = true;
@@ -117,11 +167,15 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
       setState(() => _loading = false);
     } on TimeoutException {
       if (!mounted || token != _openToken) return;
+      if (await _tryFailover()) return;
+      if (!mounted || token != _openToken) return;
       setState(() {
         _loading = false;
         _error = 'La chaîne ne répond pas (délai dépassé)';
       });
     } catch (e) {
+      if (!mounted || token != _openToken) return;
+      if (await _tryFailover()) return;
       if (!mounted || token != _openToken) return;
       setState(() {
         _loading = false;
@@ -130,6 +184,45 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
     }
 
     unawaited(_loadEpg(token));
+  }
+
+  /// Tries the next source configured for this same logical channel (see
+  /// ChannelGroup), round-robin, up to [_maxFailoverAttempts] - called
+  /// after [_stallThreshold] of continuous buffering, on a hard player
+  /// error, or when opening a source times out/throws. Leaves
+  /// _currentIndex and the EPG alone: from the viewer's side this is still
+  /// the same channel, just a different source under it. A no-op (falls
+  /// through to whatever the caller does when this returns false) once
+  /// there's only one source or attempts are spent.
+  Future<bool> _tryFailover() async {
+    _stallTimer = null;
+    if (!mounted) return false;
+
+    final group = _groupFor(_current);
+    if (group.alternatives.length <= 1) return false;
+    if (_failoverAttempts >= _maxFailoverAttempts) return false;
+    _failoverAttempts++;
+    _alternativeIndex = (_alternativeIndex + 1) % group.alternatives.length;
+    final source = group.alternatives[_alternativeIndex];
+
+    final token = ++_openToken;
+    try {
+      await _player!.open(Media(source.streamUrl)).timeout(_openTimeout);
+    } catch (_) {
+      // Opening this alternative itself failed/timed out - treat it the
+      // same as a stall on it and keep going below.
+    }
+    if (!mounted || token != _openToken) return true;
+
+    // media_kit's buffering stream only fires on a real transition, and it
+    // can easily stay continuously true across the open() above (still
+    // buffering on the new source) - nothing would toggle it false-then-
+    // true again to re-arm the listener's own timer, so this re-arms
+    // itself directly whenever there are attempts left to spend.
+    if (_buffering && _failoverAttempts < _maxFailoverAttempts) {
+      _stallTimer = Timer(_stallThreshold, _tryFailover);
+    }
+    return true;
   }
 
   Future<void> _loadEpg(int token) async {
@@ -229,7 +322,12 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                entry.sourceName,
+                // Not just entry.sourceName: after a Smart Channels
+                // failover this channel is still `entry`, but the stream
+                // actually playing is a different source's copy of it -
+                // showing the original would be a straight-up lie about
+                // what's on screen right now.
+                _activeSource.sourceName,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.7),
                   fontSize: 14,
