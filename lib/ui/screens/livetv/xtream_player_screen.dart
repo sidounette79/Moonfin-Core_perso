@@ -8,6 +8,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../../data/models/channel_group.dart';
 import '../../../data/models/playable_channel.dart';
+import '../../../data/services/stream_health_tracker.dart';
 import '../../screensaver/screensaver_controller.dart';
 
 /// 30.09, Sid: "un truc complet qui marche bien" - direct IPTV playback
@@ -48,6 +49,7 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
   static const _maxFailoverAttempts = 3;
 
   final _screensaverController = GetIt.instance<ScreensaverController>();
+  final _healthTracker = StreamHealthTracker();
   final _focusNode = FocusNode(debugLabel: 'xtreamPlayer');
 
   Player? _player;
@@ -70,6 +72,7 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
   Timer? _stallTimer;
   int _alternativeIndex = 0;
   int _failoverAttempts = 0;
+  final Set<String> _triedSourcesThisChannel = {};
 
   PlayableChannel get _current => widget.channels[_currentIndex];
 
@@ -151,6 +154,7 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
     _stallTimer = null;
     _alternativeIndex = 0;
     _failoverAttempts = 0;
+    _triedSourcesThisChannel.clear();
     setState(() {
       _currentIndex = index;
       _loading = true;
@@ -165,6 +169,7 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
       await _player!.open(Media(url)).timeout(_openTimeout);
       if (!mounted || token != _openToken) return;
       setState(() => _loading = false);
+      unawaited(_healthTracker.recordSuccess(url));
     } on TimeoutException {
       if (!mounted || token != _openToken) return;
       if (await _tryFailover()) return;
@@ -187,13 +192,14 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
   }
 
   /// Tries the next source configured for this same logical channel (see
-  /// ChannelGroup), round-robin, up to [_maxFailoverAttempts] - called
-  /// after [_stallThreshold] of continuous buffering, on a hard player
-  /// error, or when opening a source times out/throws. Leaves
-  /// _currentIndex and the EPG alone: from the viewer's side this is still
-  /// the same channel, just a different source under it. A no-op (falls
-  /// through to whatever the caller does when this returns false) once
-  /// there's only one source or attempts are spent.
+  /// ChannelGroup), up to [_maxFailoverAttempts] - called after
+  /// [_stallThreshold] of continuous buffering, on a hard player error, or
+  /// when opening a source times out/throws. Leaves _currentIndex and the
+  /// EPG alone: from the viewer's side this is still the same channel,
+  /// just a different source under it. A no-op (falls through to whatever
+  /// the caller does when this returns false) once there's only one
+  /// source, every source has already been tried this channel, or attempts
+  /// are spent.
   Future<bool> _tryFailover() async {
     _stallTimer = null;
     if (!mounted) return false;
@@ -201,13 +207,27 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
     final group = _groupFor(_current);
     if (group.alternatives.length <= 1) return false;
     if (_failoverAttempts >= _maxFailoverAttempts) return false;
+
+    // The source being abandoned just proved unreliable right now -
+    // worth remembering for next time even if this exact session gives up
+    // on this channel after this.
+    unawaited(_healthTracker.recordFailure(_activeSource.streamUrl));
+    _triedSourcesThisChannel.add(_activeSource.streamUrl);
+
+    final ordered = _healthTracker.orderByReliability(group.alternatives);
+    final next = ordered
+        .where((c) => !_triedSourcesThisChannel.contains(c.streamUrl))
+        .firstOrNull;
+    if (next == null) return false;
+
     _failoverAttempts++;
-    _alternativeIndex = (_alternativeIndex + 1) % group.alternatives.length;
-    final source = group.alternatives[_alternativeIndex];
+    _alternativeIndex = group.alternatives.indexOf(next);
+    _triedSourcesThisChannel.add(next.streamUrl);
 
     final token = ++_openToken;
     try {
-      await _player!.open(Media(source.streamUrl)).timeout(_openTimeout);
+      await _player!.open(Media(next.streamUrl)).timeout(_openTimeout);
+      unawaited(_healthTracker.recordSuccess(next.streamUrl));
     } catch (_) {
       // Opening this alternative itself failed/timed out - treat it the
       // same as a stall on it and keep going below.

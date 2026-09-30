@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 
 import '../../../../data/models/playable_channel.dart';
+import '../../../../data/services/epg_channel_matcher.dart';
 import '../../../../data/services/iptv_channel_loader.dart';
+import '../../../../preference/user_preferences.dart';
 import '../xtream_player_screen.dart';
 import 'epg_genre.dart';
 import 'widgets/epg_channel_cell.dart';
@@ -38,6 +41,8 @@ class _XtreamEpgScreenState extends State<XtreamEpgScreen> {
   static const _windowAfter = Duration(hours: 5);
 
   final _loader = IptvChannelLoader();
+  final _prefs = GetIt.instance<UserPreferences>();
+  late Set<String> _favorites = _prefs.getIptvFavoriteChannels();
   // The ruler is the one real drag surface; every row's own scrollview is
   // NeverScrollable and just mirrors the ruler's offset (see
   // _onRulerScroll) - dragging any one row directly isn't wired, the ruler
@@ -127,6 +132,13 @@ class _XtreamEpgScreenState extends State<XtreamEpgScreen> {
     );
   }
 
+  Future<void> _toggleFavorite(PlayableChannel channel) async {
+    final key = EpgChannelMatcher.groupingKey(channel.name);
+    final nowFavorite = !_favorites.contains(key);
+    await _prefs.setIptvChannelFavorite(key, nowFavorite);
+    setState(() => _favorites = _prefs.getIptvFavoriteChannels());
+  }
+
   Widget _timeRuler() {
     final hours = _windowEnd.difference(_windowStart).inHours;
     return SizedBox(
@@ -183,12 +195,16 @@ class _XtreamEpgScreenState extends State<XtreamEpgScreen> {
             width: _railWidth,
             child: GestureDetector(
               onTap: () => _play(channels, index),
+              onLongPress: () => _toggleFavorite(channel),
               child: EpgChannelCell(
                 logoUrl: channel.iconUrl,
                 name: channel.name,
                 number: '${index + 1}',
                 focused: false,
                 apple: false,
+                isFavorite: _favorites.contains(
+                  EpgChannelMatcher.groupingKey(channel.name),
+                ),
               ),
             ),
           ),

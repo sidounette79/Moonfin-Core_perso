@@ -3868,6 +3868,45 @@ class UserPreferences extends ChangeNotifier {
     await saveM3uProviders(providers);
   }
 
+  // 30.09, Sid: "favoris pour les chaînes IPTV" - keyed by
+  // EpgChannelMatcher.groupingKey rather than a streamUrl or provider+id:
+  // she thinks of "BBC One" as one favourite, not as a specific provider's
+  // specific copy of it, and Smart Channels already groups channels the
+  // same way for failover.
+  static final iptvFavoriteChannels = Preference<String>(
+    key: 'iptv_favorite_channels',
+    defaultValue: '[]',
+  );
+
+  Set<String> getIptvFavoriteChannels() {
+    try {
+      final list = jsonDecode(get(iptvFavoriteChannels)) as List;
+      return list.cast<String>().toSet();
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> setIptvChannelFavorite(String groupKey, bool favorite) async {
+    final favorites = getIptvFavoriteChannels();
+    if (favorite) {
+      favorites.add(groupKey);
+    } else {
+      favorites.remove(groupKey);
+    }
+    await set(iptvFavoriteChannels, jsonEncode(favorites.toList()));
+  }
+
+  // 30.09, Sid: "historique de fiabilité" - per-source (streamUrl, since
+  // that's what's actually tried/abandoned) success/failure counts, so
+  // Smart Channels' failover can try a group's historically reliable
+  // sources before one that's stalled or errored out every time it's been
+  // tried. See StreamHealthTracker.
+  static final iptvStreamHealth = Preference<String>(
+    key: 'iptv_stream_health',
+    defaultValue: '{}',
+  );
+
   List<AggregatedItem> filterContinueWatching(List<AggregatedItem> items) {
     final hidden = getHiddenContinueWatchingItems();
     if (hidden.isEmpty) return items;
