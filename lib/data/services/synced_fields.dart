@@ -53,6 +53,7 @@ class SyncedField {
     this.enumValues,
     this.receiveOnly = false,
     this.fallbackInt,
+    this.alwaysGlobal = false,
   });
 
   /// Key used in the profile JSON. It often differs from the local preference name.
@@ -72,6 +73,18 @@ class SyncedField {
 
   /// Used by [SyncCodec.textAsInt] when the stored string won't parse.
   final int? fallbackInt;
+
+  /// 30.09, Sid — "j'ai bien inscrit les fournisseurs iptv sur mon mobile,
+  /// dans la TV je n'en ai aucun... le sync ne fonctionne pas comme ça".
+  /// Most fields here are display preferences that legitimately differ per
+  /// device profile (mobile/tv/desktop) - that's the whole point of
+  /// profiles. A field marked true here is different in kind: an account
+  /// credential (IPTV provider logins) that should read the same on every
+  /// device regardless of its profile. It's pushed straight to the global
+  /// profile instead of the device's own one (see
+  /// PluginSyncService.pushSettingsForProfile), which every device profile
+  /// already inherits from via /Settings/Resolved/$profile server-side.
+  final bool alwaysGlobal;
 }
 
 /// Every field carried through the generic sync path.
@@ -90,11 +103,15 @@ final List<SyncedField> syncedFields = <SyncedField>[
   // 30.09, Sid: "il faudra que les modifs, sélections, etc puissent se
   // reporter d'un appareil à l'autre" - direct IPTV provider list +
   // selected categories, same reasoning as the Live TV hide/group lists
-  // just above.
-  SyncedField('xtreamProviders', UserPreferences.xtreamProviders, SyncCodec.text),
-  SyncedField('xtreamSelectedCategoryIds', UserPreferences.xtreamSelectedCategoryIds, SyncCodec.text),
-  SyncedField('xtreamExcludedChannelIds', UserPreferences.xtreamExcludedChannelIds, SyncCodec.text),
-  SyncedField('m3uProviders', UserPreferences.m3uProviders, SyncCodec.text),
+  // just above. alwaysGlobal: these are account credentials, not a display
+  // preference - found live the same day ("j'ai bien inscrit les
+  // fournisseurs iptv sur mon mobile, dans la TV je n'en ai aucun") that
+  // scoping them per device profile like everything else here left them
+  // stuck on whichever device set them up first.
+  SyncedField('xtreamProviders', UserPreferences.xtreamProviders, SyncCodec.text, alwaysGlobal: true),
+  SyncedField('xtreamSelectedCategoryIds', UserPreferences.xtreamSelectedCategoryIds, SyncCodec.text, alwaysGlobal: true),
+  SyncedField('xtreamExcludedChannelIds', UserPreferences.xtreamExcludedChannelIds, SyncCodec.text, alwaysGlobal: true),
+  SyncedField('m3uProviders', UserPreferences.m3uProviders, SyncCodec.text, alwaysGlobal: true),
   SyncedField('visualTheme', UserPreferences.visualTheme, SyncCodec.enumName, enumValues: prefs.VisualThemeId.values),
   SyncedField('customThemeId', UserPreferences.customThemeId, SyncCodec.text),
   SyncedField('customFontFamily', UserPreferences.customFontFamily, SyncCodec.enumName, enumValues: prefs.CustomFontFamily.values),
@@ -102,7 +119,11 @@ final List<SyncedField> syncedFields = <SyncedField>[
   SyncedField('navbarPosition', UserPreferences.navbarPosition, SyncCodec.enumName, enumValues: NavigationLayout.availableNavbarPositions),
   SyncedField('bottomNavbarStyle', UserPreferences.bottomNavbarStyle, SyncCodec.enumName, enumValues: prefs.BottomNavbarStyle.values),
   SyncedField('bottomNavbarTabs', UserPreferences.bottomNavbarTabs, SyncCodec.csvList),
-  SyncedField('pinnedLibraryIds', UserPreferences.pinnedLibraryIds, SyncCodec.csvList),
+  // 30.09, Sid: "je dois refaire sur chaque appareil" - same alwaysGlobal
+  // fix as the IPTV providers above: pinned libraries were scoped per
+  // device profile like a display preference, but she wants one pinned
+  // once to stay pinned everywhere.
+  SyncedField('pinnedLibraryIds', UserPreferences.pinnedLibraryIds, SyncCodec.csvList, alwaysGlobal: true),
   SyncedField('focusColor', UserPreferences.focusColor, SyncCodec.enumName, enumValues: prefs.AppTheme.values),
   SyncedField('watchedIndicator', UserPreferences.watchedIndicatorBehavior, SyncCodec.enumName, enumValues: prefs.WatchedIndicatorBehavior.values),
   SyncedField('cardFocusExpansion', UserPreferences.cardFocusExpansion, SyncCodec.boolean),

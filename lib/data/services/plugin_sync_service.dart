@@ -712,8 +712,40 @@ class PluginSyncService extends ChangeNotifier {
 
     if (!supportedProfiles.contains(profile)) return;
 
+    await _pushProfilePayload(
+      client,
+      profile: profile,
+      payload: _buildProfileFromLocal(),
+      force: force,
+    );
+
+    // 30.09, Sid: "j'ai bien inscrit les fournisseurs iptv sur mon mobile,
+    // dans la TV je n'en ai aucun... le sync ne fonctionne pas comme ça" -
+    // SyncedField.alwaysGlobal fields (account credentials, not display
+    // preferences) get a second push straight to the global profile,
+    // regardless of which profile this device is pushing under, since
+    // /Settings/Resolved/$profile already has every device profile inherit
+    // from global server-side.
+    if (profile != 'global') {
+      final globalPayload = _buildAlwaysGlobalProfileFromLocal();
+      if (globalPayload.isNotEmpty) {
+        await _pushProfilePayload(
+          client,
+          profile: 'global',
+          payload: globalPayload,
+          force: force,
+        );
+      }
+    }
+  }
+
+  Future<void> _pushProfilePayload(
+    MediaServerClient client, {
+    required String profile,
+    required Map<String, dynamic> payload,
+    bool force = false,
+  }) async {
     try {
-      final payloadProfile = _buildProfileFromLocal();
       final headers = _authHeaders(client);
       if (headers == null) return;
 
@@ -721,14 +753,14 @@ class PluginSyncService extends ChangeNotifier {
       // settingsUpdated event straight back at this device, and the resulting
       // apply and push echo never converges on its own.
       final snapshotKey = _snapshotKey(client, profile);
-      final payloadJson = jsonEncode(payloadProfile);
+      final payloadJson = jsonEncode(payload);
       if (!force && _lastSyncedProfileJson[snapshotKey] == payloadJson) {
         return;
       }
 
       await _dio.post(
         '${client.baseUrl}/Moonfin/Settings/Profile/$profile',
-        data: {'profile': payloadProfile, 'clientId': 'moonfin-flutter'},
+        data: {'profile': payload, 'clientId': 'moonfin-flutter'},
         options: Options(
           headers: {...headers, 'Content-Type': 'application/json'},
         ),
@@ -1896,8 +1928,13 @@ class PluginSyncService extends ChangeNotifier {
     final payload = <String, dynamic>{
       // Everything the field table describes. The bespoke entries below cover the
       // settings that need real logic rather than a straight codec.
+      // alwaysGlobal fields are pushed separately, straight to the global
+      // profile (see pushSettingsForProfile) - left out here so a normal
+      // per-device push doesn't also freeze a stale device-local copy that
+      // would then outrank the global value when profiles resolve.
       for (final field in syncedFields)
-        if (!field.receiveOnly) field.serverKey: _encodeSyncedField(field),
+        if (!field.receiveOnly && !field.alwaysGlobal)
+          field.serverKey: _encodeSyncedField(field),
       'sinceYouWatchedNumRows': _prefs.get(UserPreferences.sinceYouWatchedNumRows).value,
       'mediaBarEnabled': mediaBarEnabled,
       'mediaBarMode': mediaBarMode,
@@ -1932,6 +1969,18 @@ class PluginSyncService extends ChangeNotifier {
     }
 
     return payload;
+  }
+
+  /// The subset of [syncedFields] marked [SyncedField.alwaysGlobal] - account
+  /// credentials (IPTV providers) rather than device-scoped display
+  /// preferences, pushed straight to the global profile regardless of which
+  /// profile this device pushes its own settings under.
+  Map<String, dynamic> _buildAlwaysGlobalProfileFromLocal() {
+    return {
+      for (final field in syncedFields)
+        if (!field.receiveOnly && field.alwaysGlobal)
+          field.serverKey: _encodeSyncedField(field),
+    };
   }
 
   void _onPrefsChanged() {
