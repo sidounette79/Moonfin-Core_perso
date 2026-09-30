@@ -779,6 +779,18 @@ class _MediaBarState extends State<MediaBar>
     }
   }
 
+  /// Mobile swipe-to-change-slide, shared by every GestureDetector that
+  /// should honour it (the full banner, and the title/info strip on top of
+  /// it) so a swipe works no matter where on the slide it starts.
+  void _handleSlideSwipe(DragEndDetails details, int itemCount) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity < -300 && _currentIndex < itemCount - 1) {
+      _goToPage(_currentIndex + 1);
+    } else if (velocity > 300 && _currentIndex > 0) {
+      _goToPage(_currentIndex - 1);
+    }
+  }
+
   List<Widget> _buildNavArrows(
     BuildContext context,
     int itemCount, {
@@ -2032,6 +2044,15 @@ class _MediaBarState extends State<MediaBar>
         child: GestureDetector(
           onTap: () => _navigateToItem(context, items),
           onLongPress: () => _navigateToItemAndPlay(context, items),
+          // 30.09, Sid: "la barre media Spotlight ne scroll pas sur mobile,
+          // ça marche en TV" - the swipe-to-change-slide handler only lived
+          // on the small GestureDetector wrapping the bottom title/info
+          // strip (below), not this outer one covering the actual banner
+          // image most of a swipe lands on - a drag there hit a detector
+          // with no horizontal-drag handler at all and was just dropped.
+          onHorizontalDragEnd: PlatformDetection.useMobileUi
+              ? (details) => _handleSlideSwipe(details, items.length)
+              : null,
           child: Padding(
             padding: EdgeInsets.only(top: toolbarInset),
             child: SizedBox(
@@ -2103,16 +2124,8 @@ class _MediaBarState extends State<MediaBar>
                             ? HitTestBehavior.translucent
                             : HitTestBehavior.deferToChild,
                         onHorizontalDragEnd: PlatformDetection.useMobileUi
-                            ? (details) {
-                                final velocity = details.primaryVelocity ?? 0;
-                                if (velocity < -300 &&
-                                    _currentIndex < items.length - 1) {
-                                  _goToPage(_currentIndex + 1);
-                                } else if (velocity > 300 &&
-                                    _currentIndex > 0) {
-                                  _goToPage(_currentIndex - 1);
-                                }
-                              }
+                            ? (details) =>
+                                  _handleSlideSwipe(details, items.length)
                             : null,
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 300),
