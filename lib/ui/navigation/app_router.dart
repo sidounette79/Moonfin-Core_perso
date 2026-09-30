@@ -65,6 +65,8 @@ import '../screens/playback/appletv_player_host_screen.dart';
 import '../screens/playback/appletv_livetv_player_host_screen.dart';
 import '../screens/search/search_screen.dart';
 import '../screens/settings/settings_side_panel.dart';
+import '../screens/settings/xtream_providers_screen.dart';
+import '../screens/livetv/xtream_channels_screen.dart';
 import '../screens/setup/setup_wizard_gate.dart';
 import '../screens/setup/setup_wizard_screen.dart';
 import '../screens/admin/admin_shell_screen.dart';
@@ -581,6 +583,16 @@ final appRouter = GoRouter(
           },
         ),
       ],
+    ),
+
+    // 30.09, Sid: direct Xtream Codes IPTV, bypassing Emby's own Live TV.
+    GoRoute(
+      path: Destinations.xtreamProviders,
+      builder: (context, state) => const XtreamProvidersScreen(),
+    ),
+    GoRoute(
+      path: Destinations.xtreamChannels,
+      builder: (context, state) => const XtreamChannelsScreen(),
     ),
 
     // Playback

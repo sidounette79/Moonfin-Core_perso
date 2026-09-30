@@ -84,6 +84,15 @@ class _IntegrationsScreenState extends State<_IntegrationsScreen> {
                 const _MetadataRatingsScreen(),
               ),
             ),
+            // 30.09: direct Xtream Codes IPTV, bypassing Emby's own Live TV -
+            // a real GoRouter push rather than pushSettingsScreen since this
+            // is a standalone screen, not one of this panel's own.
+            _TvSettingsListTile(
+              leading: const Icon(Icons.live_tv, color: Color(0xFF4CAF50)),
+              title: const Text('IPTV'),
+              subtitle: const Text('Fournisseurs Xtream, hors Emby'),
+              onTap: () => context.push(Destinations.xtreamProviders),
+            ),
             _TvSettingsListTile(
               leading: Image.asset(
                 'assets/icons/seerr.png',

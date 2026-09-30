@@ -100,6 +100,10 @@ class Destinations {
   static const liveTvSeriesRecordings = '/live-tv/series-recordings';
   static const liveTvPlayer = '/live-tv/player';
 
+  // 30.09: direct Xtream Codes IPTV, separate from Emby's own Live TV above.
+  static const xtreamProviders = '/iptv/providers';
+  static const xtreamChannels = '/iptv/channels';
+
   // Playback
   static const videoPlayer = '/player/video';
   static const externalPlayer = '/player/external';
