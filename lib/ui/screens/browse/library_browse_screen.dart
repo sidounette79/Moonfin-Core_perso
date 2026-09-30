@@ -211,16 +211,11 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
       cleanupGridFocusNodes(length);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
+        // 30.09: the "land on the first item, not the toolbar's home/back
+        // button" fix now lives in restoreGridFocusIfNeeded() itself
+        // (grid_focus_node_mixin.dart), so every screen using this mixin
+        // gets it, not just this one - see that method's own comment.
         restoreGridFocusIfNeeded();
-        // A fresh entry (nothing remembered yet) otherwise leaves the D-pad
-        // sitting on the toolbar's home/back button, since it's the first
-        // focusable widget in the tree - Sid, 27.09: she wants the cursor to
-        // land on an item straight away, not on that chrome.
-        if (PlatformDetection.isTV &&
-            lastFocusedGridIndex == null &&
-            _vm.items.isNotEmpty) {
-          getGridItemFocusNode(0).requestFocus();
-        }
       });
     }
   }

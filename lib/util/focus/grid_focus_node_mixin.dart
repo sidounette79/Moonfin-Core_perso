@@ -52,7 +52,21 @@ mixin GridFocusNodeMixin<T extends StatefulWidget> on State<T> {
     if (ModalRoute.of(context)?.isCurrent != true) return;
     if (lastFocusedGridContentVersion == gridContentVersion) return;
     final idx = lastFocusedGridIndex;
-    if (idx == null) return;
+    if (idx == null) {
+      // 30.09, Sid: "on arrive toujours sur la flèche (home en mode TV)
+      // et pas sur le premier poster" - a fresh visit (nothing remembered
+      // yet) otherwise leaves default Flutter focus traversal to land on
+      // whatever's first in the tree, which is the toolbar's home/back
+      // button, not the grid. Was fixed once for library_browse_screen.dart
+      // only (27.09), gated to isTV - moved into the shared mixin so every
+      // screen using it gets the same fix, and dropped the TV-only gate
+      // since she confirmed the same thing happens on mobile too.
+      final node = gridItemFocusNodes[0];
+      if (node != null && node.canRequestFocus) {
+        node.requestFocus();
+      }
+      return;
+    }
     // The grid may have shrunk, so fall back to the last available row when the
     // remembered index no longer exists.
     var node = gridItemFocusNodes[idx];
