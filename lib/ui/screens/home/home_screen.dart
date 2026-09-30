@@ -5480,21 +5480,6 @@ class _ContentRowsState extends State<_ContentRows>
           late final double ar;
           late final double width;
           late final String? imageUrl;
-          // 28.09, Sid: "Continuer à regarder" cards were growing into an
-          // episode still on focus and she wants them to stay a plain
-          // poster - this is the same V2 "Modern" row style's expand-on-
-          // focus behavior every other row already uses (not a bug in this
-          // row specifically), so opting resume/nextUp out here is the
-          // targeted fix rather than disabling V2 style globally.
-          final isResumeRow =
-              row.rowType == HomeRowType.resume ||
-              row.rowType == HomeRowType.nextUp;
-          final canUseExpandedV2Card =
-              isRowsV2 &&
-              effectiveV2Focused &&
-              !row.isAudio &&
-              !isModernMyMediaStatic &&
-              !isResumeRow;
 
           if (isRowsV2) {
             if (isModernMyMediaStatic) {
@@ -5510,11 +5495,17 @@ class _ContentRowsState extends State<_ContentRows>
                 isMyMediaRow: true,
               );
             } else {
-              ar = canUseExpandedV2Card ? v2FocusedAspect : v2PortraitAspect;
-              width = canUseExpandedV2Card
-                  ? v2FocusedWidthForCurrentViewport
-                  : v2PortraitWidth;
-              final posterUrl = _cachedRowImageUrl(
+              // 30.09, Sid: "j'ai toujours ce souci de Poster / Miniature de
+              // l'épisode / Entrer dans la fiche" on every row beyond
+              // Resume/Next Up too - same V2 "Modern" expand-on-focus swap
+              // to an episode thumbnail (28.09's targeted fix only ever
+              // covered resume/nextUp). Extended to every row here; only
+              // Mes bibliothèques keeps its own expand behavior, via its
+              // own separate isModernMyMediaStatic/modernCardsOnMyMediaRow
+              // setting above.
+              ar = v2PortraitAspect;
+              width = v2PortraitWidth;
+              imageUrl = _cachedRowImageUrl(
                 item,
                 imageApi,
                 v2ImageHeight,
@@ -5523,16 +5514,6 @@ class _ContentRowsState extends State<_ContentRows>
                 requestScale,
                 isMyMediaRow: row.rowType == HomeRowType.libraryTiles,
               );
-              imageUrl = canUseExpandedV2Card
-                  ? (_resolveV2FocusedImageUrl(
-                          item,
-                          imageApi,
-                          v2ImageHeight,
-                          useSeriesThumbs,
-                          requestScale,
-                        ) ??
-                        posterUrl)
-                  : posterUrl;
             }
           } else {
             final image = _unfocusedCardImage(
@@ -5648,12 +5629,10 @@ class _ContentRowsState extends State<_ContentRows>
             if (showUserRatings && userRating.isNotEmpty) {
               cardSubtitle = userRating;
             } else {
-              cardSubtitle = (canUseExpandedV2Card &&
-                      row.id != 'radarr_calendar' &&
-                      row.id != 'sonarr_calendar' &&
-                      row.id != 'merged_calendar')
-                  ? _v2MetadataLine(item)
-                  : item.subtitle;
+              // 30.09: was gated on canUseExpandedV2Card (now removed, see
+              // above) - the expanded-card metadata line never shows since
+              // no row still expands on focus outside Mes bibliothèques.
+              cardSubtitle = item.subtitle;
             }
             cardSubtitleWidget = null;
           }
