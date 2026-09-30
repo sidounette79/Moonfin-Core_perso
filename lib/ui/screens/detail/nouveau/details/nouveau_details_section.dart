@@ -1084,6 +1084,11 @@ class NouveauDetailsSectionState extends State<NouveauDetailsSection> {
     final hasReadingContent = hasSeerrStats || hasTechnicalDetails;
 
     var fileName = '';
+    // 30.09, Sid: "emby me montre volumes/data/videos etc... ça me permet
+    // de savoir où c'est" - same fix as modern_detail_content.dart, kept
+    // for Nouveau too since she switched styles mid-request: "faudrait
+    // que ça apparaisse quelque soit le modèle."
+    var filePath = '';
     var formattedSize = '';
     var container = '';
 
@@ -1122,6 +1127,7 @@ class NouveauDetailsSectionState extends State<NouveauDetailsSection> {
       final path = mediaSource['Path'] as String? ?? '';
 
       fileName = path.split('/').last.split('\\').last;
+      filePath = path;
 
       container =
           mediaSource['Container']?.toString().toUpperCase() ?? 'Unknown';
@@ -1407,6 +1413,7 @@ class NouveauDetailsSectionState extends State<NouveauDetailsSection> {
                               _buildDesktopContent(
                                 context,
                                 fileName: fileName,
+                                filePath: filePath,
                                 formattedSize: formattedSize,
                                 container: container,
                                 videoDetails: videoDetails,
@@ -1420,6 +1427,7 @@ class NouveauDetailsSectionState extends State<NouveauDetailsSection> {
                               _buildCompactContent(
                                 context,
                                 fileName: fileName,
+                                filePath: filePath,
                                 formattedSize: formattedSize,
                                 container: container,
                                 videoDetails: videoDetails,
@@ -1594,6 +1602,7 @@ class NouveauDetailsSectionState extends State<NouveauDetailsSection> {
   Widget _buildDesktopContent(
     BuildContext context, {
     required String fileName,
+    required String filePath,
     required String formattedSize,
     required String container,
     required List<String> videoDetails,
@@ -1616,6 +1625,7 @@ class NouveauDetailsSectionState extends State<NouveauDetailsSection> {
             child: _buildFileContent(
               context,
               fileName: fileName,
+              filePath: filePath,
               formattedSize: formattedSize,
               container: container,
               includePlaybackCapability: true,
@@ -1674,6 +1684,7 @@ class NouveauDetailsSectionState extends State<NouveauDetailsSection> {
   Widget _buildCompactContent(
     BuildContext context, {
     required String fileName,
+    required String filePath,
     required String formattedSize,
     required String container,
     required List<String> videoDetails,
@@ -1692,6 +1703,7 @@ class NouveauDetailsSectionState extends State<NouveauDetailsSection> {
         child: _buildFileContent(
           context,
           fileName: fileName,
+          filePath: filePath,
           formattedSize: formattedSize,
           container: container,
           includePlaybackCapability: true,
@@ -1764,6 +1776,7 @@ class NouveauDetailsSectionState extends State<NouveauDetailsSection> {
   Widget _buildFileContent(
     BuildContext context, {
     required String fileName,
+    required String filePath,
     required String formattedSize,
     required String container,
     required bool includePlaybackCapability,
@@ -1788,6 +1801,22 @@ class NouveauDetailsSectionState extends State<NouveauDetailsSection> {
               height: 1.35,
             ),
           ),
+
+        // 30.09, Sid: "emby me montre volumes/data/videos etc... ça me
+        // permet de savoir où c'est" - the full server path, previously
+        // only ever truncated down to fileName above.
+        if (filePath.isNotEmpty) ...[
+          const SizedBox(height: 3),
+          Text(
+            filePath,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: textTheme.bodySmall?.copyWith(
+              color: foreground.withValues(alpha: 0.5),
+              height: 1.3,
+            ),
+          ),
+        ],
 
         const SizedBox(height: 7),
 
