@@ -1921,22 +1921,26 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
   // just hit) - a group's line is simply skipped when none of its fields
   // are enabled/have data. [_librarySubtitleLineGroups] (below) mirrors
   // this exact grouping to size the grid cell's reserved text height.
+  // 30.09, Sid: "ligne 1 année et durée / ligne 2 note communauté et note de
+  // la critique / ligne 3 dates / ligne 4 tags" - ratings split off year/
+  // runtime's line into their own, so a card showing both isn't a single
+  // crowded line; parentalRating/resolution stay alongside year/runtime as
+  // the same kind of quick fact. genres/director/studios/tagline/overview
+  // pushed to a 5th group rather than dropped.
   static const _librarySubtitleLineGroups = <List<LibraryCardField>>[
     [
       LibraryCardField.year,
       LibraryCardField.parentalRating,
       LibraryCardField.runtime,
       LibraryCardField.resolution,
-      LibraryCardField.communityRating,
-      LibraryCardField.criticRating,
-      LibraryCardField.personalRating,
     ],
+    [LibraryCardField.communityRating, LibraryCardField.criticRating, LibraryCardField.personalRating],
+    [LibraryCardField.lastPlayedDate, LibraryCardField.dateCreated],
     // 29.09, Sid: la ligne dédiée avait été repliée dans la ligne de date
     // quand le tag remontait toujours null (bug maintenant corrigé, voir
     // AggregatedItem.tags) - remise sur sa propre ligne maintenant que
     // l'étiquette s'affiche vraiment.
     [LibraryCardField.tags],
-    [LibraryCardField.lastPlayedDate, LibraryCardField.dateCreated],
     [
       LibraryCardField.genres,
       LibraryCardField.director,

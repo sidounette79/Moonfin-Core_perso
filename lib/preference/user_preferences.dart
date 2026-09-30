@@ -1756,10 +1756,13 @@ class UserPreferences extends ChangeNotifier {
   // this one on/off toggle - comma-separated LibraryCardField enum names,
   // in display order. Empty means "just the year", matching
   // useDetailedSubHeadings=false's old behavior.
+  // 30.09: added criticRating and dateCreated to the default - both already
+  // had a line reserved for them in library_browse_screen.dart's grouping
+  // but weren't actually enabled, so that line just never showed.
   static final libraryCardFields = Preference(
     key: 'pref_library_card_fields',
     defaultValue:
-        'year,parentalRating,runtime,resolution,communityRating,tags',
+        'year,parentalRating,runtime,resolution,communityRating,criticRating,dateCreated,tags',
   );
 
   static final hideBackdropsInLibraries = Preference(
