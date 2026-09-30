@@ -93,6 +93,8 @@ final List<SyncedField> syncedFields = <SyncedField>[
   // just above.
   SyncedField('xtreamProviders', UserPreferences.xtreamProviders, SyncCodec.text),
   SyncedField('xtreamSelectedCategoryIds', UserPreferences.xtreamSelectedCategoryIds, SyncCodec.text),
+  SyncedField('xtreamExcludedChannelIds', UserPreferences.xtreamExcludedChannelIds, SyncCodec.text),
+  SyncedField('m3uProviders', UserPreferences.m3uProviders, SyncCodec.text),
   SyncedField('visualTheme', UserPreferences.visualTheme, SyncCodec.enumName, enumValues: prefs.VisualThemeId.values),
   SyncedField('customThemeId', UserPreferences.customThemeId, SyncCodec.text),
   SyncedField('customFontFamily', UserPreferences.customFontFamily, SyncCodec.enumName, enumValues: prefs.CustomFontFamily.values),

@@ -8,6 +8,7 @@ import 'package:server_core/server_core.dart' hide ImageType;
 
 import '../data/models/aggregated_item.dart';
 import '../data/models/series_track_preference.dart';
+import '../data/models/m3u_provider.dart';
 import '../data/models/xtream_models.dart';
 import '../playback/audio_capability_profile.dart';
 import '../util/device_performance.dart';
@@ -301,6 +302,8 @@ class UserPreferences extends ChangeNotifier {
     // reads back another one's Xtream logins.
     'xtream_providers',
     'xtream_selected_category_ids',
+    'xtream_excluded_channel_ids',
+    'm3u_providers',
     'all_genres_image_type',
     'ass_enabled',
     'audio_night_mode',
@@ -3734,6 +3737,10 @@ class UserPreferences extends ChangeNotifier {
     if (selected.remove(providerId) != null) {
       await _saveXtreamSelectedCategoryIds(selected);
     }
+    final excluded = getXtreamExcludedChannelIds();
+    if (excluded.remove(providerId) != null) {
+      await _saveXtreamExcludedChannelIds(excluded);
+    }
   }
 
   /// providerId -> enabled category ids. A provider absent from this map
@@ -3774,6 +3781,88 @@ class UserPreferences extends ChangeNotifier {
       ids.remove(categoryId);
     }
     await _saveXtreamSelectedCategoryIds(map);
+  }
+
+  // 30.09, Sid: "un moyen de choisir les chaînes aussi" - refining inside a
+  // category she already selected. Stored as an exclusion list, not a
+  // selection list: a channel absent here is INCLUDED (the category
+  // checkbox already means "show everything in it" - same default as
+  // before this existed), so she only has to touch the handful of channels
+  // she actually wants to hide, not tick hundreds she wants to keep.
+  static final xtreamExcludedChannelIds = Preference<String>(
+    key: 'xtream_excluded_channel_ids',
+    defaultValue: '{}',
+  );
+
+  Map<String, List<String>> getXtreamExcludedChannelIds() {
+    try {
+      final map = jsonDecode(get(xtreamExcludedChannelIds)) as Map;
+      return map.map(
+        (k, v) => MapEntry(k as String, (v as List).cast<String>()),
+      );
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> _saveXtreamExcludedChannelIds(
+    Map<String, List<String>> excluded,
+  ) => set(xtreamExcludedChannelIds, jsonEncode(excluded));
+
+  Future<void> setXtreamChannelExcluded(
+    String providerId,
+    String streamId,
+    bool excluded,
+  ) async {
+    final map = getXtreamExcludedChannelIds();
+    final ids = map.putIfAbsent(providerId, () => <String>[]);
+    if (excluded) {
+      if (!ids.contains(streamId)) ids.add(streamId);
+    } else {
+      ids.remove(streamId);
+    }
+    await _saveXtreamExcludedChannelIds(map);
+  }
+
+  // 30.09, Sid: "j'ai fait une m3u qui regroupe mes 3 listes... rajoute
+  // [le support]" - a second IPTV source type alongside Xtream Codes.
+  // Simpler than a provider: just a name and a playlist URL, no
+  // credentials, no category curation (an M3U she built herself is
+  // already whatever selection she wanted).
+  static final m3uProviders = Preference<String>(
+    key: 'm3u_providers',
+    defaultValue: '[]',
+  );
+
+  List<M3uProvider> getM3uProviders() {
+    try {
+      final list = jsonDecode(get(m3uProviders)) as List;
+      return list
+          .whereType<Map>()
+          .map((e) => M3uProvider.fromJson(e.cast<String, dynamic>()))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> saveM3uProviders(List<M3uProvider> providers) =>
+      set(m3uProviders, jsonEncode(providers.map((p) => p.toJson()).toList()));
+
+  Future<void> addOrUpdateM3uProvider(M3uProvider provider) async {
+    final providers = getM3uProviders();
+    final index = providers.indexWhere((p) => p.id == provider.id);
+    if (index >= 0) {
+      providers[index] = provider;
+    } else {
+      providers.add(provider);
+    }
+    await saveM3uProviders(providers);
+  }
+
+  Future<void> removeM3uProvider(String providerId) async {
+    final providers = getM3uProviders()..removeWhere((p) => p.id == providerId);
+    await saveM3uProviders(providers);
   }
 
   List<AggregatedItem> filterContinueWatching(List<AggregatedItem> items) {

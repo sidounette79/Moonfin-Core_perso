@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
@@ -292,6 +294,14 @@ class _XtreamCategoryPickerScreenState
   final _repo = GetIt.instance<XtreamRepository>();
   List<XtreamCategory>? _categories;
   late Set<String> _selected;
+  // 30.09, Sid: "une fois les groupes choisis... un moyen de choisir les
+  // chaînes aussi, qui se dérouleraient en dessous des groupes" - stored as
+  // an exclusion set (see setXtreamChannelExcluded's own comment): a
+  // channel not in here stays included, so ticking a category still means
+  // "everything in it" until she hides a specific one.
+  late Set<String> _excludedChannelIds;
+  final Map<String, List<XtreamChannel>> _channelsByCategory = {};
+  final Set<String> _loadingCategoryChannels = {};
   String _filter = '';
 
   @override
@@ -301,6 +311,10 @@ class _XtreamCategoryPickerScreenState
         .getXtreamSelectedCategoryIds()[widget.provider.id]
         ?.toSet() ??
         {};
+    _excludedChannelIds = _prefs
+        .getXtreamExcludedChannelIds()[widget.provider.id]
+        ?.toSet() ??
+        {};
     _load();
   }
 
@@ -308,6 +322,26 @@ class _XtreamCategoryPickerScreenState
     final categories = await _repo.getLiveCategories(widget.provider);
     if (!mounted) return;
     setState(() => _categories = categories);
+    for (final categoryId in _selected) {
+      unawaited(_loadChannelsForCategory(categoryId));
+    }
+  }
+
+  Future<void> _loadChannelsForCategory(String categoryId) async {
+    if (_channelsByCategory.containsKey(categoryId) ||
+        _loadingCategoryChannels.contains(categoryId)) {
+      return;
+    }
+    setState(() => _loadingCategoryChannels.add(categoryId));
+    final channels = await _repo.getLiveStreams(
+      widget.provider,
+      categoryId: categoryId,
+    );
+    if (!mounted) return;
+    setState(() {
+      _channelsByCategory[categoryId] = channels;
+      _loadingCategoryChannels.remove(categoryId);
+    });
   }
 
   Future<void> _toggle(String categoryId, bool value) async {
@@ -322,6 +356,24 @@ class _XtreamCategoryPickerScreenState
       widget.provider.id,
       categoryId,
       value,
+    );
+    if (value) {
+      unawaited(_loadChannelsForCategory(categoryId));
+    }
+  }
+
+  Future<void> _toggleChannel(String streamId, bool included) async {
+    setState(() {
+      if (included) {
+        _excludedChannelIds.remove(streamId);
+      } else {
+        _excludedChannelIds.add(streamId);
+      }
+    });
+    await _prefs.setXtreamChannelExcluded(
+      widget.provider.id,
+      streamId,
+      !included,
     );
   }
 
@@ -361,10 +413,47 @@ class _XtreamCategoryPickerScreenState
               itemCount: filtered.length,
               itemBuilder: (context, index) {
                 final category = filtered[index];
-                return CheckboxListTile(
-                  title: Text(category.name),
-                  value: _selected.contains(category.id),
-                  onChanged: (v) => _toggle(category.id, v ?? false),
+                final isSelected = _selected.contains(category.id);
+                final channels = _channelsByCategory[category.id];
+                final loadingChannels =
+                    _loadingCategoryChannels.contains(category.id);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CheckboxListTile(
+                      title: Text(category.name),
+                      value: isSelected,
+                      onChanged: (v) => _toggle(category.id, v ?? false),
+                    ),
+                    if (isSelected && loadingChannels)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 32, bottom: 8),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    if (isSelected && !loadingChannels && channels != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16),
+                        child: Column(
+                          children: [
+                            for (final channel in channels)
+                              CheckboxListTile(
+                                dense: true,
+                                title: Text(channel.name),
+                                value: !_excludedChannelIds
+                                    .contains(channel.streamId.toString()),
+                                onChanged: (v) => _toggleChannel(
+                                  channel.streamId.toString(),
+                                  v ?? true,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                  ],
                 );
               },
             ),

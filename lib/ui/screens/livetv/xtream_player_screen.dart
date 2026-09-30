@@ -6,18 +6,8 @@ import 'package:get_it/get_it.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
-import '../../../data/models/xtream_models.dart';
-import '../../../data/repositories/xtream_repository.dart';
+import '../../../data/models/playable_channel.dart';
 import '../../screensaver/screensaver_controller.dart';
-
-/// One entry in the flat, cross-provider channel list this screen zaps
-/// through.
-class XtreamChannelEntry {
-  final XtreamProvider provider;
-  final XtreamChannel channel;
-
-  const XtreamChannelEntry(this.provider, this.channel);
-}
 
 /// 30.09, Sid: "un truc complet qui marche bien" - direct IPTV playback
 /// with channel zapping and a short EPG overlay, visually mirroring the
@@ -26,8 +16,10 @@ class XtreamChannelEntry {
 /// by media_kit directly instead of PlaybackManager, since these channels
 /// have no corresponding Emby item for the manager to resolve - same
 /// engine TrailerPlayerScreen already proves works for a raw stream URL.
+/// Takes PlayableChannel (not a raw XtreamChannel) so it works the same
+/// whether a channel came from Xtream Codes or a plain M3U playlist.
 class XtreamPlayerScreen extends StatefulWidget {
-  final List<XtreamChannelEntry> channels;
+  final List<PlayableChannel> channels;
   final int initialIndex;
 
   const XtreamPlayerScreen({
@@ -44,7 +36,6 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
   static const _openTimeout = Duration(seconds: 12);
   static const _osdAutoHideDelay = Duration(seconds: 5);
 
-  final _repo = GetIt.instance<XtreamRepository>();
   final _screensaverController = GetIt.instance<ScreensaverController>();
   final _focusNode = FocusNode(debugLabel: 'xtreamPlayer');
 
@@ -59,10 +50,10 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
   String? _error;
   bool _osdVisible = true;
   Timer? _osdHideTimer;
-  List<XtreamEpgEntry> _epg = const [];
+  List<EpgEntryData> _epg = const [];
   int _openToken = 0;
 
-  XtreamChannelEntry get _current => widget.channels[_currentIndex];
+  PlayableChannel get _current => widget.channels[_currentIndex];
 
   @override
   void initState() {
@@ -118,7 +109,7 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
     });
 
     final entry = _current;
-    final url = entry.provider.streamUrl(entry.channel.streamId);
+    final url = entry.streamUrl;
 
     try {
       await _player!.open(Media(url)).timeout(_openTimeout);
@@ -142,11 +133,9 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
   }
 
   Future<void> _loadEpg(int token) async {
-    final entry = _current;
-    final listings = await _repo.getShortEpg(
-      entry.provider,
-      entry.channel.streamId,
-    );
+    final fetchEpg = _current.fetchEpg;
+    if (fetchEpg == null) return;
+    final listings = await fetchEpg();
     if (!mounted || token != _openToken) return;
     setState(() => _epg = listings);
   }
@@ -231,7 +220,7 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                entry.channel.name,
+                entry.name,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -240,7 +229,7 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                entry.provider.name,
+                entry.sourceName,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.7),
                   fontSize: 14,
