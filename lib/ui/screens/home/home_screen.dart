@@ -102,7 +102,10 @@ const _kHomeStartThreshold = 20.0;
 /// débrancher on sait jamais)" - unplugged, not removed. Diagnosis moved to
 /// the series detail page (see NavDebugOverlay in modern_detail_content.dart);
 /// flip back to true if home needs it again.
-const _showHomeNavDebugOverlay = false;
+/// 30.09 (later): home needed it again - "descends -> première ligne de mes
+/// médias -> redescends -> ça saute direct à séries ajoutées récemment" with
+/// a visible jolt, Classic and Modern both. Re-plugged.
+const _showHomeNavDebugOverlay = true;
 
 /// Room for the title, subtitle and gaps that sit under classic card artwork.
 const _classicCardMetadataHeight = 50.0;
