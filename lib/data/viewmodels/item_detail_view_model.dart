@@ -203,6 +203,13 @@ List<AggregatedItem> seerrMissingCollectionItems({
 
 class ItemDetailViewModel extends ChangeNotifier {
   static const _episodeOverviewFields = 'Overview,RunTimeTicks,UserData';
+  // 30.09, Sid: "sur la page série, ça serait intéressant d'avoir [les
+  // boutons Audio/Sous-titres] de l'épisode" - only the NextUp fetch (a
+  // single item, unlike the season/series episode list fetches sharing
+  // _episodeOverviewFields above) needs the extra MediaSources payload, so
+  // it gets its own field list rather than bloating every episode in a
+  // whole-season/whole-series fetch just for this one card's sake.
+  static const _nextUpFields = '$_episodeOverviewFields,MediaSources';
 
   final MediaServerClient _client;
   final ItemMutationRepository _mutations;
@@ -1049,7 +1056,7 @@ class ItemDetailViewModel extends ChangeNotifier {
       final data = await _client.itemsApi.getNextUp(
         seriesId: itemId,
         limit: 1,
-        fields: _episodeOverviewFields,
+        fields: _nextUpFields,
       );
       final items = (data['Items'] as List?) ?? [];
       if (items.isNotEmpty) {

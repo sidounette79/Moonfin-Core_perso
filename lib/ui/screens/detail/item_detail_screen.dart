@@ -7090,16 +7090,26 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         } catch (_) {}
       }
     }
+    // 30.09, Sid: "sur la page série, ça serait intéressant d'avoir [Audio/
+    // Sous-titres] de l'épisode" - a Series item has no media streams of
+    // its own (it's a container, not a file), which is why these buttons
+    // never showed there at all. Falls back to the resolved next-up
+    // episode's own streams (server-fetched with MediaSources specifically
+    // for this, see ItemDetailViewModel._nextUpFields) so a track picked
+    // here is what plays when Reprendre starts that episode - same
+    // _selectedAudioIndex/_showSubtitleSelector state _play() already
+    // reads regardless of which item's page it was set from.
+    final streamSourceItem = (isSeries ? viewModel.nextUp : null) ?? item;
     final selectedSource = selectedMediaSourceForItem(
-      item,
+      streamSourceItem,
       widget.selectedMediaSourceId,
     );
-    final mediaStreams = mediaStreamsForItem(item, selectedSource);
+    final mediaStreams = mediaStreamsForItem(streamSourceItem, selectedSource);
     final subtitleStreams = mediaStreams
         .where((s) => s['Type'] == 'Subtitle')
         .toList();
     final audioStreams = _streamsForTrackSelectors(
-      item,
+      streamSourceItem,
       selectedSource,
     ).where((s) => s['Type'] == 'Audio').toList();
 
@@ -7217,7 +7227,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
                 )
               : null,
         ),
-      if (isPlayableVideo &&
+      if ((isPlayableVideo || isSeries) &&
           audioStreams.length > 1 &&
           shows(DetailButton.audio))
         DetailButton.audio: _DetailActionButton(
@@ -7225,13 +7235,14 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           icon: Icons.audiotrack,
           onPressed: () => _showAudioSelector(context, audioStreams),
         ),
-      if (isPlayableVideo &&
-          (subtitleStreams.isNotEmpty || _canDownloadRemoteSubtitles(item)) &&
+      if ((isPlayableVideo || isSeries) &&
+          (subtitleStreams.isNotEmpty ||
+              (!isSeries && _canDownloadRemoteSubtitles(item))) &&
           shows(DetailButton.subtitles))
         DetailButton.subtitles: _DetailActionButton(
           label: l10n.subtitles,
           icon: Icons.subtitles,
-          onPressed: () => _openSubtitleSelector(context, item),
+          onPressed: () => _openSubtitleSelector(context, streamSourceItem),
         ),
       if (isPlayableMedia &&
           item.mediaSources.length > 1 &&
