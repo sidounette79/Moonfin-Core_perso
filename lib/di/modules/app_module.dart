@@ -97,6 +97,18 @@ void registerAppModule() {
   );
   _getIt.registerLazySingleton(() => SocketHandler());
   _getIt.registerLazySingleton(() => CustomExternalListsService());
+  // 29-30.09, real bug found live: registering this in
+  // _registerUserScopedSingletons() (like TmdbRepository) crashed
+  // switchCurrentSession() on the SECOND session switch in a run - it was
+  // never added to resetUserScopedSingletons()'s unregister<T>() list, so
+  // GetIt threw "already registered" and the login screen showed a
+  // misleading "Échec de la connexion" despite a correct password. It has
+  // no per-user dependency at all (no MediaServerClient, no user id), so
+  // it belongs here - registered once, never needing a reset.
+  _getIt.registerLazySingleton(
+    () => SofaRepository(),
+    dispose: (repository) => repository.dispose(),
+  );
   _getIt.registerLazySingleton(
     () => BackgroundService(),
     dispose: (service) => service.dispose(),
@@ -210,10 +222,6 @@ void _registerUserScopedSingletons() {
   );
   _getIt.registerLazySingleton(
     () => TmdbRepository(_getIt<MediaServerClient>()),
-    dispose: (repository) => repository.dispose(),
-  );
-  _getIt.registerLazySingleton(
-    () => SofaRepository(),
     dispose: (repository) => repository.dispose(),
   );
   _getIt.registerLazySingleton(
