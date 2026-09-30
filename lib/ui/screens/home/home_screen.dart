@@ -2025,6 +2025,21 @@ class _ContentRowsState extends State<_ContentRows>
   Duration _previewSeekPosition(AggregatedItem item) {
     final resume = _playbackPositionFromRaw(item);
     if (resume != null && resume > Duration.zero) {
+      // 30.09, Sid: "je reste sur une pochette continuer à regarder... après
+      // 3 secondes, ça devient tout noir" - for an item resumed close to
+      // its end, seeking the preview transcode straight to that position
+      // leaves it almost nothing to actually play. media_kit opens the
+      // stream fine (no exception, so the existing catch block never
+      // fires) but paints nothing - the preview surface just stays black.
+      // Leaving at least 20s of runway keeps the preview showing real
+      // content instead of the tail end of the episode.
+      final duration = item.runtime;
+      if (duration != null && duration > Duration.zero) {
+        const minRunway = Duration(seconds: 20);
+        if (resume + minRunway >= duration) {
+          return duration > minRunway ? duration - minRunway : Duration.zero;
+        }
+      }
       return resume;
     }
 
@@ -3418,7 +3433,27 @@ class _ContentRowsState extends State<_ContentRows>
           if (targetState != null) {
             targetState.requestFocusAt(0);
           } else {
-            _requestRowFocusFromMemory(target, preferredIndex: 0);
+            final focusedFromMemory = _requestRowFocusFromMemory(
+              target,
+              preferredIndex: 0,
+            );
+            if (!focusedFromMemory) {
+              // 30.09, Sid's debug panel confirmed hasKey=false/widget=null
+              // here for the Modern-only "Derniers ajouts" mystery - the
+              // row's LockedFocusRow was never built at all (virtualized
+              // off-screen), not a focus-routing bug. Modern's rows are
+              // taller than Classic's, so fewer fit the initial viewport -
+              // Classic never hit this because row 2 was already built.
+              // Scroll it into view first so it actually exists, then retry.
+              NavDebugLog.log('  row=$target not built yet, scrolling into view');
+              await _scrollTvRowIntoOverlayBand(target);
+              final retryState = _rowStateOf(target);
+              if (retryState != null) {
+                retryState.requestFocusAt(0);
+              } else {
+                _requestRowFocusFromMemory(target, preferredIndex: 0);
+              }
+            }
           }
 
           final navComplete = Completer<void>();
