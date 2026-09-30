@@ -1,21 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../data/models/xtream_models.dart';
 import '../../../data/repositories/xtream_repository.dart';
 import '../../../preference/user_preferences.dart';
-import '../../navigation/destinations.dart';
+import 'xtream_player_screen.dart';
 
 /// 30.09, Sid: direct IPTV channel list, across all configured Xtream
 /// providers, filtered to only the categories she picked in
-/// XtreamCategoryPickerScreen. Playback reuses TrailerPlayerScreen's
-/// existing media_kit pipeline (it already falls back to playing any raw
-/// non-YouTube URL directly, see trailer_player_screen.dart) rather than
-/// building a whole new player entry point - works, but its UI/controls are
-/// built for a short trailer, not a 24/7 live channel (no channel zapping,
-/// no EPG overlay) - a real purpose-built live UI is follow-up work, not
-/// done tonight.
+/// XtreamCategoryPickerScreen. Tapping a channel opens XtreamPlayerScreen
+/// with the full filtered list, so zapping there cycles through exactly
+/// what's shown here.
 class XtreamChannelsScreen extends StatefulWidget {
   const XtreamChannelsScreen({super.key});
 
@@ -94,9 +89,17 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     });
   }
 
-  void _play(_ChannelEntry entry) {
-    final url = entry.provider.streamUrl(entry.channel.streamId);
-    context.push(Destinations.trailer(url: url));
+  void _play(List<_ChannelEntry> entries, int index) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => XtreamPlayerScreen(
+          channels: [
+            for (final e in entries) XtreamChannelEntry(e.provider, e.channel),
+          ],
+          initialIndex: index,
+        ),
+      ),
+    );
   }
 
   @override
@@ -160,7 +163,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                           : const Icon(Icons.live_tv),
                       title: Text(entry.channel.name),
                       subtitle: Text('${entry.provider.name} · ${entry.categoryName}'),
-                      onTap: () => _play(entry),
+                      onTap: () => _play(filtered, index),
                     );
                   },
                 ),

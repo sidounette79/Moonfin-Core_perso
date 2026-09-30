@@ -51,7 +51,6 @@ import '../screens/livetv/live_tv_player_screen.dart';
 import '../../data/viewmodels/live_tv_guide_view_model.dart';
 import '../screens/livetv/live_tv_recordings_screen.dart';
 import '../screens/livetv/live_tv_schedule_screen.dart';
-import '../screens/livetv/live_tv_screen.dart';
 import '../screens/livetv/live_tv_series_recordings_screen.dart';
 import '../screens/playback/audio_player_screen.dart';
 import '../screens/playback/book_reader_screen.dart';
@@ -524,9 +523,15 @@ final appRouter = GoRouter(
     ),
 
     // Live TV
+    // 30.09, Sid: "je supprimerais tout de Emby" - she doesn't use Emby's
+    // own Live TV at all, so "TV en direct" now opens the direct Xtream
+    // channel list instead. The Emby-specific sub-routes below (guide,
+    // schedule, recordings, series-recordings, player) are left in place,
+    // unreachable from here now but not deleted - LiveTvScreen and its own
+    // stack still exist if she ever wants them back.
     GoRoute(
       path: Destinations.liveTv,
-      builder: (context, state) => const LiveTvScreen(),
+      builder: (context, state) => const XtreamChannelsScreen(),
       routes: [
         GoRoute(
           path: 'guide',
