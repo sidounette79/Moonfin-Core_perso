@@ -87,6 +87,12 @@ final List<SyncedField> syncedFields = <SyncedField>[
   SyncedField('hiddenNextUpSeries', UserPreferences.hiddenNextUpSeries, SyncCodec.text),
   SyncedField('hiddenLiveTvChannelIds', UserPreferences.hiddenLiveTvChannelIds, SyncCodec.text),
   SyncedField('liveTvChannelGroups', UserPreferences.liveTvChannelGroups, SyncCodec.text),
+  // 30.09, Sid: "il faudra que les modifs, sélections, etc puissent se
+  // reporter d'un appareil à l'autre" - direct IPTV provider list +
+  // selected categories, same reasoning as the Live TV hide/group lists
+  // just above.
+  SyncedField('xtreamProviders', UserPreferences.xtreamProviders, SyncCodec.text),
+  SyncedField('xtreamSelectedCategoryIds', UserPreferences.xtreamSelectedCategoryIds, SyncCodec.text),
   SyncedField('visualTheme', UserPreferences.visualTheme, SyncCodec.enumName, enumValues: prefs.VisualThemeId.values),
   SyncedField('customThemeId', UserPreferences.customThemeId, SyncCodec.text),
   SyncedField('customFontFamily', UserPreferences.customFontFamily, SyncCodec.enumName, enumValues: prefs.CustomFontFamily.values),
