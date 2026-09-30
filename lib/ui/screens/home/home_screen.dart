@@ -3404,12 +3404,14 @@ class _ContentRowsState extends State<_ContentRows>
           if (targetState == null) {
             final rowId = _rowIdForIndex(target);
             final key = _rowKeys[rowId];
-            NavDebugLog.log(
-              '  -> targeting row=$target id=$rowId hasKey=${key != null} '
-              'hasContext=${key?.currentContext != null} '
-              'widgetType=${key?.currentWidget?.runtimeType} '
-              'rowState=NULL (using memory fallback)',
-            );
+            // 30.09, Sid's debug-panel photo showed this cut off before
+            // hasKey/hasContext/widgetType even rendered - the overlay
+            // truncates a long line before it wraps. Split short so each
+            // piece actually fits on screen.
+            NavDebugLog.log('  -> targeting row=$target rowState=NULL');
+            NavDebugLog.log('  id=$rowId hasKey=${key != null}');
+            NavDebugLog.log('  hasContext=${key?.currentContext != null}');
+            NavDebugLog.log('  widget=${key?.currentWidget?.runtimeType}');
           } else {
             NavDebugLog.log('  -> targeting row=$target, rowState=found');
           }
