@@ -3,7 +3,9 @@ import 'package:get_it/get_it.dart';
 
 import '../../../data/models/playable_channel.dart';
 import '../../../data/repositories/m3u_repository.dart';
+import '../../../data/repositories/xmltv_repository.dart';
 import '../../../data/repositories/xtream_repository.dart';
+import '../../../data/services/epg_channel_matcher.dart';
 import '../../../preference/user_preferences.dart';
 import 'xtream_player_screen.dart';
 
@@ -27,6 +29,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   final _prefs = GetIt.instance<UserPreferences>();
   final _xtreamRepo = GetIt.instance<XtreamRepository>();
   final _m3uRepo = GetIt.instance<M3uRepository>();
+  final _xmltvRepo = GetIt.instance<XmltvRepository>();
   List<PlayableChannel>? _channels;
   String? _error;
   String _filter = '';
@@ -96,7 +99,42 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
 
     for (final provider in m3uProviders) {
       final parsed = await _m3uRepo.fetchChannels(provider);
-      channels.addAll(parsed);
+
+      final epgUrl = provider.epgUrl;
+      if (epgUrl == null || epgUrl.isEmpty) {
+        channels.addAll(parsed);
+        continue;
+      }
+
+      // One guide fetch per provider, matched against every one of its
+      // channels - not one fetch per channel, which would mean
+      // re-downloading and re-parsing what's often a multi-MB XMLTV feed
+      // dozens of times over.
+      final guide = await _xmltvRepo.fetchGuide(epgUrl);
+      if (guide == null) {
+        channels.addAll(parsed);
+        continue;
+      }
+
+      for (final channel in parsed) {
+        final match = EpgChannelMatcher.match(channel, guide);
+        if (match == null) {
+          channels.add(channel);
+          continue;
+        }
+        channels.add(
+          channel.withFetchEpg(() async {
+            final programmes = EpgChannelMatcher.programmesFor(
+              match.channel,
+              guide,
+            );
+            return [
+              for (final p in programmes)
+                (title: p.title, start: p.start, end: p.stop),
+            ];
+          }),
+        );
+      }
     }
 
     if (!mounted) return;

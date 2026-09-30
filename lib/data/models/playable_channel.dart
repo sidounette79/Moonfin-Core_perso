@@ -14,8 +14,17 @@ class PlayableChannel {
   final String sourceName;
   final String groupTitle;
 
-  /// Null for a source with no EPG API (M3U) - Xtream channels get a real
-  /// fetch closure from whoever built this entry.
+  /// From the M3U entry's tvg-id attribute, if any - an M3U provider with an
+  /// XMLTV guide URL matches against this first (see EpgChannelMatcher)
+  /// before falling back to fuzzy name matching. Always null for Xtream
+  /// channels, which get their EPG straight from the provider's API by
+  /// stream ID instead.
+  final String? tvgId;
+
+  /// Null for a source with no EPG API and no matched XMLTV channel -
+  /// Xtream channels get a real fetch closure from whoever built this
+  /// entry, and so does an M3U channel once matched against its provider's
+  /// XMLTV guide.
   final Future<List<EpgEntryData>> Function()? fetchEpg;
 
   const PlayableChannel({
@@ -24,6 +33,22 @@ class PlayableChannel {
     required this.sourceName,
     this.iconUrl,
     this.groupTitle = '',
+    this.tvgId,
     this.fetchEpg,
   });
+
+  /// Used to attach a [fetchEpg] closure once an M3U channel has been
+  /// matched against its provider's XMLTV guide - the match only happens
+  /// after the channel itself is already built (see EpgChannelMatcher).
+  PlayableChannel withFetchEpg(
+    Future<List<EpgEntryData>> Function() fetchEpg,
+  ) => PlayableChannel(
+    name: name,
+    streamUrl: streamUrl,
+    sourceName: sourceName,
+    iconUrl: iconUrl,
+    groupTitle: groupTitle,
+    tvgId: tvgId,
+    fetchEpg: fetchEpg,
+  );
 }

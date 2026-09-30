@@ -18,6 +18,7 @@ import '../../data/repositories/seerr_repository.dart';
 import '../../data/repositories/sofa_repository.dart';
 import '../../data/repositories/tmdb_repository.dart';
 import '../../data/repositories/m3u_repository.dart';
+import '../../data/repositories/xmltv_repository.dart';
 import '../../data/repositories/xtream_repository.dart';
 import '../../data/repositories/user_views_repository.dart';
 import '../../data/repositories/search_repository.dart';
@@ -120,6 +121,10 @@ void registerAppModule() {
   );
   _getIt.registerLazySingleton(
     () => M3uRepository(),
+    dispose: (repository) => repository.dispose(),
+  );
+  _getIt.registerLazySingleton(
+    () => XmltvRepository(),
     dispose: (repository) => repository.dispose(),
   );
   _getIt.registerLazySingleton(

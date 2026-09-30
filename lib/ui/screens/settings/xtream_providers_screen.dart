@@ -8,6 +8,7 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../data/models/m3u_provider.dart';
 import '../../../data/models/xtream_models.dart';
 import '../../../data/repositories/xtream_repository.dart';
 import '../../../preference/user_preferences.dart';
@@ -28,15 +29,53 @@ class XtreamProvidersScreen extends StatefulWidget {
 class _XtreamProvidersScreenState extends State<XtreamProvidersScreen> {
   final _prefs = GetIt.instance<UserPreferences>();
   late List<XtreamProvider> _providers;
+  late List<M3uProvider> _m3uProviders;
 
   @override
   void initState() {
     super.initState();
     _providers = _prefs.getXtreamProviders();
+    _m3uProviders = _prefs.getM3uProviders();
   }
 
   Future<void> _reload() async {
-    setState(() => _providers = _prefs.getXtreamProviders());
+    setState(() {
+      _providers = _prefs.getXtreamProviders();
+      _m3uProviders = _prefs.getM3uProviders();
+    });
+  }
+
+  Future<void> _openM3uEditor({M3uProvider? existing}) async {
+    final result = await showDialog<M3uProvider>(
+      context: context,
+      builder: (_) => _M3uProviderEditorDialog(existing: existing),
+    );
+    if (result == null) return;
+    await _prefs.addOrUpdateM3uProvider(result);
+    await _reload();
+  }
+
+  Future<void> _deleteM3u(M3uProvider provider) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer ce fournisseur M3U ?'),
+        content: Text('${provider.name} sera retiré.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _prefs.removeM3uProvider(provider.id);
+    await _reload();
   }
 
   Future<void> _openEditor({XtreamProvider? existing}) async {
@@ -187,7 +226,7 @@ class _XtreamProvidersScreenState extends State<XtreamProvidersScreen> {
           ),
         ],
       ),
-      body: _providers.isEmpty
+      body: _providers.isEmpty && _m3uProviders.isEmpty
           ? const Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
@@ -197,40 +236,84 @@ class _XtreamProvidersScreenState extends State<XtreamProvidersScreen> {
                 ),
               ),
             )
-          : ListView.builder(
-              itemCount: _providers.length,
-              itemBuilder: (context, index) {
-                final provider = _providers[index];
-                return ListTile(
-                  title: Text(provider.name),
-                  subtitle: Text(provider.baseUrl),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          XtreamCategoryPickerScreen(provider: provider),
+          : ListView(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+                  child: Text(
+                    'Xtream Codes',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                for (final provider in _providers)
+                  ListTile(
+                    title: Text(provider.name),
+                    subtitle: Text(provider.baseUrl),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            XtreamCategoryPickerScreen(provider: provider),
+                      ),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          onPressed: () => _openEditor(existing: provider),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () => _delete(provider),
+                        ),
+                      ],
                     ),
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => _openEditor(existing: provider),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _delete(provider),
-                      ),
-                    ],
+                ListTile(
+                  leading: const Icon(Icons.add),
+                  title: const Text('Ajouter un fournisseur Xtream'),
+                  onTap: () => _openEditor(),
+                ),
+                const Divider(height: 32),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 0, 16, 4),
+                  child: Text(
+                    'Listes M3U',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                );
-              },
+                ),
+                for (final provider in _m3uProviders)
+                  ListTile(
+                    title: Text(provider.name),
+                    subtitle: Text(
+                      provider.epgUrl != null && provider.epgUrl!.isNotEmpty
+                          ? '${provider.url}\nGuide EPG configuré'
+                          : provider.url,
+                    ),
+                    isThreeLine:
+                        provider.epgUrl != null && provider.epgUrl!.isNotEmpty,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          onPressed: () =>
+                              _openM3uEditor(existing: provider),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () => _deleteM3u(provider),
+                        ),
+                      ],
+                    ),
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.add),
+                  title: const Text('Ajouter une liste M3U'),
+                  onTap: () => _openM3uEditor(),
+                ),
+              ],
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openEditor(),
-        icon: const Icon(Icons.add),
-        label: const Text('Ajouter'),
-      ),
     );
   }
 }
@@ -371,6 +454,108 @@ class _ProviderEditorDialogState extends State<_ProviderEditorDialog> {
                 _urlController.text.trim().isEmpty ||
                 _userController.text.trim().isEmpty ||
                 _passController.text.isEmpty) {
+              return;
+            }
+            Navigator.of(context).pop(_buildProvider());
+          },
+          child: const Text('Enregistrer'),
+        ),
+      ],
+    );
+  }
+}
+
+/// 30.09, Sid: "un vrai lecteur iptv sera mieux que celui de moon basé sur
+/// emby" - adding an M3U provider had no UI at all before this (the
+/// preference storage and M3uRepository parser already existed, nothing
+/// ever called addOrUpdateM3uProvider). The optional EPG guide URL is what
+/// lets XtreamChannelsScreen match this provider's channels against a real
+/// XMLTV feed instead of showing no programme info at all (see
+/// EpgChannelMatcher) - most public M3U playlists ship without one, so it's
+/// deliberately not required.
+class _M3uProviderEditorDialog extends StatefulWidget {
+  final M3uProvider? existing;
+
+  const _M3uProviderEditorDialog({this.existing});
+
+  @override
+  State<_M3uProviderEditorDialog> createState() =>
+      _M3uProviderEditorDialogState();
+}
+
+class _M3uProviderEditorDialogState extends State<_M3uProviderEditorDialog> {
+  late final _nameController = TextEditingController(
+    text: widget.existing?.name ?? '',
+  );
+  late final _urlController = TextEditingController(
+    text: widget.existing?.url ?? '',
+  );
+  late final _epgUrlController = TextEditingController(
+    text: widget.existing?.epgUrl ?? '',
+  );
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _urlController.dispose();
+    _epgUrlController.dispose();
+    super.dispose();
+  }
+
+  M3uProvider _buildProvider() {
+    final epgUrl = _epgUrlController.text.trim();
+    return M3uProvider(
+      id: widget.existing?.id ?? const Uuid().v4(),
+      name: _nameController.text.trim(),
+      url: _urlController.text.trim(),
+      epgUrl: epgUrl.isEmpty ? null : epgUrl,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(
+        widget.existing == null
+            ? 'Ajouter une liste M3U'
+            : 'Modifier la liste M3U',
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Nom (libre)'),
+            ),
+            TextField(
+              controller: _urlController,
+              decoration: const InputDecoration(
+                labelText: 'URL de la playlist M3U',
+                hintText: 'http://exemple.com/playlist.m3u',
+              ),
+              keyboardType: TextInputType.url,
+            ),
+            TextField(
+              controller: _epgUrlController,
+              decoration: const InputDecoration(
+                labelText: 'URL du guide XMLTV (optionnel)',
+                hintText: 'http://exemple.com/epg.xml',
+              ),
+              keyboardType: TextInputType.url,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Annuler'),
+        ),
+        TextButton(
+          onPressed: () {
+            if (_nameController.text.trim().isEmpty ||
+                _urlController.text.trim().isEmpty) {
               return;
             }
             Navigator.of(context).pop(_buildProvider());

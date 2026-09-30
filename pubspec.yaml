@@ -81,6 +81,9 @@ dependencies:
   # Crypto
   crypto: ^3.0.6
 
+  # XMLTV guide parsing for M3U providers' EPG (see EpgChannelMatcher).
+  xml: ^6.6.1
+
   # Connectivity
   connectivity_plus: ^7.1.1
 

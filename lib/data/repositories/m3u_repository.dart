@@ -35,6 +35,7 @@ class M3uRepository {
     String? pendingName;
     String? pendingLogo;
     String? pendingGroup;
+    String? pendingTvgId;
 
     for (final rawLine in lines) {
       final line = rawLine.trim();
@@ -46,6 +47,11 @@ class M3uRepository {
         };
         pendingLogo = attrs['tvg-logo'];
         pendingGroup = attrs['group-title'] ?? '';
+        // 30.09: needed to match this channel against a separate XMLTV
+        // guide (see EpgChannelMatcher) - tvg-name is deliberately not
+        // captured here too, the channel's own display name (below) already
+        // serves that role for the matcher's fuzzy-name fallback.
+        pendingTvgId = attrs['tvg-id'];
         final commaIndex = line.lastIndexOf(',');
         pendingName = commaIndex >= 0
             ? line.substring(commaIndex + 1).trim()
@@ -66,11 +72,15 @@ class M3uRepository {
               ? pendingLogo
               : null,
           groupTitle: pendingGroup ?? '',
+          tvgId: (pendingTvgId != null && pendingTvgId.isNotEmpty)
+              ? pendingTvgId
+              : null,
         ));
       }
       pendingName = null;
       pendingLogo = null;
       pendingGroup = null;
+      pendingTvgId = null;
     }
 
     return channels;
