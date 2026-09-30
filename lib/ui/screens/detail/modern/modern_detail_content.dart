@@ -828,7 +828,19 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     // the same overview/action-row/initial chain _buildUpNextCard's own
     // onNavigateLeft already uses for exactly this "no tab bar to return
     // to" case.
-    if (_selectedTab < 0) {
+    //
+    // 30.09, Sid again: "c'est quand je veux remonter... comme déjà dit ce
+    // matin" - the 29.09 fix only checked _selectedTab < 0, but a Series
+    // page's _selectedTab is 0, not -1, whenever detailExpandedTabs ("premier
+    // onglet ouvert par défaut") is on - build() sets it to 0 for
+    // _expandedTabs regardless of item type (line ~5294), even though
+    // flattenTabs (item.type == 'Series') means no real DetailsTabBar/
+    // _tabNode(0) ever gets built to receive that focus. Same missing-tab-
+    // bar case as before, just reached through a different _selectedTab
+    // value - the real condition is "no tab bar was built", not "_selectedTab
+    // is exactly -1".
+    final hasRealTabBar = _vm.item?.type != 'Series';
+    if (_selectedTab < 0 || !hasRealTabBar) {
       if (_overviewFocusNode.context != null &&
           _overviewFocusNode.canRequestFocus) {
         NavDebugLog.log('_focusSelectedTab: -1, -> overview');
