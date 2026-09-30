@@ -98,6 +98,12 @@ Color get _homeBackground => AppColorScheme.background;
 /// How far the rows have to scroll before the return is worth offering.
 const _kHomeStartThreshold = 20.0;
 
+/// 30.09, Sid: "supprimer la coccinelle sur écran d'accueil (juste
+/// débrancher on sait jamais)" - unplugged, not removed. Diagnosis moved to
+/// the series detail page (see NavDebugOverlay in modern_detail_content.dart);
+/// flip back to true if home needs it again.
+const _showHomeNavDebugOverlay = false;
+
 /// Room for the title, subtitle and gaps that sit under classic card artwork.
 const _classicCardMetadataHeight = 50.0;
 
@@ -4863,7 +4869,8 @@ class _ContentRowsState extends State<_ContentRows>
             return const SizedBox.shrink();
           },
         ),
-        if (PlatformDetection.isTV) const NavDebugOverlay(),
+        if (_showHomeNavDebugOverlay && PlatformDetection.isTV)
+          const NavDebugOverlay(),
       ],
     ),
   );
