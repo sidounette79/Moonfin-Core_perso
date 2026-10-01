@@ -3451,24 +3451,19 @@ class _ContentRowsState extends State<_ContentRows>
           if (targetState != null) {
             targetState.requestFocusAt(0);
           } else {
-            // 01.10, Sid: "quand je remonte, ça skip tout court mes
-            // bibliothèques" - entering the libraryTiles grid always
-            // landed on tile 0 (its top-left corner) regardless of which
-            // direction brought focus there, so arriving from below via UP
-            // skipped straight past every tile below the top row with no
-            // visible stop in between. Landing on the grid's last tile
-            // instead when arriving that way at least lands on its bottom
-            // row - not necessarily the same column she came from (that
-            // would need the same itemsPerLine/posterSize math
-            // _buildLibraryTilesGrid does, not available at this call
-            // site), but no longer invisible.
-            final libraryTilesEnteredFromBelow =
-                direction < 0 && candidate.rowType == HomeRowType.libraryTiles;
+            // 01.10 morning, Sid: "quand je remonte, ça me renvoie sur le
+            // dernier de mes medias et pas sur le haut" - she wants the
+            // grid's first tile (top-left) always, regardless of which
+            // direction brought focus there. The 01.10-night fix landing on
+            // the LAST tile instead (see below) was a workaround for a
+            // then-unfixed scroll-into-view bug, not a deliberate choice of
+            // landing tile - that scroll bug was fixed separately later the
+            // same night (_rowContextOf(target) ?? _rowContainerKey(target)
+            // .currentContext a few hundred lines below), so pinning to 0
+            // should no longer need this tile-position workaround.
             final focusedFromMemory = _requestRowFocusFromMemory(
               target,
-              preferredIndex: libraryTilesEnteredFromBelow
-                  ? candidate.items.length - 1
-                  : 0,
+              preferredIndex: 0,
             );
             if (!focusedFromMemory) {
               // 30.09, Sid's debug panel confirmed hasKey=false/widget=null
