@@ -2266,9 +2266,11 @@ class _LibraryHeader extends StatelessWidget {
                 iconSize: 20 * desktopScale,
                 unfocusedIconAlpha: 128,
                 onTap: () => onPlayedFilterChanged(switch (playedFilter) {
-                  PlayedStatusFilter.all => PlayedStatusFilter.unwatched,
-                  PlayedStatusFilter.unwatched => PlayedStatusFilter.watched,
-                  PlayedStatusFilter.watched => PlayedStatusFilter.all,
+                  // 01.10, Sid: "tous => vu, non vu, tous" - this order,
+                  // not all->unwatched->watched->all.
+                  PlayedStatusFilter.all => PlayedStatusFilter.watched,
+                  PlayedStatusFilter.watched => PlayedStatusFilter.unwatched,
+                  PlayedStatusFilter.unwatched => PlayedStatusFilter.all,
                   PlayedStatusFilter.inProgress => PlayedStatusFilter.all,
                 }),
                 onUpKey: _focusSearch,

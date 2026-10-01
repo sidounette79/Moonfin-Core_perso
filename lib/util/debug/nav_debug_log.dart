@@ -14,7 +14,9 @@ class NavDebugLog {
   static const int _maxLines = 40;
 
   /// Flip to false to silence logging without ripping out every call site.
-  static bool enabled = true;
+  /// 01.10, Sid: "tu peux débrancher la coccinnelle" - the "Mes
+  /// bibliothèques" D-pad bug this was tracking is confirmed fixed.
+  static bool enabled = false;
 
   static final ValueNotifier<List<String>> lines = ValueNotifier<List<String>>(
     <String>[],
