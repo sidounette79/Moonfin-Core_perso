@@ -362,12 +362,31 @@ class DeviceProfileBuilder {
             forceStereo: forceStereo,
           );
 
+    // 01.10, Sid: "un agresseur chargé du tourisme" - un fichier AV1 SDR
+    // tout simple (profile=Main, pas de HDR/DoVi) restait coincé en
+    // chargement infini sur sa TV. Cette liste annonçait 'av1' à Emby sans
+    // condition, alors qu'effectiveSupportsAv1 existe déjà et gate
+    // correctement le cas AV1+HDR/DoVi plus bas dans ce même fichier -
+    // Emby croyait donc pouvoir lire l'AV1 en direct sur un appareil qui
+    // ne le peut pas, au lieu de transcoder.
+    final nativeDirectPlayVideoCodecs = [
+      if (effectiveSupportsAv1) 'av1',
+      'h264',
+      'hevc',
+      'mpeg',
+      'mpeg2video',
+      'mpeg4',
+      'vc1',
+      'vp8',
+      'vp9',
+    ].join(',');
+
     final directPlayProfiles = webCapabilities == null
         ? <Map<String, dynamic>>[
             <String, dynamic>{
               'Type': 'Video',
               'Container': directPlayVideoContainers,
-              'VideoCodec': 'av1,h264,hevc,mpeg,mpeg2video,mpeg4,vc1,vp8,vp9',
+              'VideoCodec': nativeDirectPlayVideoCodecs,
               'AudioCodec': effectiveAllowedAudioCodecs.join(','),
             },
             <String, dynamic>{
