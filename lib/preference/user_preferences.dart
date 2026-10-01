@@ -2616,6 +2616,17 @@ class UserPreferences extends ChangeNotifier {
     key: 'browsingBackgroundBlurAmount',
     defaultValue: 10,
   );
+
+  // 01.10, Sid: "le flou sur les dossiers mes médias est encore très flou" -
+  // the My Media row's own library-tile backdrop was a hardcoded sigma 12
+  // blur (home_screen.dart _buildLibraryGridTile), not wired to any of the
+  // existing blur sliders (those only cover the fullscreen hero backdrop
+  // and the library browse screen). Default kept at 12 so nothing changes
+  // until she turns it down herself.
+  static final libraryTileBackgroundBlurAmount = Preference(
+    key: 'libraryTileBackgroundBlurAmount',
+    defaultValue: 12,
+  );
   static final enableAdditionalRatings = Preference(
     key: 'enableAdditionalRatings',
     defaultValue: false,

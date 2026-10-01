@@ -214,6 +214,7 @@ final List<SyncedField> syncedFields = <SyncedField>[
   SyncedField('backdropEnabled', UserPreferences.backdropEnabled, SyncCodec.boolean),
   SyncedField('detailsScreenBlur', UserPreferences.detailsBackgroundBlurAmount, SyncCodec.intAsText),
   SyncedField('browsingBlur', UserPreferences.browsingBackgroundBlurAmount, SyncCodec.intAsText),
+  SyncedField('libraryTileBlur', UserPreferences.libraryTileBackgroundBlurAmount, SyncCodec.intAsText),
   SyncedField('mdblistEnabled', UserPreferences.enableAdditionalRatings, SyncCodec.boolean),
   SyncedField('mdblistApiKey', UserPreferences.mdblistApiKey, SyncCodec.text, receiveOnly: true),
   SyncedField('mdblistShowRatingNames', UserPreferences.showRatingLabels, SyncCodec.boolean),

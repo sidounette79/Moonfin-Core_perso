@@ -242,6 +242,17 @@ class _GeneralStyleScreenState extends State<_GeneralStyleScreen> {
                     labelOf: (v) => '$v',
                     onChangeEnd: _pushPersonalizationSync,
                   ),
+                  SliderPreferenceTile(
+                    preference:
+                        UserPreferences.libraryTileBackgroundBlurAmount,
+                    title: 'Flou des tuiles « Mes médias »',
+                    icon: Icons.blur_on,
+                    min: 0,
+                    max: 25,
+                    divisions: 25,
+                    labelOf: (v) => '$v',
+                    onChangeEnd: _pushPersonalizationSync,
+                  ),
                   EnumPreferenceTile<WatchedIndicatorBehavior>(
                     preference: UserPreferences.watchedIndicatorBehavior,
                     title: l10n.watchedIndicators,

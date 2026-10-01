@@ -5293,6 +5293,11 @@ class _ContentRowsState extends State<_ContentRows>
         : iconForCollectionType(collectionType);
     _fetchLibraryBackdropIfNeeded(item);
     final backdropUrl = _libraryBackdropUrls[item.id];
+    final tileBlurSigma = GlassSettings.decorativeSigma(
+      widget.prefs
+          .get(UserPreferences.libraryTileBackgroundBlurAmount)
+          .toDouble(),
+    );
     return SizedBox.square(
       dimension: squarePosterSide,
       child: GridButtonCard(
@@ -5306,8 +5311,16 @@ class _ContentRowsState extends State<_ContentRows>
         onKeyEvent: onKeyEvent,
         background: backdropUrl == null
             ? null
+            : tileBlurSigma <= 0
+            ? Image(
+                image: offlineAwareImageProvider(backdropUrl, maxWidth: 400),
+                fit: BoxFit.cover,
+              )
             : ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                imageFilter: ui.ImageFilter.blur(
+                  sigmaX: tileBlurSigma,
+                  sigmaY: tileBlurSigma,
+                ),
                 child: Image(
                   image: offlineAwareImageProvider(backdropUrl, maxWidth: 400),
                   fit: BoxFit.cover,
