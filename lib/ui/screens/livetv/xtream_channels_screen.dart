@@ -10,6 +10,8 @@ import '../../../data/services/epg_channel_matcher.dart';
 import '../../../data/services/iptv_channel_loader.dart';
 import '../../../data/services/iptv_player_service.dart';
 import '../../../preference/user_preferences.dart';
+import '../../../util/focus/dpad_keys.dart';
+import '../../widgets/local_search_field.dart';
 import 'epg/epg_genre.dart';
 import 'epg/widgets/epg_channel_cell.dart';
 import 'epg/widgets/epg_program_cell.dart';
@@ -69,6 +71,20 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   StreamSubscription<void>? _playerSub;
   final _rulerController = ScrollController();
   final _rowsController = ScrollController();
+
+  // 01.10, Sid: "Ca s'ouvre sur la ligne de recherche et je peux pas en
+  // sortir avec la télécommande" - this whole screen shipped with no TV
+  // D-pad wiring at all (grid/sidebar used plain GestureDetector/ListTile,
+  // never tested on an actual TV). This is the minimum fix: a real TV
+  // search field (LocalSearchField, same one library_browse_screen.dart
+  // uses - a plain TextField captures the arrow keys itself for cursor
+  // movement on TV, which is why DOWN never reached Flutter's focus
+  // system) plus one escape target. The EPG grid itself staying
+  // unreachable by remote is a separate, larger piece of work - not
+  // attempted here.
+  final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode(debugLabel: 'iptvSearch');
+  final _allChannelsTileFocusNode = FocusNode(debugLabel: 'iptvAllChannelsTile');
   late final DateTime _windowStart;
   late final DateTime _windowEnd;
 
@@ -106,6 +122,9 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     _playerSub?.cancel();
     _rulerController.dispose();
     _rowsController.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    _allChannelsTileFocusNode.dispose();
     // Actually leaving the IPTV section (not just pushing the fullscreen
     // route on top - that doesn't dispose this screen, see
     // IptvPlayerService's own lifecycle note).
@@ -214,10 +233,12 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     String filterValue, {
     IconData? icon,
     int? count,
+    FocusNode? focusNode,
   }) {
     final selected = _selectedFilter == filterValue;
     return ListTile(
       dense: true,
+      focusNode: focusNode,
       leading: icon != null
           ? Icon(icon, size: 20)
           : const SizedBox(width: 20),
@@ -300,6 +321,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
             'All',
             icon: Icons.apps,
             count: channels.length,
+            focusNode: _allChannelsTileFocusNode,
           ),
           _sidebarSection('favorites', 'Favoris', [
             _sidebarTile(
@@ -671,14 +693,17 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
           preferredSize: const Size.fromHeight(56),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: TextField(
-              decoration: const InputDecoration(
-                hintText: 'Rechercher une chaîne...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
+            child: LocalSearchField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
               onChanged: (v) => setState(() => _filter = v),
+              onTvKeyEvent: (node, event) {
+                if (event.isActionable && event.logicalKey.isDownKey) {
+                  _allChannelsTileFocusNode.requestFocus();
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              },
             ),
           ),
         ),
