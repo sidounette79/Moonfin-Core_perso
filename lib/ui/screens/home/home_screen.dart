@@ -5166,12 +5166,54 @@ class _ContentRowsState extends State<_ContentRows>
                   if (!PlatformDetection.isTV || !event.isActionable) {
                     return KeyEventResult.ignored;
                   }
-                  if (event.logicalKey.isLeftKey &&
-                      itemsPerLine > 0 &&
-                      i % itemsPerLine == 0) {
-                    if (NavigationLayout.focusNavbar()) {
+                  // 01.10, Sid: "Si je clique à droite depuis pepette
+                  // series, ca part en diagonale sur carba old" - LEFT/
+                  // RIGHT had no explicit handling at all here (only the
+                  // line-start -> navbar escape below), so every other
+                  // left/right press fell through to Flutter's default
+                  // geometric focus traversal, which jumps by nearest
+                  // on-screen rectangle rather than by grid position - the
+                  // diagonal jumps. Same fix as UP/DOWN got tonight: try
+                  // the neighbour tile in this same Wrap first.
+                  if (event.logicalKey.isLeftKey) {
+                    final atLineStart =
+                        itemsPerLine > 0 && i % itemsPerLine == 0;
+                    if (atLineStart) {
+                      NavDebugLog.log(
+                        'libraryGrid[$rowIndex] tile=$i LEFT at line start -> navbar',
+                      );
+                      NavigationLayout.focusNavbar();
+                      // Swallow either way (success or not) - same
+                      // anti-diagonal-jump reasoning as the RIGHT/line-end
+                      // case below.
                       return KeyEventResult.handled;
                     }
+                    final withinGrid = i - 1;
+                    if (withinGrid >= 0) {
+                      NavDebugLog.log(
+                        'libraryGrid[$rowIndex] tile=$i LEFT -> tile=$withinGrid (same grid)',
+                      );
+                      nodes[withinGrid].requestFocus();
+                      return KeyEventResult.handled;
+                    }
+                    return KeyEventResult.handled;
+                  }
+                  if (event.logicalKey.isRightKey) {
+                    final atLineEnd =
+                        itemsPerLine > 0 &&
+                        i % itemsPerLine == itemsPerLine - 1;
+                    final withinGrid = i + 1;
+                    if (!atLineEnd && withinGrid < nodes.length) {
+                      NavDebugLog.log(
+                        'libraryGrid[$rowIndex] tile=$i RIGHT -> tile=$withinGrid (same grid)',
+                      );
+                      nodes[withinGrid].requestFocus();
+                      return KeyEventResult.handled;
+                    }
+                    // Nothing to the right within this grid (line end, or
+                    // the very last tile) - swallow the key rather than
+                    // let the default traversal jump somewhere unrelated.
+                    return KeyEventResult.handled;
                   }
                   // 01.10, Sid: "ça passe direct de pepette séries à séries
                   // ajouts récents sans aller sur la deuxième ligne de la
