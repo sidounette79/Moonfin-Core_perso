@@ -1018,6 +1018,18 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: false,
   );
 
+  // 01.10, Sid: "dans la voiture ... il faut toujours mettre le son très
+  // fort ... quand on rallume la voiture, la radio ou pooky music sont
+  // très très fort" - the volume boost level (video_player_screen.dart's
+  // own +0 to +100% on top of system volume) lived purely as in-memory
+  // screen state, reset to 0 on every fresh playback. Persisting it here
+  // means the car's next session starts at whatever boost she last needed,
+  // instead of always back at the quiet default.
+  static final video3VolumeBoostLevel = Preference<int>(
+    key: 'pref_video3_volume_boost_level',
+    defaultValue: 0,
+  );
+
   static final modernHomeRowsPadding = Preference<int>(
     key: 'pref_modern_home_rows_padding',
     defaultValue: 460,

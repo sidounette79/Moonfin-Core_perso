@@ -281,6 +281,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   double _scrollWheelAccumulated = 0.0;
   double _volumeBeforeMute = 1.0;
   int _media3VolumeBoostLevel = 0;
+  // 01.10, Sid: only restore the saved boost once per screen - after that,
+  // a deliberate mid-session change to 0 (e.g. she turns it back down)
+  // must stick, not get re-overwritten by the saved value on the next
+  // backend reconnect.
+  bool _appliedSavedVolumeBoost = false;
   bool _didRequestIosPiPForBackground = false;
   bool _isStartingIosPiPForBackground = false;
   bool _didHandleBackgroundSuspend = false;
@@ -889,6 +894,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       if (backend is Media3PlayerBackend) {
         unawaited(_syncMedia3ZoomMode());
         _syncMedia3VolumeBoostLevel();
+        if (!_appliedSavedVolumeBoost) {
+          _appliedSavedVolumeBoost = true;
+          final savedBoost = _prefs.get(UserPreferences.video3VolumeBoostLevel);
+          if (savedBoost > 0) {
+            unawaited(_setMedia3VolumeBoostLevel(savedBoost));
+          }
+        }
       } else {
         _syncMedia3VolumeBoostLevel(resetWhenUnavailable: true);
       }
@@ -6035,6 +6047,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       } else {
         _media3VolumeBoostLevel = clampedLevel;
       }
+      unawaited(_prefs.set(UserPreferences.video3VolumeBoostLevel, clampedLevel));
     }
 
     await backend.setVolumeBoostLevel(clampedLevel);
