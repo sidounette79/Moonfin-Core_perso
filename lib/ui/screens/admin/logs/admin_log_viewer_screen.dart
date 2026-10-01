@@ -229,12 +229,18 @@ class _AdminLogViewerScreenState extends State<AdminLogViewerScreen> {
                 onPressed: _copyAll,
                 icon: const Icon(Icons.copy_all),
               ),
-              if (!PlatformDetection.isTV)
-                IconButton(
-                  tooltip: AppLocalizations.of(context).save,
-                  onPressed: _saveToFile,
-                  icon: const Icon(Icons.download),
-                ),
+              // 01.10, Sid: "je peux que copier sur le clipboard mais
+              // quand c'est une TV c'est impossible de récupérer" -
+              // clipboard-only was useless there with nothing to paste
+              // into. FilePicker.saveFile already works fine on
+              // Android TV elsewhere in the app (the Xtream IPTV config
+              // export uses the same call, confirmed working on-device) -
+              // no reason found in history for why this one hid it on TV.
+              IconButton(
+                tooltip: AppLocalizations.of(context).save,
+                onPressed: _saveToFile,
+                icon: const Icon(Icons.download),
+              ),
               IconButton(
                 tooltip: AppLocalizations.of(context).refresh,
                 onPressed: _loadLog,
