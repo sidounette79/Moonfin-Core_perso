@@ -70,6 +70,7 @@ import '../../widgets/library_row.dart';
 import '../../widgets/media_bar.dart';
 import '../../widgets/mediabar/banner_media_bar.dart';
 import '../../widgets/image_source.dart';
+import '../../widgets/media_badge.dart';
 import '../../widgets/media_card.dart';
 import '../../widgets/selector_builder.dart';
 import '../../widgets/bottom_nav/bottom_navbar.dart';
@@ -5699,12 +5700,27 @@ class _ContentRowsState extends State<_ContentRows>
                   // the way the Jellyfin genre row does.
                   final isSeerrGenreCard =
                       _isSeerrFilterRow(row) && item.type == 'Genre';
+                  // Flagged by appendForgottenViewingFronts(): an earlier,
+                  // still-unwatched run of episodes NextUp lost track of
+                  // because a later episode was watched first.
+                  final isForgottenFront =
+                      item.rawData['_isForgottenFront'] == true;
                   final card = MediaCard(
                     animeMarkerItemId: isSeerrGenreCard ? null : item.id,
                     title: cardTitle,
-                    imageOverlays: isSeerrGenreCard
-                        ? [Positioned.fill(child: SeerrGenreLabel(name: item.name))]
-                        : const <Widget>[],
+                    imageOverlays: [
+                      if (isSeerrGenreCard)
+                        Positioned.fill(child: SeerrGenreLabel(name: item.name))
+                      else if (isForgottenFront)
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Tooltip(
+                            message: 'Reprise oubliée',
+                            child: const MediaForgottenFrontBadge(size: 22),
+                          ),
+                        ),
+                    ],
                     subtitle: cardSubtitle,
                     subtitleWidget: cardSubtitleWidget,
                     imageUrl: imageUrl,

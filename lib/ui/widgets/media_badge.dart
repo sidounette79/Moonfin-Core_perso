@@ -114,6 +114,50 @@ class MediaUnplayedBadge extends StatelessWidget {
   }
 }
 
+/// The circular badge indicating this card is a "forgotten viewing front":
+/// an earlier, still-unwatched run of episodes the server's own NextUp
+/// algorithm has lost track of because a later episode was watched first.
+class MediaForgottenFrontBadge extends StatelessWidget {
+  final double size;
+  final Color? color;
+  final Color? iconColor;
+
+  const MediaForgottenFrontBadge({
+    super.key,
+    this.size = 24.0,
+    this.color,
+    this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    _watchTheme(context);
+    final bg = color ?? AppColorScheme.badgeUnplayed;
+    final fg = iconColor ?? AppColorScheme.onBadge;
+    final iconSize = (size * 0.6).clamp(12.0, 24.0);
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: bg,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: fg,
+          width: 1.5,
+        ),
+        boxShadow: kMediaBadgeShadow,
+      ),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.history_rounded,
+        color: fg,
+        size: iconSize,
+      ),
+    );
+  }
+}
+
 /// The circular favorite badge indicating an item has been added to favorites.
 class MediaFavoriteBadge extends StatelessWidget {
   final double size;

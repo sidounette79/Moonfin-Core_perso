@@ -18,6 +18,7 @@ import '../../util/parental_filter.dart';
 import '../utils/blocked_ratings.dart';
 import '../utils/genre_browse_utils.dart';
 import '../utils/next_up_cutoff.dart';
+import '../utils/forgotten_front_detection.dart';
 import '../utils/next_up_enrichment.dart';
 import '../utils/playlist_utils.dart';
 import 'package:flutter/foundation.dart';
@@ -239,7 +240,11 @@ class RowDataSource {
     final enrichedItems = await _enrichNextUpItemsWithSeriesLastPlayed(
       row.items,
     );
-    return row.copyWith(items: enrichedItems);
+    final finalItems = await appendForgottenViewingFronts(
+      enrichedItems,
+      _client,
+    );
+    return row.copyWith(items: finalItems);
   }
 
   Future<HomeRow> loadResumeRelaxed(String serverId) async {
@@ -268,7 +273,11 @@ class RowDataSource {
     final enrichedItems = await _enrichNextUpItemsWithSeriesLastPlayed(
       row.items,
     );
-    return row.copyWith(items: enrichedItems);
+    final finalItems = await appendForgottenViewingFronts(
+      enrichedItems,
+      _client,
+    );
+    return row.copyWith(items: finalItems);
   }
 
   Future<HomeRow> loadLatestMedia(

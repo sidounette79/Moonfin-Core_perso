@@ -19,6 +19,7 @@ import '../utils/bounded_concurrency.dart';
 import '../utils/genre_browse_utils.dart';
 import '../utils/latest_media_row_normalizer.dart';
 import '../utils/next_up_cutoff.dart';
+import '../utils/forgotten_front_detection.dart';
 import '../utils/next_up_enrichment.dart';
 import '../utils/playlist_utils.dart';
 import 'user_views_repository.dart';
@@ -272,10 +273,11 @@ class MultiServerRepository {
           nextUpDateCutoff: nextUpDateCutoff,
         );
         final parsed = _parseItems(response, session.server.id);
-        return await _enrichNextUpItemsWithSeriesLastPlayed(
+        final enriched = await _enrichNextUpItemsWithSeriesLastPlayed(
           parsed,
           session.client,
         );
+        return await appendForgottenViewingFronts(enriched, session.client);
       },
       label: 'next up',
     );
