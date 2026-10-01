@@ -911,12 +911,25 @@ class EmbyItemsApi implements ItemsApi {
     // server's swagger.json, MediaBrowser.Model.Entities.MarkerType) with no
     // Recap or Preview value a plugin could ever add. Recap/preview markers
     // are instead recognized by chapter NAME (a free-text field, unlike
-    // MarkerType), matching exactly "Recap" or "Preview" case-insensitively.
-    // This is an app-side convention, not an Emby standard: only Moonfin
-    // understands it, any other Emby client just sees an ordinary chapter
-    // with that title.
+    // MarkerType). This is an app-side convention, not an Emby standard:
+    // only Moonfin understands it, any other Emby client just sees an
+    // ordinary chapter with that title.
+    //
+    // 01.10 (same day, later): confirmed live against Sid's own library that
+    // TheIntroDB (already installed, already scanning) writes these same two
+    // names, but as a PREFIX, not an exact match - "Recap" and "Recap End"
+    // on their own, or suffixed "Recap (TheIntroDB) [TheIntroDB:<id>]" /
+    // "Recap End (TheIntroDB) [...]" depending on when a given episode was
+    // scanned. An exact-match check here would silently miss every episode
+    // using the suffixed form. Matching by prefix instead means every recap
+    // TheIntroDB has already found becomes usable immediately, no need to
+    // wait on a Moonfin-side tool to write them. Also prefer an explicit
+    // "...End" chapter's own tick over the inferred next-chapter boundary
+    // when TheIntroDB already supplied one.
     int? recapStart;
+    int? recapEndMarker;
     int? previewStart;
+    int? previewEndMarker;
     for (final raw in chapters) {
       if (raw is! Map) continue;
       final ticks = (raw['StartPositionTicks'] as num?)?.toInt();
@@ -930,11 +943,15 @@ class EmbyItemsApi implements ItemsApi {
         case 'creditsstart':
           creditsStart ??= ticks;
       }
-      switch ((raw['Name'] as String?)?.trim().toLowerCase()) {
-        case 'recap':
-          recapStart ??= ticks;
-        case 'preview':
-          previewStart ??= ticks;
+      final name = (raw['Name'] as String?)?.trim().toLowerCase() ?? '';
+      if (name.startsWith('recap end')) {
+        recapEndMarker ??= ticks;
+      } else if (name.startsWith('recap')) {
+        recapStart ??= ticks;
+      } else if (name.startsWith('preview end')) {
+        previewEndMarker ??= ticks;
+      } else if (name.startsWith('preview')) {
+        previewStart ??= ticks;
       }
     }
 
@@ -954,7 +971,9 @@ class EmbyItemsApi implements ItemsApi {
     if (introStart != null && introEnd == null) {
       introEnd = nextChapterAfter(introStart);
     }
-    final recapEnd = recapStart == null ? null : nextChapterAfter(recapStart);
+    final recapEnd = recapStart == null
+        ? null
+        : (recapEndMarker ?? nextChapterAfter(recapStart));
 
     final segments = <Map<String, dynamic>>[];
     if (introStart != null && introEnd != null && introEnd > introStart) {
@@ -991,7 +1010,8 @@ class EmbyItemsApi implements ItemsApi {
       });
     }
     if (previewStart != null) {
-      final previewEnd = nextChapterAfter(previewStart) ?? runtime;
+      final previewEnd =
+          previewEndMarker ?? nextChapterAfter(previewStart) ?? runtime;
       if (previewEnd != null && previewEnd > previewStart) {
         segments.add({
           'Id': 'emby-preview-$itemId',
