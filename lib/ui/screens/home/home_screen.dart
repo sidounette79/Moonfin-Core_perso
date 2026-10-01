@@ -3442,9 +3442,24 @@ class _ContentRowsState extends State<_ContentRows>
           if (targetState != null) {
             targetState.requestFocusAt(0);
           } else {
+            // 01.10, Sid: "quand je remonte, ça skip tout court mes
+            // bibliothèques" - entering the libraryTiles grid always
+            // landed on tile 0 (its top-left corner) regardless of which
+            // direction brought focus there, so arriving from below via UP
+            // skipped straight past every tile below the top row with no
+            // visible stop in between. Landing on the grid's last tile
+            // instead when arriving that way at least lands on its bottom
+            // row - not necessarily the same column she came from (that
+            // would need the same itemsPerLine/posterSize math
+            // _buildLibraryTilesGrid does, not available at this call
+            // site), but no longer invisible.
+            final libraryTilesEnteredFromBelow =
+                direction < 0 && candidate.rowType == HomeRowType.libraryTiles;
             final focusedFromMemory = _requestRowFocusFromMemory(
               target,
-              preferredIndex: 0,
+              preferredIndex: libraryTilesEnteredFromBelow
+                  ? candidate.items.length - 1
+                  : 0,
             );
             if (!focusedFromMemory) {
               // 30.09, Sid's debug panel confirmed hasKey=false/widget=null
@@ -3471,7 +3486,22 @@ class _ContentRowsState extends State<_ContentRows>
               if (!navComplete.isCompleted) navComplete.complete();
               return;
             }
-            final rowCtx = _rowContextOf(target);
+            // 01.10, Sid: "l'écran ne remonte pas sur mes médias mais
+            // reste sur un espace vide et après ça remonte sur continuer
+            // à regarder" - _rowContextOf reads _rowKeys, which only
+            // LockedFocusRow populates. The libraryTiles grid is a plain
+            // Wrap (see _buildLibraryTilesGrid's own comment) and never
+            // had a _rowKeys entry at all, so this guard bailed out of
+            // the scroll-into-view below unconditionally for that row -
+            // focus landed correctly (on whichever tile, invisibly) but
+            // the screen never followed it, until the next key press
+            // continued on from there and reached a row this guard does
+            // recognize. _rowContainerKey is the one _buildLibraryTilesGrid
+            // actually attaches (used further down this same function for
+            // the real scroll-offset math), so it's the real signal for
+            // "is this row built" there.
+            final rowCtx =
+                _rowContextOf(target) ?? _rowContainerKey(target).currentContext;
             if (rowCtx == null) {
               if (!navComplete.isCompleted) navComplete.complete();
               return;
@@ -5142,7 +5172,24 @@ class _ContentRowsState extends State<_ContentRows>
                       return KeyEventResult.handled;
                     }
                   }
+                  // 01.10, Sid: "ça passe direct de pepette séries à séries
+                  // ajouts récents sans aller sur la deuxième ligne de la
+                  // grille" - confirmed tile-by-tile via NavDebugLog: UP/DOWN
+                  // always escaped straight to the adjacent HomeRow via
+                  // _onRowVerticalNavigation, regardless of which tile sent
+                  // the key - itemsPerLine was already computed right above
+                  // (for the left-edge/navbar case) but never used here, so
+                  // a tile directly above/below in this same Wrap was never
+                  // tried first.
                   if (event.logicalKey.isUpKey) {
+                    final withinGrid = i - itemsPerLine;
+                    if (itemsPerLine > 0 && withinGrid >= 0) {
+                      NavDebugLog.log(
+                        'libraryGrid[$rowIndex] tile=$i UP -> tile=$withinGrid (same grid)',
+                      );
+                      nodes[withinGrid].requestFocus();
+                      return KeyEventResult.handled;
+                    }
                     NavDebugLog.log(
                       'libraryGrid[$rowIndex] tile=$i UP key received',
                     );
@@ -5156,6 +5203,14 @@ class _ContentRowsState extends State<_ContentRows>
                         : KeyEventResult.ignored;
                   }
                   if (event.logicalKey.isDownKey) {
+                    final withinGrid = i + itemsPerLine;
+                    if (itemsPerLine > 0 && withinGrid < nodes.length) {
+                      NavDebugLog.log(
+                        'libraryGrid[$rowIndex] tile=$i DOWN -> tile=$withinGrid (same grid)',
+                      );
+                      nodes[withinGrid].requestFocus();
+                      return KeyEventResult.handled;
+                    }
                     NavDebugLog.log(
                       'libraryGrid[$rowIndex] tile=$i DOWN key received',
                     );
