@@ -906,6 +906,17 @@ class EmbyItemsApi implements ItemsApi {
     int? introStart;
     int? introEnd;
     int? creditsStart;
+    // 01.10, Sid: Emby's own MarkerType enum is a fixed, compiled-in set
+    // (Chapter/IntroStart/IntroEnd/CreditsStart - confirmed against the real
+    // server's swagger.json, MediaBrowser.Model.Entities.MarkerType) with no
+    // Recap or Preview value a plugin could ever add. Recap/preview markers
+    // are instead recognized by chapter NAME (a free-text field, unlike
+    // MarkerType), matching exactly "Recap" or "Preview" case-insensitively.
+    // This is an app-side convention, not an Emby standard: only Moonfin
+    // understands it, any other Emby client just sees an ordinary chapter
+    // with that title.
+    int? recapStart;
+    int? previewStart;
     for (final raw in chapters) {
       if (raw is! Map) continue;
       final ticks = (raw['StartPositionTicks'] as num?)?.toInt();
@@ -919,20 +930,31 @@ class EmbyItemsApi implements ItemsApi {
         case 'creditsstart':
           creditsStart ??= ticks;
       }
+      switch ((raw['Name'] as String?)?.trim().toLowerCase()) {
+        case 'recap':
+          recapStart ??= ticks;
+        case 'preview':
+          previewStart ??= ticks;
+      }
     }
 
-    // Plenty of episodes carry a start marker and never an end one. The
-    // chapter that follows is where the intro handed over to the episode, so
-    // it stands in for the missing marker. One with nothing after it stays
-    // unbounded rather than guessing a length.
-    if (introStart != null && introEnd == null) {
-      final start = introStart;
+    // The chapter that comes right after a start-only marker is where that
+    // segment handed over to whatever follows, so it stands in for a
+    // missing end marker - same reasoning for intro, recap and preview
+    // alike. One with nothing after it stays unbounded rather than
+    // guessing a length.
+    int? nextChapterAfter(int start) {
       int? next;
       for (final ticks in chapterStarts) {
         if (ticks > start && (next == null || ticks < next)) next = ticks;
       }
-      introEnd = next;
+      return next;
     }
+
+    if (introStart != null && introEnd == null) {
+      introEnd = nextChapterAfter(introStart);
+    }
+    final recapEnd = recapStart == null ? null : nextChapterAfter(recapStart);
 
     final segments = <Map<String, dynamic>>[];
     if (introStart != null && introEnd != null && introEnd > introStart) {
@@ -944,8 +966,20 @@ class EmbyItemsApi implements ItemsApi {
         'EndTicks': introEnd,
       });
     }
+    if (recapStart != null && recapEnd != null && recapEnd > recapStart) {
+      segments.add({
+        'Id': 'emby-recap-$itemId',
+        'ItemId': itemId,
+        'Type': 'Recap',
+        'StartTicks': recapStart,
+        'EndTicks': recapEnd,
+      });
+    }
 
-    // Credits have no end marker, so they run to the end of the item.
+    // Credits and previews have no natural end marker in this scheme, so
+    // each runs to either the next chapter (if the episode has one after
+    // it, e.g. a preview followed by a studio bumper chapter) or the end of
+    // the item.
     final runtime = (item['RunTimeTicks'] as num?)?.toInt();
     if (creditsStart != null && runtime != null && runtime > creditsStart) {
       segments.add({
@@ -955,6 +989,18 @@ class EmbyItemsApi implements ItemsApi {
         'StartTicks': creditsStart,
         'EndTicks': runtime,
       });
+    }
+    if (previewStart != null) {
+      final previewEnd = nextChapterAfter(previewStart) ?? runtime;
+      if (previewEnd != null && previewEnd > previewStart) {
+        segments.add({
+          'Id': 'emby-preview-$itemId',
+          'ItemId': itemId,
+          'Type': 'Preview',
+          'StartTicks': previewStart,
+          'EndTicks': previewEnd,
+        });
+      }
     }
 
     return segments;
