@@ -919,7 +919,11 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _buildSidebar(),
+                      // Staircase: la sidebar prend toute la place tant que
+                      // le focus y est, et disparaît complètement dès qu'il
+                      // passe dans la grille, qui récupère alors tout
+                      // l'écran - comme dans TiviMate.
+                      if (!_gridHasFocus) _buildSidebar(),
                       Expanded(child: _buildGrid(_filtered)),
                     ],
                   ),
