@@ -878,7 +878,21 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   Widget build(BuildContext context) {
     final channels = _channels;
 
-    return Scaffold(
+    // 01.10, Sid: "si je suis dans la grille et que je fais retour, je
+    // reviens sur l'écran d'accueil de Moon" - the physical BACK button on
+    // Android TV doesn't reach _onGridKeyEvent's own isBackKey handling at
+    // all; it pops the route directly (Android's predictive-back/
+    // onBackPressed path, not a KeyEvent Focus.onKeyEvent ever sees). Only
+    // intercept the pop while focus is in the grid - once it's back on the
+    // sidebar, BACK should behave normally and leave this whole screen.
+    return PopScope(
+      canPop: !_gridHasFocus,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        setState(() => _gridHasFocus = false);
+        _allChannelsTileFocusNode.requestFocus();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('TV en direct'),
         actions: [
@@ -930,6 +944,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                 ),
               ],
             ),
+      ),
     );
   }
 }
