@@ -1711,6 +1711,30 @@ class DeviceProfileBuilder {
       return;
     }
 
+    // 01.10, Sid: "ça ne lit toujours pas l'av1" - a portrait source
+    // (height > width, e.g. a phone-shot clip) was rejected for DirectPlay
+    // even though the device's own decoder almost certainly handles it:
+    // Android's MediaCodecInfo.VideoCapabilities reports supportedWidths
+    // and supportedHeights as two INDEPENDENT upper bounds (its own docs
+    // say "the maximum width and the maximum height are not necessarily
+    // achievable at the same time"), so a width-oriented probe naturally
+    // comes back with a modest height ceiling - fine for ordinary
+    // landscape video, but it then wrongly caps a portrait video's much
+    // larger height against that same number. A decoder that can do
+    // width W in landscape can, in every chipset actually seen, do that
+    // same W as a HEIGHT once swapped to portrait - so the real per-axis
+    // ceiling is the larger of the two reported bounds, applied
+    // symmetrically. This can only make the condition less restrictive
+    // than what was already reported true in one axis, never claim
+    // capability beyond what the device stated. Skipped once the user has
+    // picked an explicit max resolution (userWidth/userHeight > 0) -
+    // that's a deliberate cap and must stay exact in both axes.
+    if (maxResolution == MaxVideoResolution.auto) {
+      final symmetricBound = width > height ? width : height;
+      width = symmetricBound;
+      height = symmetricBound;
+    }
+
     profiles.add(
       _codecProfile(
         type: 'Video',
