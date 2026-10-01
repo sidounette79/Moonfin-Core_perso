@@ -71,6 +71,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   StreamSubscription<void>? _playerSub;
   final _rulerController = ScrollController();
   final _rowsController = ScrollController();
+  final _verticalController = ScrollController();
 
   // 01.10, Sid: "Ca s'ouvre sur la ligne de recherche et je peux pas en
   // sortir avec la télécommande" - this whole screen shipped with no TV
@@ -88,11 +89,111 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   late final DateTime _windowStart;
   late final DateTime _windowEnd;
 
+  // 01.10, Sid: TiviMate's own "staircase" layout - the sidebar is full
+  // width while focus is in it, and disappears entirely once focus moves
+  // into the grid, so the grid gets the full screen width. "Tant qu'on y
+  // est, fais aussi cellule par cellule" - a real grid: LEFT/RIGHT move
+  // between a channel's own programmes in time (LEFT goes further into the
+  // past, for replay), UP/DOWN move to the adjacent channel's programme at
+  // roughly the same time, BACK (not LEFT) leaves the grid for the
+  // sidebar. One Focus node for the whole grid rather than one per cell -
+  // hundreds of real FocusNodes for a grid this size would be wasteful and
+  // the highlighted cell is drawn from this logical position instead.
+  bool _gridHasFocus = false;
+  final _gridFocusNode = FocusNode(debugLabel: 'iptvGrid');
+  int _focusedChannelIndex = 0;
+  DateTime? _focusedProgramStart;
+
   /// Keyed by streamUrl (stable across re-filtering) rather than list
   /// index, and holding the Future itself (not just its resolved value) so
   /// a FutureBuilder rebuild reuses the same instance instead of flashing
   /// back to "waiting" every time the grid filter changes.
   final Map<String, Future<List<EpgEntryData>>> _epgFutures = {};
+
+  /// Synchronous mirror of whatever _epgFutures has resolved so far -
+  /// D-pad navigation needs to read a channel's programme list without
+  /// waiting on a FutureBuilder rebuild cycle.
+  final Map<String, List<EpgEntryData>> _resolvedPrograms = {};
+
+  Future<List<EpgEntryData>> _epgForResolving(PlayableChannel channel) {
+    final fetchEpg = channel.fetchEpg;
+    if (fetchEpg == null) return Future.value(const []);
+    return _epgFutures.putIfAbsent(channel.streamUrl, () async {
+      final result = await fetchEpg();
+      _resolvedPrograms[channel.streamUrl] = result;
+      return result;
+    });
+  }
+
+  /// Index of the programme covering (or, failing that, closest in start
+  /// time to) `anchor` - used both to move LEFT/RIGHT within one channel's
+  /// own programmes and, after an UP/DOWN hop, to re-anchor onto whichever
+  /// programme sits at roughly the same time on the new channel.
+  int _programIndexAt(List<EpgEntryData> programs, DateTime anchor) {
+    for (var i = 0; i < programs.length; i++) {
+      if (!anchor.isBefore(programs[i].start) && anchor.isBefore(programs[i].end)) {
+        return i;
+      }
+    }
+    var best = 0;
+    var bestDiff = programs[0].start.difference(anchor).abs();
+    for (var i = 1; i < programs.length; i++) {
+      final diff = programs[i].start.difference(anchor).abs();
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  /// Scrolls the time axis (ruler + every row, mirrored) just enough to
+  /// bring [start, end) into view - same "ensure visible" idea as
+  /// Scrollable.ensureVisible, hand-rolled because the axis is driven by
+  /// two mirrored horizontal ScrollControllers, not Flutter's own
+  /// Scrollable machinery.
+  void _ensureProgramVisible(DateTime start, DateTime end) {
+    if (!_rulerController.hasClients) return;
+    final left = _xFor(start);
+    final right = _xFor(end);
+    final viewport = _rulerController.position.viewportDimension;
+    final current = _rulerController.offset;
+    double? target;
+    if (left < current) {
+      target = left;
+    } else if (right > current + viewport) {
+      target = right - viewport;
+    }
+    if (target == null) return;
+    final clamped = target.clamp(0.0, _rulerController.position.maxScrollExtent);
+    _rulerController.jumpTo(clamped);
+    if (_rowsController.hasClients) {
+      _rowsController.jumpTo(
+        clamped.clamp(0.0, _rowsController.position.maxScrollExtent),
+      );
+    }
+  }
+
+  /// Same idea as [_ensureProgramVisible], vertically, for the focused
+  /// channel row - rows are a fixed 64px tall (see _channelRow).
+  void _ensureChannelVisible(int index) {
+    if (!_verticalController.hasClients) return;
+    const rowHeight = 64.0;
+    final top = index * rowHeight;
+    final bottom = top + rowHeight;
+    final viewport = _verticalController.position.viewportDimension;
+    final current = _verticalController.offset;
+    double? target;
+    if (top < current) {
+      target = top;
+    } else if (bottom > current + viewport) {
+      target = bottom - viewport;
+    }
+    if (target == null) return;
+    _verticalController.jumpTo(
+      target.clamp(0.0, _verticalController.position.maxScrollExtent),
+    );
+  }
 
   bool _isFavorite(PlayableChannel c) =>
       _favorites.contains(EpgChannelMatcher.groupingKey(c.name));
@@ -125,6 +226,8 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     _searchController.dispose();
     _searchFocusNode.dispose();
     _allChannelsTileFocusNode.dispose();
+    _gridFocusNode.dispose();
+    _verticalController.dispose();
     // Actually leaving the IPTV section (not just pushing the fullscreen
     // route on top - that doesn't dispose this screen, see
     // IptvPlayerService's own lifecycle note).
@@ -181,12 +284,6 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     return list;
   }
 
-  Future<List<EpgEntryData>> _epgFor(PlayableChannel channel) {
-    final fetchEpg = channel.fetchEpg;
-    if (fetchEpg == null) return Future.value(const []);
-    return _epgFutures.putIfAbsent(channel.streamUrl, fetchEpg);
-  }
-
   void _openInPreview(List<PlayableChannel> list, int index) {
     unawaited(_service.openChannels(list, index));
   }
@@ -228,6 +325,25 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
 
   // ---- Sidebar -------------------------------------------------------
 
+  /// RIGHT from any sidebar tile enters the grid, landing on its first row
+  /// - same "staircase" idea TiviMate uses, see this screen's own header
+  /// comment. Wrapped around ListTile rather than passed to its own
+  /// onFocusChange/focusNode since ListTile exposes no onKeyEvent hook.
+  KeyEventResult _onSidebarTileKeyEvent(FocusNode node, KeyEvent event) {
+    if (!event.isActionable || !event.logicalKey.isRightKey) {
+      return KeyEventResult.ignored;
+    }
+    final list = _filtered;
+    if (list.isEmpty) return KeyEventResult.ignored;
+    setState(() {
+      _gridHasFocus = true;
+      _focusedChannelIndex = _focusedChannelIndex.clamp(0, list.length - 1);
+      _focusedProgramStart ??= DateTime.now();
+    });
+    _gridFocusNode.requestFocus();
+    return KeyEventResult.handled;
+  }
+
   Widget _sidebarTile(
     String label,
     String filterValue, {
@@ -236,7 +352,9 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     FocusNode? focusNode,
   }) {
     final selected = _selectedFilter == filterValue;
-    return ListTile(
+    return Focus(
+      onKeyEvent: _onSidebarTileKeyEvent,
+      child: ListTile(
       dense: true,
       focusNode: focusNode,
       leading: icon != null
@@ -255,6 +373,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
       selected: selected,
       selectedTileColor: AppColorScheme.accent.withValues(alpha: 0.14),
       onTap: () => setState(() => _selectedFilter = filterValue),
+      ),
     );
   }
 
@@ -543,10 +662,76 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     );
   }
 
+  /// Cellule par cellule, pas ligne par ligne: LEFT/RIGHT se déplacent dans
+  /// le temps sur LA MÊME chaîne (LEFT = programme précédent, donc vers le
+  /// passé - utile pour les quelques cas de replay), UP/DOWN sautent à la
+  /// chaîne voisine en se recalant sur le programme le plus proche dans le
+  /// temps (voir _programIndexAt). RETOUR (pas LEFT) sort de la grille vers
+  /// la sidebar - LEFT est maintenant pris par la navigation temporelle.
+  /// SELECT ouvre le plein écran, comme un tap souris.
+  KeyEventResult _onGridKeyEvent(FocusNode node, KeyEvent event) {
+    if (!event.isActionable) return KeyEventResult.ignored;
+    final list = _filtered;
+    if (list.isEmpty) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+
+    if (key.isBackKey) {
+      setState(() => _gridHasFocus = false);
+      _allChannelsTileFocusNode.requestFocus();
+      return KeyEventResult.handled;
+    }
+
+    final channelIndex = _focusedChannelIndex.clamp(0, list.length - 1);
+    final channel = list[channelIndex];
+    final anchor = _focusedProgramStart ?? DateTime.now();
+
+    if (key.isLeftKey || key.isRightKey) {
+      final programs = _resolvedPrograms[channel.streamUrl];
+      if (programs == null || programs.isEmpty) return KeyEventResult.handled;
+      final currentIndex = _programIndexAt(programs, anchor);
+      final newIndex = key.isLeftKey ? currentIndex - 1 : currentIndex + 1;
+      if (newIndex < 0 || newIndex >= programs.length) {
+        return KeyEventResult.handled;
+      }
+      setState(() {
+        _focusedChannelIndex = channelIndex;
+        _focusedProgramStart = programs[newIndex].start;
+      });
+      _ensureProgramVisible(programs[newIndex].start, programs[newIndex].end);
+      return KeyEventResult.handled;
+    }
+
+    if (key.isUpKey || key.isDownKey) {
+      final newChannelIndex = key.isUpKey ? channelIndex - 1 : channelIndex + 1;
+      if (newChannelIndex < 0 || newChannelIndex >= list.length) {
+        return KeyEventResult.handled;
+      }
+      final newPrograms = _resolvedPrograms[list[newChannelIndex].streamUrl];
+      var newAnchor = anchor;
+      if (newPrograms != null && newPrograms.isNotEmpty) {
+        newAnchor = newPrograms[_programIndexAt(newPrograms, anchor)].start;
+      }
+      setState(() {
+        _focusedChannelIndex = newChannelIndex;
+        _focusedProgramStart = newAnchor;
+      });
+      _ensureChannelVisible(newChannelIndex);
+      return KeyEventResult.handled;
+    }
+
+    if (key.isSelectKey) {
+      _openFullscreen(list, channelIndex);
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
   Widget _channelRow(List<PlayableChannel> list, int index) {
     final channel = list[index];
     final hours = _windowEnd.difference(_windowStart).inHours;
     final isCurrent = _service.current?.streamUrl == channel.streamUrl;
+    final isFocusedRow = _gridHasFocus && _focusedChannelIndex == index;
 
     return SizedBox(
       height: 64,
@@ -556,14 +741,13 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
           SizedBox(
             width: _railWidth,
             child: GestureDetector(
-              onTap: () => _openInPreview(list, index),
-              onDoubleTap: () => _openFullscreen(list, index),
+              onTap: () => _openFullscreen(list, index),
               onLongPress: () => _toggleFavorite(channel),
               child: EpgChannelCell(
                 logoUrl: channel.iconUrl,
                 name: channel.name,
                 number: '${index + 1}',
-                focused: isCurrent,
+                focused: isCurrent || isFocusedRow,
                 apple: false,
                 isFavorite: _isFavorite(channel),
               ),
@@ -571,17 +755,25 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
           ),
           Expanded(
             child: FutureBuilder<List<EpgEntryData>>(
-              future: _epgFor(channel),
+              future: _epgForResolving(channel),
               builder: (context, snapshot) {
-                final programs = snapshot.data;
+                final programs =
+                    snapshot.data ?? _resolvedPrograms[channel.streamUrl];
+                EpgEntryData? focusedProgram;
+                if (isFocusedRow && programs != null && programs.isNotEmpty) {
+                  final idx = _programIndexAt(
+                    programs,
+                    _focusedProgramStart ?? DateTime.now(),
+                  );
+                  focusedProgram = programs[idx];
+                }
                 return SingleChildScrollView(
                   controller: _rowsController,
                   scrollDirection: Axis.horizontal,
                   physics: const NeverScrollableScrollPhysics(),
                   child: SizedBox(
                     width: hours * _pixelsPerHour,
-                    child:
-                        snapshot.connectionState == ConnectionState.waiting
+                    child: programs == null
                         ? EpgProgramCell(
                             title: '',
                             genre: const EpgGenre('', Colors.transparent),
@@ -594,7 +786,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                           )
                         : Stack(
                             children: [
-                              for (final p in programs ?? const [])
+                              for (final p in programs)
                                 if (p.end.isAfter(_windowStart) &&
                                     p.start.isBefore(_windowEnd))
                                   Positioned(
@@ -604,9 +796,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                                     top: 0,
                                     bottom: 0,
                                     child: GestureDetector(
-                                      onTap: () => _openInPreview(list, index),
-                                      onDoubleTap: () =>
-                                          _openFullscreen(list, index),
+                                      onTap: () => _openFullscreen(list, index),
                                       child: EpgProgramCell(
                                         title: p.title,
                                         genre: const EpgGenre(
@@ -628,7 +818,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                                                       .clamp(1, 1 << 30)
                                             : 0,
                                         hasTimer: false,
-                                        focused: isCurrent,
+                                        focused: identical(p, focusedProgram),
                                         apple: false,
                                         startsBeforeWindow: p.start.isBefore(
                                           _windowStart,
@@ -670,9 +860,14 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
           ],
         ),
         Expanded(
-          child: ListView.builder(
-            itemCount: list.length,
-            itemBuilder: (context, index) => _channelRow(list, index),
+          child: Focus(
+            focusNode: _gridFocusNode,
+            onKeyEvent: _onGridKeyEvent,
+            child: ListView.builder(
+              controller: _verticalController,
+              itemCount: list.length,
+              itemBuilder: (context, index) => _channelRow(list, index),
+            ),
           ),
         ),
       ],
