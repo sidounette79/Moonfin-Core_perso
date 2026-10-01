@@ -2239,6 +2239,40 @@ class _LibraryHeader extends StatelessWidget {
                 onTap: onSort,
                 onUpKey: _focusSearch,
               ),
+              // 01.10, Sid: "le filtre de statut Lu/non Lu ... directement
+              // accessible et pas noyé dans le filtre - je l'utilise très
+              // souvent" - was only reachable through _FilterSortDialog
+              // (behind the sort icon above). A dedicated button cycling
+              // through it directly, tooltip showing the current state so
+              // the icon alone doesn't have to carry that meaning.
+              SizedBox(width: 2 * desktopScale),
+              FocusableToolbarButton(
+                icon: switch (playedFilter) {
+                  PlayedStatusFilter.all => Icons.check_circle_outline,
+                  PlayedStatusFilter.watched => Icons.check_circle,
+                  PlayedStatusFilter.unwatched => Icons.circle_outlined,
+                  PlayedStatusFilter.inProgress => Icons.play_circle_outline,
+                },
+                tooltip: switch (playedFilter) {
+                  PlayedStatusFilter.all => AppLocalizations.of(context).all,
+                  PlayedStatusFilter.watched =>
+                    AppLocalizations.of(context).watched,
+                  PlayedStatusFilter.unwatched =>
+                    AppLocalizations.of(context).unwatched,
+                  PlayedStatusFilter.inProgress =>
+                    AppLocalizations.of(context).filterInProgress,
+                },
+                size: 30 * desktopScale,
+                iconSize: 20 * desktopScale,
+                unfocusedIconAlpha: 128,
+                onTap: () => onPlayedFilterChanged(switch (playedFilter) {
+                  PlayedStatusFilter.all => PlayedStatusFilter.unwatched,
+                  PlayedStatusFilter.unwatched => PlayedStatusFilter.watched,
+                  PlayedStatusFilter.watched => PlayedStatusFilter.all,
+                  PlayedStatusFilter.inProgress => PlayedStatusFilter.all,
+                }),
+                onUpKey: _focusSearch,
+              ),
               if (isMovieOrSeriesLibrary && onGroupBy != null) ...[
                 SizedBox(width: 2 * desktopScale),
                 FocusableToolbarButton(
