@@ -1,22 +1,38 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:media_kit_video/media_kit_video.dart';
+import 'package:moonfin_design/moonfin_design.dart';
 
 import '../../../data/models/playable_channel.dart';
 import '../../../data/services/epg_channel_matcher.dart';
 import '../../../data/services/iptv_channel_loader.dart';
+import '../../../data/services/iptv_player_service.dart';
 import '../../../preference/user_preferences.dart';
-import 'epg/xtream_epg_screen.dart';
+import 'epg/epg_genre.dart';
+import 'epg/widgets/epg_channel_cell.dart';
+import 'epg/widgets/epg_program_cell.dart';
 import 'xtream_player_screen.dart';
 
-/// 30.09, Sid: direct IPTV channel list, across every configured source -
-/// Xtream Codes providers (filtered to the categories she picked in
-/// XtreamCategoryPickerScreen) and plain M3U playlists alike ("j'ai fait
-/// une m3u qui regroupe mes 3 listes... rajoute [le support]"). Both
-/// collapse to the same PlayableChannel shape before they ever reach this
-/// screen or the player, which never needs to know which kind of source a
-/// given channel came from. Tapping a channel opens XtreamPlayerScreen
-/// with the full filtered list, so zapping there cycles through exactly
-/// what's shown here.
+/// 01.10, Sid: "à l'ouverture de la page, qu'on ait la même UI que
+/// clubtivi et pas juste la liste des chaines" - one screen now, modelled
+/// on clubTivi's own channels_screen.dart (github.com/clubanderson/
+/// clubTivi, Apache 2.0, see THIRD_PARTY_NOTICES.md): a filter sidebar on
+/// the left, a persistent mini preview + now-playing panel up top, and the
+/// programme grid filling the rest - instead of a flat ListView with the
+/// grid buried behind a separate route (what this screen used to be, and
+/// what XtreamEpgScreen used to be as its own screen; that screen is gone,
+/// folded in here).
+///
+/// Adapted in spirit, not ported: clubTivi backs this with a Drift
+/// database (many-to-many favourite lists, a dedicated failover-group
+/// table, per-row synced ScrollControllers via manual Transform.translate
+/// for its scale of guide). This keeps Moonfin's existing single-list
+/// favourites (UserPreferences.getIptvFavoriteChannels) and its existing
+/// mirrored-ScrollController EPG sync (good enough at the channel counts
+/// Sid actually has configured) - only the single-screen layout and the
+/// sidebar's filter-by-prefix idea are carried over.
 class XtreamChannelsScreen extends StatefulWidget {
   const XtreamChannelsScreen({super.key});
 
@@ -25,16 +41,45 @@ class XtreamChannelsScreen extends StatefulWidget {
 }
 
 class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
+  static const _railWidth = 200.0;
+  static const _pixelsPerHour = 220.0;
+  static const _windowBefore = Duration(hours: 1);
+  static const _windowAfter = Duration(hours: 5);
+
   final _loader = IptvChannelLoader();
   final _prefs = GetIt.instance<UserPreferences>();
+  final _service = GetIt.instance<IptvPlayerService>();
+
   List<PlayableChannel>? _channels;
   String? _error;
   String _filter = '';
-  bool _favoritesOnly = false;
   Set<String> _favorites = {};
 
-  bool _isFavorite(PlayableChannel channel) =>
-      _favorites.contains(EpgChannelMatcher.groupingKey(channel.name));
+  /// Which slice of the channel list the grid shows - a single string with
+  /// a conventional prefix (clubTivi's own trick, see sidebar §5 of the
+  /// upstream analysis) rather than an enum plus a parallel id field:
+  /// 'All', 'Favorites', `provider:<sourceName>`, or `group:<groupTitle>`.
+  String _selectedFilter = 'All';
+  final Set<String> _expandedSections = {
+    'favorites',
+    'providers',
+    'groups',
+  };
+
+  StreamSubscription<void>? _playerSub;
+  final _rulerController = ScrollController();
+  final _rowsController = ScrollController();
+  late final DateTime _windowStart;
+  late final DateTime _windowEnd;
+
+  /// Keyed by streamUrl (stable across re-filtering) rather than list
+  /// index, and holding the Future itself (not just its resolved value) so
+  /// a FutureBuilder rebuild reuses the same instance instead of flashing
+  /// back to "waiting" every time the grid filter changes.
+  final Map<String, Future<List<EpgEntryData>>> _epgFutures = {};
+
+  bool _isFavorite(PlayableChannel c) =>
+      _favorites.contains(EpgChannelMatcher.groupingKey(c.name));
 
   Future<void> _toggleFavorite(PlayableChannel channel) async {
     final key = EpgChannelMatcher.groupingKey(channel.name);
@@ -46,8 +91,26 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _windowStart = now.subtract(_windowBefore);
+    _windowEnd = now.add(_windowAfter);
     _favorites = _prefs.getIptvFavoriteChannels();
+    _playerSub = _service.changes.listen((_) {
+      if (mounted) setState(() {});
+    });
     _load();
+  }
+
+  @override
+  void dispose() {
+    _playerSub?.cancel();
+    _rulerController.dispose();
+    _rowsController.dispose();
+    // Actually leaving the IPTV section (not just pushing the fullscreen
+    // route on top - that doesn't dispose this screen, see
+    // IptvPlayerService's own lifecycle note).
+    _service.stop();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -63,7 +126,6 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     }
 
     final channels = await _loader.load();
-
     if (!mounted) return;
     setState(() {
       _channels = channels;
@@ -74,57 +136,536 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     });
   }
 
-  void _play(List<PlayableChannel> channels, int index) {
+  List<PlayableChannel> get _filtered {
+    final all = _channels ?? const <PlayableChannel>[];
+    Iterable<PlayableChannel> result = all;
+    if (_selectedFilter == 'Favorites') {
+      result = result.where(_isFavorite);
+    } else if (_selectedFilter.startsWith('provider:')) {
+      final name = _selectedFilter.substring('provider:'.length);
+      result = result.where((c) => c.sourceName == name);
+    } else if (_selectedFilter.startsWith('group:')) {
+      final name = _selectedFilter.substring('group:'.length);
+      result = result.where((c) => c.groupTitle == name);
+    }
+    if (_filter.isNotEmpty) {
+      result = result.where(
+        (c) => c.name.toLowerCase().contains(_filter.toLowerCase()),
+      );
+    }
+    final list = result.toList()
+      ..sort((a, b) {
+        final favA = _isFavorite(a) ? 0 : 1;
+        final favB = _isFavorite(b) ? 0 : 1;
+        return favA.compareTo(favB);
+      });
+    return list;
+  }
+
+  Future<List<EpgEntryData>> _epgFor(PlayableChannel channel) {
+    final fetchEpg = channel.fetchEpg;
+    if (fetchEpg == null) return Future.value(const []);
+    return _epgFutures.putIfAbsent(channel.streamUrl, fetchEpg);
+  }
+
+  void _openInPreview(List<PlayableChannel> list, int index) {
+    unawaited(_service.openChannels(list, index));
+  }
+
+  void _openFullscreen(List<PlayableChannel> list, int index) {
+    _openInPreview(list, index);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            XtreamPlayerScreen(channels: list, initialIndex: index),
+      ),
+    );
+  }
+
+  void _openFullscreenCurrent() {
+    if (_service.channels.isEmpty) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => XtreamPlayerScreen(
-          channels: channels,
-          initialIndex: index,
+          channels: _service.channels,
+          initialIndex: _service.currentIndex,
         ),
       ),
+    );
+  }
+
+  String _formatTime(DateTime dt) =>
+      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
+  EpgEntryData? get _currentProgram {
+    final epg = _service.epg;
+    if (epg.isEmpty) return null;
+    final now = DateTime.now();
+    for (final e in epg) {
+      if (now.isAfter(e.start) && now.isBefore(e.end)) return e;
+    }
+    return null;
+  }
+
+  // ---- Sidebar -------------------------------------------------------
+
+  Widget _sidebarTile(
+    String label,
+    String filterValue, {
+    IconData? icon,
+    int? count,
+  }) {
+    final selected = _selectedFilter == filterValue;
+    return ListTile(
+      dense: true,
+      leading: icon != null
+          ? Icon(icon, size: 20)
+          : const SizedBox(width: 20),
+      title: Text(label, overflow: TextOverflow.ellipsis),
+      trailing: count != null
+          ? Text(
+              '$count',
+              style: TextStyle(
+                color: AppColorScheme.onSurface.withValues(alpha: 0.5),
+                fontSize: 12,
+              ),
+            )
+          : null,
+      selected: selected,
+      selectedTileColor: AppColorScheme.accent.withValues(alpha: 0.14),
+      onTap: () => setState(() => _selectedFilter = filterValue),
+    );
+  }
+
+  Widget _sidebarSection(String key, String title, List<Widget> children) {
+    if (children.isEmpty) return const SizedBox.shrink();
+    final expanded = _expandedSections.contains(key);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          dense: true,
+          title: Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              color: AppColorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+          trailing: Icon(
+            expanded ? Icons.expand_less : Icons.expand_more,
+            size: 18,
+          ),
+          onTap: () => setState(() {
+            if (expanded) {
+              _expandedSections.remove(key);
+            } else {
+              _expandedSections.add(key);
+            }
+          }),
+        ),
+        if (expanded) ...children,
+      ],
+    );
+  }
+
+  Widget _buildSidebar() {
+    final channels = _channels ?? const <PlayableChannel>[];
+    final providers = channels.map((c) => c.sourceName).toSet().toList()
+      ..sort();
+    final groups =
+        channels
+            .map((c) => c.groupTitle)
+            .where((g) => g.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+
+    return Container(
+      width: _railWidth,
+      decoration: BoxDecoration(
+        color: AppColorScheme.surface,
+        border: Border(
+          right: BorderSide(
+            color: AppColorScheme.onSurface.withValues(alpha: 0.08),
+          ),
+        ),
+      ),
+      child: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: [
+          _sidebarTile(
+            'Toutes les chaînes',
+            'All',
+            icon: Icons.apps,
+            count: channels.length,
+          ),
+          _sidebarSection('favorites', 'Favoris', [
+            _sidebarTile(
+              'Favoris',
+              'Favorites',
+              icon: Icons.favorite,
+              count: _favorites.length,
+            ),
+          ]),
+          _sidebarSection('providers', 'Fournisseurs', [
+            for (final p in providers)
+              _sidebarTile(p, 'provider:$p', icon: Icons.dns_outlined),
+          ]),
+          _sidebarSection('groups', 'Groupes (${groups.length})', [
+            for (final g in groups)
+              _sidebarTile(g, 'group:$g', icon: Icons.folder_outlined),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  // ---- Preview row -----------------------------------------------------
+
+  Widget _buildPreviewRow() {
+    final current = _service.current;
+    final controller = _service.controller;
+    final program = _currentProgram;
+
+    return SizedBox(
+      height: 200,
+      child: Container(
+        color: AppColorScheme.surface,
+        child: Row(
+          children: [
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: ColoredBox(
+                color: Colors.black,
+                child: controller == null
+                    ? const Center(
+                        child: Icon(
+                          Icons.live_tv,
+                          color: Colors.white24,
+                          size: 40,
+                        ),
+                      )
+                    : GestureDetector(
+                        onTap: _openFullscreenCurrent,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Video(controller: controller, controls: NoVideoControls),
+                            if (_service.loading || _service.buffering)
+                              const Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: current == null
+                    ? Text(
+                        'Sélectionne une chaîne dans la grille',
+                        style: TextStyle(
+                          color: AppColorScheme.onSurface.withValues(
+                            alpha: 0.6,
+                          ),
+                        ),
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  current.name,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              _ProviderBadge(
+                                sourceName:
+                                    _service.activeSource?.sourceName ??
+                                    current.sourceName,
+                              ),
+                            ],
+                          ),
+                          if (_service.error != null) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              _service.error!,
+                              style: const TextStyle(
+                                color: Colors.redAccent,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ] else if (program != null) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              '${_formatTime(program.start)} - ${_formatTime(program.end)}  ${program.title}',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: AppColorScheme.onSurface.withValues(
+                                  alpha: 0.85,
+                                ),
+                              ),
+                            ),
+                          ],
+                          const Spacer(),
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  _isFavorite(current)
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: _isFavorite(current)
+                                      ? Colors.redAccent
+                                      : null,
+                                ),
+                                onPressed: () => _toggleFavorite(current),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.fullscreen),
+                                tooltip: 'Plein écran',
+                                onPressed: _openFullscreenCurrent,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---- EPG grid ----------------------------------------------------
+
+  bool _onRulerScroll(ScrollNotification notification) {
+    if (_rowsController.hasClients) {
+      _rowsController.jumpTo(
+        notification.metrics.pixels.clamp(
+          0.0,
+          _rowsController.position.maxScrollExtent,
+        ),
+      );
+    }
+    return false;
+  }
+
+  double _xFor(DateTime time) {
+    final clamped = time.isBefore(_windowStart)
+        ? _windowStart
+        : (time.isAfter(_windowEnd) ? _windowEnd : time);
+    final hoursFromStart = clamped.difference(_windowStart).inMinutes / 60.0;
+    return hoursFromStart * _pixelsPerHour;
+  }
+
+  Widget _timeRuler() {
+    final hours = _windowEnd.difference(_windowStart).inHours;
+    return SizedBox(
+      height: 32,
+      width: hours * _pixelsPerHour,
+      child: Stack(
+        children: [
+          for (var h = 0; h <= hours; h++)
+            Positioned(
+              left: h * _pixelsPerHour,
+              top: 0,
+              bottom: 0,
+              child: Container(
+                width: 1,
+                color: AppColorScheme.onSurface.withValues(alpha: 0.15),
+              ),
+            ),
+          for (var h = 0; h < hours; h++)
+            Positioned(
+              left: h * _pixelsPerHour + 6,
+              top: 6,
+              child: Text(
+                TimeOfDay.fromDateTime(
+                  _windowStart.add(Duration(hours: h)),
+                ).format(context),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+          Positioned(
+            left: _xFor(DateTime.now()),
+            top: 0,
+            bottom: 0,
+            child: Container(width: 2, color: Colors.redAccent),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _channelRow(List<PlayableChannel> list, int index) {
+    final channel = list[index];
+    final hours = _windowEnd.difference(_windowStart).inHours;
+    final isCurrent = _service.current?.streamUrl == channel.streamUrl;
+
+    return SizedBox(
+      height: 64,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: _railWidth,
+            child: GestureDetector(
+              onTap: () => _openInPreview(list, index),
+              onDoubleTap: () => _openFullscreen(list, index),
+              onLongPress: () => _toggleFavorite(channel),
+              child: EpgChannelCell(
+                logoUrl: channel.iconUrl,
+                name: channel.name,
+                number: '${index + 1}',
+                focused: isCurrent,
+                apple: false,
+                isFavorite: _isFavorite(channel),
+              ),
+            ),
+          ),
+          Expanded(
+            child: FutureBuilder<List<EpgEntryData>>(
+              future: _epgFor(channel),
+              builder: (context, snapshot) {
+                final programs = snapshot.data;
+                return SingleChildScrollView(
+                  controller: _rowsController,
+                  scrollDirection: Axis.horizontal,
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: SizedBox(
+                    width: hours * _pixelsPerHour,
+                    child:
+                        snapshot.connectionState == ConnectionState.waiting
+                        ? EpgProgramCell(
+                            title: '',
+                            genre: const EpgGenre('', Colors.transparent),
+                            isLive: false,
+                            progress: 0,
+                            hasTimer: false,
+                            focused: false,
+                            apple: false,
+                            loading: true,
+                          )
+                        : Stack(
+                            children: [
+                              for (final p in programs ?? const [])
+                                if (p.end.isAfter(_windowStart) &&
+                                    p.start.isBefore(_windowEnd))
+                                  Positioned(
+                                    left: _xFor(p.start),
+                                    width: (_xFor(p.end) - _xFor(p.start))
+                                        .clamp(4.0, double.infinity),
+                                    top: 0,
+                                    bottom: 0,
+                                    child: GestureDetector(
+                                      onTap: () => _openInPreview(list, index),
+                                      onDoubleTap: () =>
+                                          _openFullscreen(list, index),
+                                      child: EpgProgramCell(
+                                        title: p.title,
+                                        genre: const EpgGenre(
+                                          '',
+                                          Colors.transparent,
+                                        ),
+                                        isLive:
+                                            DateTime.now().isAfter(p.start) &&
+                                            DateTime.now().isBefore(p.end),
+                                        progress:
+                                            DateTime.now().isAfter(p.start) &&
+                                                DateTime.now().isBefore(p.end)
+                                            ? DateTime.now()
+                                                      .difference(p.start)
+                                                      .inSeconds /
+                                                  p.end
+                                                      .difference(p.start)
+                                                      .inSeconds
+                                                      .clamp(1, 1 << 30)
+                                            : 0,
+                                        hasTimer: false,
+                                        focused: isCurrent,
+                                        apple: false,
+                                        startsBeforeWindow: p.start.isBefore(
+                                          _windowStart,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                            ],
+                          ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGrid(List<PlayableChannel> list) {
+    if (list.isEmpty) {
+      return const Center(child: Text('Aucune chaîne dans cette catégorie.'));
+    }
+    return Column(
+      children: [
+        Row(
+          children: [
+            const SizedBox(width: _railWidth),
+            Expanded(
+              child: NotificationListener<ScrollNotification>(
+                onNotification: _onRulerScroll,
+                child: SingleChildScrollView(
+                  controller: _rulerController,
+                  scrollDirection: Axis.horizontal,
+                  child: _timeRuler(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: list.length,
+            itemBuilder: (context, index) => _channelRow(list, index),
+          ),
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final channels = _channels;
-    final filtered = channels == null
-        ? const <PlayableChannel>[]
-        : channels
-            .where((c) =>
-                _filter.isEmpty ||
-                c.name.toLowerCase().contains(_filter.toLowerCase()))
-            .where((c) => !_favoritesOnly || _isFavorite(c))
-            .toList()
-          // Favorites first, stable otherwise (List.sort is stable in
-          // Dart) so the rest keeps whatever order _loader.load() built.
-          ..sort((a, b) {
-            final favA = _isFavorite(a) ? 0 : 1;
-            final favB = _isFavorite(b) ? 0 : 1;
-            return favA.compareTo(favB);
-          });
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chaînes IPTV'),
+        title: const Text('TV en direct'),
         actions: [
-          IconButton(
-            icon: Icon(_favoritesOnly ? Icons.favorite : Icons.favorite_border),
-            tooltip: 'Favoris uniquement',
-            onPressed: () =>
-                setState(() => _favoritesOnly = !_favoritesOnly),
-          ),
-          IconButton(
-            icon: const Icon(Icons.grid_view),
-            tooltip: 'Guide des programmes',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const XtreamEpgScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _load,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
@@ -150,57 +691,29 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
               ),
             )
           : channels == null
-              ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final entry = filtered[index];
-                    return ListTile(
-                      leading: entry.iconUrl != null
-                          ? Image.network(
-                              entry.iconUrl!,
-                              width: 40,
-                              height: 40,
-                              errorBuilder: (_, _, _) =>
-                                  const Icon(Icons.live_tv),
-                            )
-                          : const Icon(Icons.live_tv),
-                      title: Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              entry.name,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          _ProviderBadge(sourceName: entry.sourceName),
-                        ],
-                      ),
-                      subtitle: entry.groupTitle.isEmpty
-                          ? null
-                          : Text(entry.groupTitle),
-                      trailing: IconButton(
-                        icon: Icon(
-                          _isFavorite(entry)
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: _isFavorite(entry) ? Colors.redAccent : null,
-                        ),
-                        onPressed: () => _toggleFavorite(entry),
-                      ),
-                      onTap: () => _play(filtered, index),
-                    );
-                  },
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                _buildPreviewRow(),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildSidebar(),
+                      Expanded(child: _buildGrid(_filtered)),
+                    ],
+                  ),
                 ),
+              ],
+            ),
     );
   }
 }
 
 /// A small coloured pill naming which provider a channel came from - the
 /// same colour every time for a given source name (hashed), so the same
-/// provider reads as visually consistent down the whole list without
-/// needing to remember an arbitrary legend.
+/// provider reads as visually consistent without needing to remember an
+/// arbitrary legend.
 class _ProviderBadge extends StatelessWidget {
   final String sourceName;
 

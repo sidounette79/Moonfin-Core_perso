@@ -12,6 +12,7 @@ import '../../data/repositories/multi_server_repository.dart';
 import '../../data/repositories/media_bar_repository.dart';
 import '../../data/repositories/offline_repository.dart';
 import '../../data/services/blocked_content_gate.dart';
+import '../../data/services/iptv_player_service.dart';
 import '../../data/services/library_scope_service.dart';
 import '../../data/services/media_server_client_factory.dart';
 import '../../data/repositories/seerr_repository.dart';
@@ -99,6 +100,7 @@ void registerAppModule() {
     dispose: (cache) => cache.dispose(),
   );
   _getIt.registerLazySingleton(() => SocketHandler());
+  _getIt.registerLazySingleton(() => IptvPlayerService());
   _getIt.registerLazySingleton(() => CustomExternalListsService());
   // 29-30.09, real bug found live: registering this in
   // _registerUserScopedSingletons() (like TmdbRepository) crashed
