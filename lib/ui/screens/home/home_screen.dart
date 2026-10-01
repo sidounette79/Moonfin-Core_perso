@@ -816,6 +816,14 @@ class _ContentRowsState extends State<_ContentRows>
   final Map<String, String?> _rowImageUrlCache = {};
   final Map<String, String> _dynamicBackdrops = {};
   final Set<String> _fetchingBackdrops = {};
+  // 01.10, Sid: "une pochette en fond flou? une réellement présente dans
+  // la bibliothèque (pas comme emby qui montre des pochettes disparues
+  // depuis bien longtemps)" - a Random, recursive, limit:1 query against
+  // the library's own current contents each time, never a cached/stale
+  // field off the library item itself, so a deleted item's artwork can
+  // never show up here the way Emby's own library tile sometimes does.
+  final Map<String, String> _libraryBackdropUrls = {};
+  final Set<String> _fetchingLibraryBackdrops = {};
   final Map<int, double> _staticRowHeightCache = {};
   final ValueNotifier<int?> _activeFocusedRowNotifier = ValueNotifier(null);
   // Id of the row that last held focus. Unlike _activeFocusedRowIndex (which is
@@ -5288,6 +5296,8 @@ class _ContentRowsState extends State<_ContentRows>
     final icon = isGameLibrary(item.id, collectionType, item.name)
         ? gameLibraryIcon
         : iconForCollectionType(collectionType);
+    _fetchLibraryBackdropIfNeeded(item);
+    final backdropUrl = _libraryBackdropUrls[item.id];
     return SizedBox.square(
       dimension: squarePosterSide,
       child: GridButtonCard(
@@ -5299,6 +5309,15 @@ class _ContentRowsState extends State<_ContentRows>
         cardFocusExpansion: cardExpansion,
         focusNode: focusNode,
         onKeyEvent: onKeyEvent,
+        background: backdropUrl == null
+            ? null
+            : ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Image(
+                  image: offlineAwareImageProvider(backdropUrl, maxWidth: 400),
+                  fit: BoxFit.cover,
+                ),
+              ),
         onTap: () => _navigateToLibrary(context, item),
         onLongPress: () =>
             showContextMenu(context, item, onChanged: () => setState(() {})),
@@ -6350,6 +6369,64 @@ class _ContentRowsState extends State<_ContentRows>
       debugPrint('[HomeScreen] Failed to fetch backdrop for ${item.id}: $e');
     } finally {
       _fetchingBackdrops.remove(item.id);
+    }
+  }
+
+  /// Collection types worth querying for a representative backdrop - a
+  /// playlist, box set, or Live TV "library" tile has no meaningful single
+  /// cover to borrow, so those are left plain rather than spending a
+  /// request that would come back empty or misleading.
+  static const _libraryBackdropEligibleCollectionTypes = {
+    'movies',
+    'tvshows',
+    'music',
+    'musicvideos',
+    'books',
+    'homevideos',
+    '',
+  };
+
+  void _fetchLibraryBackdropIfNeeded(AggregatedItem library) async {
+    final collectionType =
+        (library.rawData['CollectionType'] as String? ?? '').toLowerCase();
+    if (!_libraryBackdropEligibleCollectionTypes.contains(collectionType)) {
+      return;
+    }
+    if (_libraryBackdropUrls.containsKey(library.id)) return;
+    if (!_fetchingLibraryBackdrops.add(library.id)) return;
+
+    try {
+      final client = _clientForItem(library);
+      if (client == null) return;
+      final response = await client.itemsApi.getItems(
+        parentId: library.id,
+        recursive: true,
+        limit: 1,
+        sortBy: 'Random',
+        filters: const ['IsNotFolder'],
+        fields: 'PrimaryImageAspectRatio',
+      );
+      final items = (response['Items'] as List?)
+          ?.cast<Map<String, dynamic>>();
+      if (items == null || items.isEmpty) return;
+      final found = items.first;
+      final foundId = found['Id']?.toString();
+      final tag = (found['ImageTags'] as Map?)?['Primary'] as String?;
+      if (foundId == null || tag == null) return;
+      final url = client.imageApi.getPrimaryImageUrl(
+        foundId,
+        maxWidth: 400,
+        tag: tag,
+      );
+      if (mounted) {
+        setState(() => _libraryBackdropUrls[library.id] = url);
+      }
+    } catch (e) {
+      debugPrint(
+        '[HomeScreen] Failed to fetch library backdrop for ${library.id}: $e',
+      );
+    } finally {
+      _fetchingLibraryBackdrops.remove(library.id);
     }
   }
 

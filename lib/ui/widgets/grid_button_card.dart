@@ -19,6 +19,13 @@ class GridButtonCard extends StatefulWidget {
   final ValueChanged<bool>? onFocusChanged;
   final bool? externalIsFocused;
 
+  /// 01.10, Sid: "est ce que le fond des icones de mes medias peut avoir
+  /// une pochette en fond flou?" - caller-built (e.g. an already-blurred
+  /// network image), not a URL, so this widget stays free of any network
+  /// dependency - same reasoning as [iconBuilder]. Painted full-bleed
+  /// behind the icon/label, clipped to the card's own corners.
+  final Widget? background;
+
   const GridButtonCard({
     super.key,
     required this.icon,
@@ -35,6 +42,7 @@ class GridButtonCard extends StatefulWidget {
     this.onKeyEvent,
     this.onFocusChanged,
     this.externalIsFocused,
+    this.background,
   });
 
   @override
@@ -79,6 +87,7 @@ class _GridButtonCardState extends State<GridButtonCard> with FocusStateMixin {
           duration: const Duration(milliseconds: 200),
           width: widget.width,
           height: widget.height,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: color,
             borderRadius: borders.cardRadius,
@@ -91,24 +100,37 @@ class _GridButtonCardState extends State<GridButtonCard> with FocusStateMixin {
                 ? borders.focusGlow
                 : null,
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              widget.iconBuilder?.call(36 * visualScale, foregroundColor) ??
-                  Icon(
-                    widget.icon,
-                    size: 36 * visualScale,
-                    color: foregroundColor,
+              if (widget.background != null) widget.background!,
+              // Scrim so the icon/label stay legible over an arbitrary
+              // poster rather than only over the flat button colour.
+              if (widget.background != null)
+                Container(color: Colors.black.withValues(alpha: 0.38)),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  widget.iconBuilder?.call(
+                        36 * visualScale,
+                        foregroundColor,
+                      ) ??
+                      Icon(
+                        widget.icon,
+                        size: 36 * visualScale,
+                        color: foregroundColor,
+                      ),
+                  const SizedBox(height: AppSpacing.spaceSm),
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                      color: foregroundColor,
+                      fontSize: 14 * visualScale,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-              const SizedBox(height: AppSpacing.spaceSm),
-              Text(
-                widget.label,
-                style: TextStyle(
-                  color: foregroundColor,
-                  fontSize: 14 * visualScale,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
+                ],
               ),
             ],
           ),
