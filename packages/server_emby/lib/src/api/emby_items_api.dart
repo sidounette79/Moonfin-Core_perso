@@ -889,6 +889,101 @@ class EmbyItemsApi implements ItemsApi {
 
   @override
   Future<List<Map<String, dynamic>>> getMediaSegments(String itemId) async {
+    // 02.10, Sid: "on peut aussi envisager de dissocier ça d'emby et de
+    // l'injecter direct dans Moon" - one night proved Emby's native
+    // Chapters field isn't a safe place to keep these: its own scheduled
+    // tasks (Refresh Recently Aired Episodes, Detect Episode Intros) can
+    // silently clear or regenerate it, with no concept of "managed"
+    // chapters, and LockedFields doesn't protect it either (tested live).
+    // The ChapterWriter plugin now also keeps its own private JSON store
+    // nothing else on the server has any reason to touch - try that
+    // first. Still falls back to the chapter-based parse below for
+    // anything only EVER written by something OTHER than this tool
+    // (Emby's own native intro detection, TheIntroDB, EmbyCredits), since
+    // none of those know about this store.
+    try {
+      final response = await _dio.get(
+        '/ChapterWriter/GetSegments',
+        queryParameters: {'ItemId': itemId},
+      );
+      final stored = response.data;
+      if (stored is Map && stored.isNotEmpty) {
+        // Credits/Recap/Preview without a stored end run "to the end of
+        // the item" by convention (same as the chapter-based parse
+        // below) - that needs the item's actual runtime, fetched only
+        // when something here is actually missing an end.
+        final needsRuntime = stored.values.any(
+          (v) => v is Map && v['EndTicks'] == null,
+        );
+        int? runtimeTicks;
+        if (needsRuntime) {
+          try {
+            final item = await getItem(itemId, fields: 'RunTimeTicks');
+            runtimeTicks = (item['RunTimeTicks'] as num?)?.toInt();
+          } catch (_) {
+            // Fall through with runtimeTicks left null - entries missing
+            // an end just get skipped below rather than guessed at.
+          }
+        }
+        final fromStore = _parseStoredSegments(itemId, stored, runtimeTicks);
+        if (fromStore.isNotEmpty) return fromStore;
+      }
+    } catch (_) {
+      // Route missing (plugin not installed/outdated) or any other
+      // failure - fall through to the chapter-based parse below rather
+      // than surface an error for what's meant to be a transparent
+      // upgrade.
+    }
+
+    return _getMediaSegmentsFromChapters(itemId);
+  }
+
+  /// Builds the app's segment shape from the ChapterWriter plugin's own
+  /// independent store (see getMediaSegments's own note on why this is
+  /// now preferred over native Chapters). Preview/Credits/Recap still
+  /// fall back to "the end of the item" when no explicit EndTicks was
+  /// stored, same convention the chapter-based parse already used.
+  List<Map<String, dynamic>> _parseStoredSegments(
+    String itemId,
+    Map stored,
+    int? runtimeTicks,
+  ) {
+    final segments = <Map<String, dynamic>>[];
+    const typeMap = {
+      'Intro': 'Intro',
+      'Credits': 'Outro',
+      'Recap': 'Recap',
+      'Preview': 'Preview',
+    };
+    for (final entry in stored.entries) {
+      final storedType = entry.key as String?;
+      final appType = typeMap[storedType];
+      if (appType == null) continue;
+      final value = entry.value;
+      if (value is! Map) continue;
+      final start = (value['StartTicks'] as num?)?.toInt();
+      // Missing end runs to the item's own end, same convention the
+      // chapter-based parse uses for Credits/Recap/Preview. A model that
+      // genuinely has no real end to fall back to (runtimeTicks fetch
+      // failed) is skipped rather than rendered as a bogus EndTicks=0
+      // segment (see media_segment.dart's own `?? 0` default - exactly
+      // the zero-length-segment bug this guards against).
+      final end = (value['EndTicks'] as num?)?.toInt() ?? runtimeTicks;
+      if (start == null || end == null || end <= start) continue;
+      segments.add({
+        'Id': 'emby-$storedType-$itemId',
+        'ItemId': itemId,
+        'Type': appType,
+        'StartTicks': start,
+        'EndTicks': end,
+      });
+    }
+    return segments;
+  }
+
+  Future<List<Map<String, dynamic>>> _getMediaSegmentsFromChapters(
+    String itemId,
+  ) async {
     // Emby has no MediaSegments API. It marks intros and credits as chapter
     // markers on the item instead, so pull the chapters and translate the
     // markers into the same segment shape the app already understands.
