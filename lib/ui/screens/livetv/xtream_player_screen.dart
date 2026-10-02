@@ -86,6 +86,11 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
     _scheduleOsdAutoHide();
   }
 
+  Future<void> _jumpToPreviousChannel() async {
+    await _service.jumpToPreviousChannel();
+    _scheduleOsdAutoHide();
+  }
+
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = event.logicalKey;
@@ -104,6 +109,17 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
         (key == LogicalKeyboardKey.arrowLeft ||
             key == LogicalKeyboardKey.arrowRight)) {
       unawaited(_zap(key == LogicalKeyboardKey.arrowRight ? 1 : -1));
+      return KeyEventResult.handled;
+    }
+
+    // 02.10, Sid: "il faudrait que haut/bas me permette de revenir à la
+    // précédente que j'ai regardé (pas celle directe à côté)" - same OSD
+    // gating as left/right zap above, same TV-remote idiom (up/down =
+    // "last channel" toggle, left/right = step through the list).
+    if (!_osdVisible &&
+        (key == LogicalKeyboardKey.arrowUp ||
+            key == LogicalKeyboardKey.arrowDown)) {
+      unawaited(_jumpToPreviousChannel());
       return KeyEventResult.handled;
     }
 

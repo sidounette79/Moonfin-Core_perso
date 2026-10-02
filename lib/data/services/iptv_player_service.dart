@@ -42,6 +42,19 @@ class IptvPlayerService {
 
   List<PlayableChannel> _channels = const [];
   int _currentIndex = 0;
+
+  // 02.10, Sid: "il faudrait que haut/bas me permette de revenir à la
+  // précédente que j'ai regardé (pas celle directe à côté)" - a classic TV
+  // remote "last channel" toggle, not list-adjacency like left/right zap.
+  // Holds the CHANNEL (by streamUrl identity, see PlayableChannel ==
+  // elsewhere in this codebase), not a raw index - the index into whatever
+  // list was active when this was recorded is meaningless once the user
+  // has since switched to a differently-filtered channel list. Only set in
+  // openChannels() when the channel actually changes, so a failover
+  // re-open (same channel, different source) or a no-op re-call never
+  // overwrites it.
+  PlayableChannel? _previousChannel;
+
   int _alternativeIndex = 0;
   int _failoverAttempts = 0;
   final Set<String> _triedSourcesThisChannel = {};
@@ -124,6 +137,14 @@ class IptvPlayerService {
     _alternativeIndex = 0;
     _failoverAttempts = 0;
     _triedSourcesThisChannel.clear();
+    final leavingChannel = current;
+    final enteringChannel =
+        index >= 0 && index < channels.length ? channels[index] : null;
+    if (leavingChannel != null &&
+        enteringChannel != null &&
+        leavingChannel.streamUrl != enteringChannel.streamUrl) {
+      _previousChannel = leavingChannel;
+    }
     _channels = channels;
     _groups = ChannelGroup.groupChannels(channels);
     _currentIndex = index;
@@ -163,6 +184,20 @@ class IptvPlayerService {
     if (count <= 1) return;
     final newIndex = (_currentIndex + delta) % count;
     await openChannels(_channels, newIndex < 0 ? newIndex + count : newIndex);
+  }
+
+  /// Toggles back to whichever channel was active before the last real
+  /// switch - a TV remote's classic "last channel" button, not list
+  /// adjacency (that's zap). Looked up by streamUrl in the CURRENT channel
+  /// list since _previousChannel may have been recorded against a
+  /// differently-filtered list; does nothing if that channel isn't in the
+  /// list currently open (e.g. a filter was applied since).
+  Future<void> jumpToPreviousChannel() async {
+    final target = _previousChannel;
+    if (target == null) return;
+    final index = _channels.indexWhere((c) => c.streamUrl == target.streamUrl);
+    if (index < 0 || index == _currentIndex) return;
+    await openChannels(_channels, index);
   }
 
   /// Tries the next source configured for this same logical channel (see

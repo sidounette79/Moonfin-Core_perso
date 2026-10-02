@@ -20,6 +20,15 @@ class EpgChannelCell extends StatelessWidget {
   /// Marks the channel as a favourite with a red heart beside the number.
   final bool isFavorite;
 
+  /// 02.10, Sid: "je ne sais jamais vraiment où est situé mon sélecteur" -
+  /// root cause was this cell using the SAME [focused] treatment for "this
+  /// is the channel currently playing" and "this is where the D-pad cursor
+  /// is", so once focus moved away from the playing channel, its row kept
+  /// looking focused and the real cursor position had no visible tell.
+  /// Playing now gets its own small, quiet indicator instead of sharing
+  /// the focus ring/background.
+  final bool playing;
+
   /// Above this the rail is the one a television lays out, and the cell steps
   /// up to a face that carries at ten feet. Below it the rail belongs to a
   /// window being read at arm's length, where the larger face would only crowd
@@ -54,6 +63,7 @@ class EpgChannelCell extends StatelessWidget {
     required this.focused,
     required this.apple,
     this.isFavorite = false,
+    this.playing = false,
   });
 
   @override
@@ -87,7 +97,7 @@ class EpgChannelCell extends StatelessWidget {
       final chip = number == null
           ? null
           : _numberChip(number!, accent, _numberSize(width));
-      final hasTopRow = chip != null || isFavorite;
+      final hasTopRow = chip != null || isFavorite || playing;
       return Row(
         children: [
           _logo((width * _logoWidthFactor).clamp(_logoMinWidth, _logoMaxWidth)),
@@ -102,6 +112,25 @@ class EpgChannelCell extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
+                      // 02.10, Sid: the "playing" tell used to be the SAME
+                      // accent background/border as D-pad focus
+                      // (EpgChannelCell's own `focused` flag covered both),
+                      // so once the cursor moved away from the playing
+                      // channel its row still looked exactly like the
+                      // focused one. This small dot is the only thing that
+                      // marks "currently playing" now - the border/bg
+                      // above is focus-only.
+                      if (playing) ...[
+                        Icon(
+                          Icons.circle,
+                          size:
+                              scaler.scale(_numberSize(width)) *
+                              _inlineIconShare *
+                              0.6,
+                          color: AppColors.green500,
+                        ),
+                        const SizedBox(width: 4),
+                      ],
                       if (isFavorite) ...[
                         Icon(
                           Icons.favorite,

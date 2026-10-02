@@ -226,6 +226,15 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     _searchController.dispose();
     _searchFocusNode.dispose();
     _allChannelsTileFocusNode.dispose();
+    // Reused as sidebar index 0 inside _sidebarFocusNodes (see
+    // _nextSidebarFocusNode's `reuse` param) - skip it here, already
+    // disposed just above, or this screen could close before
+    // _buildSidebar ever ran once (error/loading state) and it wouldn't
+    // be in this list at all.
+    for (final node in _sidebarFocusNodes) {
+      if (identical(node, _allChannelsTileFocusNode)) continue;
+      node.dispose();
+    }
     _gridFocusNode.dispose();
     _verticalController.dispose();
     // Actually leaving the IPTV section (not just pushing the fullscreen
@@ -325,23 +334,65 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
 
   // ---- Sidebar -------------------------------------------------------
 
+  /// 02.10, Sid: "je peux descendre dedans mais pas remonter" + "pas de
+  /// visuel sur quelle ligne" - Flutter's own default directional focus
+  /// traversal was behind both: relying on it for UP/DOWN inside a
+  /// ListView with collapsible sections turned out unreliable once the
+  /// sidebar's content changed shape, and a plain Focus-wrapped ListTile
+  /// has no built-in "I currently hold focus" visual of its own. Explicit
+  /// handling here mirrors what the grid already does (_onGridKeyEvent) -
+  /// one flat, build-order list of nodes, and the key handler moves
+  /// between adjacent indices itself instead of trusting the platform to
+  /// get there. Rebuilt fresh (not grown-and-reused) at the start of every
+  /// _buildSidebar() call since which tiles exist (expanded sections,
+  /// filtered providers/groups) changes between builds.
+  final List<FocusNode> _sidebarFocusNodes = [];
+  int _sidebarBuildCounter = 0;
+
+  FocusNode _nextSidebarFocusNode({FocusNode? reuse}) {
+    final index = _sidebarBuildCounter++;
+    final node = reuse ?? FocusNode(debugLabel: 'iptvSidebar$index');
+    if (_sidebarFocusNodes.length <= index) {
+      _sidebarFocusNodes.add(node);
+    } else {
+      _sidebarFocusNodes[index] = node;
+    }
+    return node;
+  }
+
   /// RIGHT from any sidebar tile enters the grid, landing on its first row
   /// - same "staircase" idea TiviMate uses, see this screen's own header
-  /// comment. Wrapped around ListTile rather than passed to its own
-  /// onFocusChange/focusNode since ListTile exposes no onKeyEvent hook.
+  /// comment. UP/DOWN move between sidebar tiles explicitly (see the
+  /// _sidebarFocusNodes note above) rather than through Flutter's default
+  /// traversal.
   KeyEventResult _onSidebarTileKeyEvent(FocusNode node, KeyEvent event) {
-    if (!event.isActionable || !event.logicalKey.isRightKey) {
-      return KeyEventResult.ignored;
+    if (!event.isActionable) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+
+    if (key.isRightKey) {
+      final list = _filtered;
+      if (list.isEmpty) return KeyEventResult.ignored;
+      setState(() {
+        _gridHasFocus = true;
+        _focusedChannelIndex = _focusedChannelIndex.clamp(0, list.length - 1);
+        _focusedProgramStart ??= DateTime.now();
+      });
+      _gridFocusNode.requestFocus();
+      return KeyEventResult.handled;
     }
-    final list = _filtered;
-    if (list.isEmpty) return KeyEventResult.ignored;
-    setState(() {
-      _gridHasFocus = true;
-      _focusedChannelIndex = _focusedChannelIndex.clamp(0, list.length - 1);
-      _focusedProgramStart ??= DateTime.now();
-    });
-    _gridFocusNode.requestFocus();
-    return KeyEventResult.handled;
+
+    if (key.isUpKey || key.isDownKey) {
+      final index = _sidebarFocusNodes.indexOf(node);
+      if (index < 0) return KeyEventResult.ignored;
+      final nextIndex = key.isUpKey ? index - 1 : index + 1;
+      if (nextIndex < 0 || nextIndex >= _sidebarFocusNodes.length) {
+        return KeyEventResult.handled;
+      }
+      _sidebarFocusNodes[nextIndex].requestFocus();
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
   }
 
   Widget _sidebarTile(
@@ -352,27 +403,43 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     FocusNode? focusNode,
   }) {
     final selected = _selectedFilter == filterValue;
+    final node = _nextSidebarFocusNode(reuse: focusNode);
     return Focus(
+      focusNode: node,
       onKeyEvent: _onSidebarTileKeyEvent,
-      child: ListTile(
-      dense: true,
-      focusNode: focusNode,
-      leading: icon != null
-          ? Icon(icon, size: 20)
-          : const SizedBox(width: 20),
-      title: Text(label, overflow: TextOverflow.ellipsis),
-      trailing: count != null
-          ? Text(
-              '$count',
-              style: TextStyle(
-                color: AppColorScheme.onSurface.withValues(alpha: 0.5),
-                fontSize: 12,
+      child: ListenableBuilder(
+        listenable: node,
+        builder: (context, _) => Container(
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: node.hasFocus
+                    ? AppColorScheme.accent
+                    : Colors.transparent,
+                width: 3,
               ),
-            )
-          : null,
-      selected: selected,
-      selectedTileColor: AppColorScheme.accent.withValues(alpha: 0.14),
-      onTap: () => setState(() => _selectedFilter = filterValue),
+            ),
+          ),
+          child: ListTile(
+            dense: true,
+            leading: icon != null
+                ? Icon(icon, size: 20)
+                : const SizedBox(width: 20),
+            title: Text(label, overflow: TextOverflow.ellipsis),
+            trailing: count != null
+                ? Text(
+                    '$count',
+                    style: TextStyle(
+                      color: AppColorScheme.onSurface.withValues(alpha: 0.5),
+                      fontSize: 12,
+                    ),
+                  )
+                : null,
+            selected: selected,
+            selectedTileColor: AppColorScheme.accent.withValues(alpha: 0.14),
+            onTap: () => setState(() => _selectedFilter = filterValue),
+          ),
+        ),
       ),
     );
   }
@@ -380,30 +447,50 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   Widget _sidebarSection(String key, String title, List<Widget> children) {
     if (children.isEmpty) return const SizedBox.shrink();
     final expanded = _expandedSections.contains(key);
+    final node = _nextSidebarFocusNode();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ListTile(
-          dense: true,
-          title: Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-              color: AppColorScheme.onSurface.withValues(alpha: 0.7),
+        Focus(
+          focusNode: node,
+          onKeyEvent: _onSidebarTileKeyEvent,
+          child: ListenableBuilder(
+            listenable: node,
+            builder: (context, _) => Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(
+                    color: node.hasFocus
+                        ? AppColorScheme.accent
+                        : Colors.transparent,
+                    width: 3,
+                  ),
+                ),
+              ),
+              child: ListTile(
+                dense: true,
+                title: Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: AppColorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+                trailing: Icon(
+                  expanded ? Icons.expand_less : Icons.expand_more,
+                  size: 18,
+                ),
+                onTap: () => setState(() {
+                  if (expanded) {
+                    _expandedSections.remove(key);
+                  } else {
+                    _expandedSections.add(key);
+                  }
+                }),
+              ),
             ),
           ),
-          trailing: Icon(
-            expanded ? Icons.expand_less : Icons.expand_more,
-            size: 18,
-          ),
-          onTap: () => setState(() {
-            if (expanded) {
-              _expandedSections.remove(key);
-            } else {
-              _expandedSections.add(key);
-            }
-          }),
         ),
         if (expanded) ...children,
       ],
@@ -411,6 +498,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   }
 
   Widget _buildSidebar() {
+    _sidebarBuildCounter = 0;
     final channels = _channels ?? const <PlayableChannel>[];
     final providers = channels.map((c) => c.sourceName).toSet().toList()
       ..sort();
@@ -747,7 +835,8 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                 logoUrl: channel.iconUrl,
                 name: channel.name,
                 number: '${index + 1}',
-                focused: isCurrent || isFocusedRow,
+                focused: isFocusedRow,
+                playing: isCurrent,
                 apple: false,
                 isFavorite: _isFavorite(channel),
               ),
