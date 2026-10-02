@@ -374,6 +374,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
       if (list.isEmpty) return KeyEventResult.ignored;
       setState(() {
         _gridHasFocus = true;
+        _sidebarExpanded = false;
         _focusedChannelIndex = _focusedChannelIndex.clamp(0, list.length - 1);
         _focusedProgramStart ??= DateTime.now();
       });
@@ -395,6 +396,71 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     return KeyEventResult.ignored;
   }
 
+  /// Focus ring + collapsed/expanded body shared by every sidebar row
+  /// (filter tiles and section headers alike) - clubTivi's own
+  /// _sidebarIcon/_buildSidebarNavItem split these in two; folded into one
+  /// helper here since both this screen's tile kinds need the exact same
+  /// focus-node wiring either way.
+  Widget _sidebarRow({
+    required FocusNode node,
+    required IconData icon,
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+    Widget? expandedTrailing,
+  }) {
+    return Focus(
+      focusNode: node,
+      onKeyEvent: _onSidebarTileKeyEvent,
+      child: ListenableBuilder(
+        listenable: node,
+        builder: (context, _) {
+          final body = Container(
+            height: 36,
+            decoration: BoxDecoration(
+              color: active ? Colors.white.withValues(alpha: 0.08) : null,
+              border: node.hasFocus
+                  ? Border.all(color: _clubTiviFocusBorder, width: 1.5)
+                  : null,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: _sidebarExpanded
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      children: [
+                        Icon(icon, size: 18, color: Colors.white70),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            label,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        ?expandedTrailing,
+                      ],
+                    ),
+                  )
+                : Icon(
+                    icon,
+                    size: 18,
+                    color: active ? Colors.white : Colors.white38,
+                  ),
+          );
+          return Tooltip(
+            message: _sidebarExpanded ? '' : label,
+            preferBelow: false,
+            child: InkWell(onTap: onTap, child: body),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _sidebarTile(
     String label,
     String filterValue, {
@@ -404,43 +470,18 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   }) {
     final selected = _selectedFilter == filterValue;
     final node = _nextSidebarFocusNode(reuse: focusNode);
-    return Focus(
-      focusNode: node,
-      onKeyEvent: _onSidebarTileKeyEvent,
-      child: ListenableBuilder(
-        listenable: node,
-        builder: (context, _) => Container(
-          decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(
-                color: node.hasFocus
-                    ? AppColorScheme.accent
-                    : Colors.transparent,
-                width: 3,
-              ),
-            ),
-          ),
-          child: ListTile(
-            dense: true,
-            leading: icon != null
-                ? Icon(icon, size: 20)
-                : const SizedBox(width: 20),
-            title: Text(label, overflow: TextOverflow.ellipsis),
-            trailing: count != null
-                ? Text(
-                    '$count',
-                    style: TextStyle(
-                      color: AppColorScheme.onSurface.withValues(alpha: 0.5),
-                      fontSize: 12,
-                    ),
-                  )
-                : null,
-            selected: selected,
-            selectedTileColor: AppColorScheme.accent.withValues(alpha: 0.14),
-            onTap: () => setState(() => _selectedFilter = filterValue),
-          ),
-        ),
-      ),
+    return _sidebarRow(
+      node: node,
+      icon: icon ?? Icons.circle_outlined,
+      label: label,
+      active: selected,
+      onTap: () => setState(() => _selectedFilter = filterValue),
+      expandedTrailing: count != null
+          ? Text(
+              '$count',
+              style: const TextStyle(color: Colors.white38, fontSize: 12),
+            )
+          : null,
     );
   }
 
@@ -451,51 +492,44 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Focus(
-          focusNode: node,
-          onKeyEvent: _onSidebarTileKeyEvent,
-          child: ListenableBuilder(
-            listenable: node,
-            builder: (context, _) => Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(
-                    color: node.hasFocus
-                        ? AppColorScheme.accent
-                        : Colors.transparent,
-                    width: 3,
-                  ),
-                ),
-              ),
-              child: ListTile(
-                dense: true,
-                title: Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    color: AppColorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-                trailing: Icon(
-                  expanded ? Icons.expand_less : Icons.expand_more,
-                  size: 18,
-                ),
-                onTap: () => setState(() {
-                  if (expanded) {
-                    _expandedSections.remove(key);
-                  } else {
-                    _expandedSections.add(key);
-                  }
-                }),
-              ),
-            ),
+        _sidebarRow(
+          node: node,
+          icon: Icons.folder_rounded,
+          label: title,
+          active: false,
+          onTap: () => setState(() {
+            if (expanded) {
+              _expandedSections.remove(key);
+            } else {
+              _expandedSections.add(key);
+              _sidebarExpanded = true;
+            }
+          }),
+          expandedTrailing: Icon(
+            expanded ? Icons.expand_less : Icons.expand_more,
+            size: 18,
+            color: Colors.white38,
           ),
         ),
-        if (expanded) ...children,
+        if (expanded && _sidebarExpanded) ...children,
       ],
     );
   }
+
+  // 02.10, Sid: "reprendre le visuel clubtivi à l'identique" - confirmed
+  // against their real source (channels_screen.dart _buildSidebar, not
+  // guessed): the sidebar doesn't hide, it SHRINKS to a 44px icon rail
+  // (220px expanded), width-animated, toggled by a chevron button - not
+  // tied to D-pad focus location the way the earlier TiviMate-inspired
+  // staircase was. Colors are their exact literal values
+  // (#111127 sidebar bg), a deliberate one-screen exception to Moonfin's
+  // own dynamic AppColorScheme since an "identical copy" was the ask.
+  static const _clubTiviSidebarBg = Color(0xFF111127);
+  static const _clubTiviFocusBorder = Color(0xFFBB86FC); // Colors.purpleAccent
+  static const _clubTiviSidebarExpandedWidth = 220.0;
+  static const _clubTiviSidebarCollapsedWidth = 44.0;
+
+  bool _sidebarExpanded = true;
 
   Widget _buildSidebar() {
     _sidebarBuildCounter = 0;
@@ -510,42 +544,62 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
             .toList()
           ..sort();
 
-    return Container(
-      width: _railWidth,
-      decoration: BoxDecoration(
-        color: AppColorScheme.surface,
-        border: Border(
-          right: BorderSide(
-            color: AppColorScheme.onSurface.withValues(alpha: 0.08),
-          ),
-        ),
-      ),
-      child: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: _sidebarExpanded
+          ? _clubTiviSidebarExpandedWidth
+          : _clubTiviSidebarCollapsedWidth,
+      clipBehavior: Clip.hardEdge,
+      decoration: const BoxDecoration(color: _clubTiviSidebarBg),
+      child: Column(
         children: [
-          _sidebarTile(
-            'Toutes les chaînes',
-            'All',
-            icon: Icons.apps,
-            count: channels.length,
-            focusNode: _allChannelsTileFocusNode,
-          ),
-          _sidebarSection('favorites', 'Favoris', [
-            _sidebarTile(
-              'Favoris',
-              'Favorites',
-              icon: Icons.favorite,
-              count: _favorites.length,
+          InkWell(
+            onTap: () => setState(() => _sidebarExpanded = !_sidebarExpanded),
+            child: Container(
+              height: 36,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              alignment: _sidebarExpanded
+                  ? Alignment.centerRight
+                  : Alignment.center,
+              child: Icon(
+                _sidebarExpanded
+                    ? Icons.chevron_left_rounded
+                    : Icons.chevron_right_rounded,
+                color: Colors.white38,
+                size: 20,
+              ),
             ),
-          ]),
-          _sidebarSection('providers', 'Fournisseurs', [
-            for (final p in providers)
-              _sidebarTile(p, 'provider:$p', icon: Icons.dns_outlined),
-          ]),
-          _sidebarSection('groups', 'Groupes (${groups.length})', [
-            for (final g in groups)
-              _sidebarTile(g, 'group:$g', icon: Icons.folder_outlined),
-          ]),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              children: [
+                _sidebarTile(
+                  'Toutes les chaînes',
+                  'All',
+                  icon: Icons.apps,
+                  count: channels.length,
+                  focusNode: _allChannelsTileFocusNode,
+                ),
+                _sidebarSection('favorites', 'Favoris', [
+                  _sidebarTile(
+                    'Favoris',
+                    'Favorites',
+                    icon: Icons.favorite,
+                    count: _favorites.length,
+                  ),
+                ]),
+                _sidebarSection('providers', 'Fournisseurs', [
+                  for (final p in providers)
+                    _sidebarTile(p, 'provider:$p', icon: Icons.dns_outlined),
+                ]),
+                _sidebarSection('groups', 'Groupes (${groups.length})', [
+                  for (final g in groups)
+                    _sidebarTile(g, 'group:$g', icon: Icons.folder_outlined),
+                ]),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -764,7 +818,10 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     final key = event.logicalKey;
 
     if (key.isBackKey) {
-      setState(() => _gridHasFocus = false);
+      setState(() {
+        _gridHasFocus = false;
+        _sidebarExpanded = true;
+      });
       _allChannelsTileFocusNode.requestFocus();
       return KeyEventResult.handled;
     }
@@ -978,7 +1035,10 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
       canPop: !_gridHasFocus,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        setState(() => _gridHasFocus = false);
+        setState(() {
+          _gridHasFocus = false;
+          _sidebarExpanded = true;
+        });
         _allChannelsTileFocusNode.requestFocus();
       },
       child: Scaffold(
@@ -1022,11 +1082,13 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Staircase: la sidebar prend toute la place tant que
-                      // le focus y est, et disparaît complètement dès qu'il
-                      // passe dans la grille, qui récupère alors tout
-                      // l'écran - comme dans TiviMate.
-                      if (!_gridHasFocus) _buildSidebar(),
+                      // 02.10: clubTivi's own sidebar never disappears, it
+                      // just shrinks to the 44px icon rail (see
+                      // _buildSidebar's own note) - always in the Row now,
+                      // _sidebarExpanded (auto-toggled alongside
+                      // _gridHasFocus below) does the staircase effect via
+                      // its width animation instead of a full show/hide.
+                      _buildSidebar(),
                       Expanded(child: _buildGrid(_filtered)),
                     ],
                   ),
