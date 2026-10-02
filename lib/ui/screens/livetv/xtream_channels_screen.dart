@@ -1058,6 +1058,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
         _allChannelsTileFocusNode.requestFocus();
       },
       child: Scaffold(
+      backgroundColor: const Color(0xFF1A1A2E), // clubTivi's own scaffold bg
       appBar: AppBar(
         title: const Text('TV en direct'),
         actions: [
