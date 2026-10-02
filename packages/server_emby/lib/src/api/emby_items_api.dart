@@ -1055,11 +1055,27 @@ class EmbyItemsApi implements ItemsApi {
     // missing end marker - same reasoning for intro, recap and preview
     // alike. One with nothing after it stays unbounded rather than
     // guessing a length.
+    //
+    // 02.10, Sid's real repro: an episode (Faites entrer l'accusé
+    // S04E10-13) whose only other chapters are Credits/Preview right near
+    // the very end, with no Intro chapter at all (its native coverage got
+    // wiped - see the Emby chapter-wipe incident memory). "Next chapter
+    // after Recap's start" then resolved to Credits, nearly 2 hours
+    // later, so the inferred Recap segment spanned almost the whole
+    // episode - auto-skipping that on open is exactly "plays nothing and
+    // jumps straight to the end", confirmed against her real server data.
+    // A genuine recap (or intro) is always short; a "next chapter" more
+    // than 5 minutes away is never a real boundary for either, so this
+    // caps the inference instead of trusting it unconditionally. Preview's
+    // own call site already falls back further to `?? runtime` when this
+    // returns null, so capping here only ever makes its guess safer too.
+    const maxInferredSpanTicks = 5 * 60 * 10000000; // 5 minutes, Emby ticks
     int? nextChapterAfter(int start) {
       int? next;
       for (final ticks in chapterStarts) {
         if (ticks > start && (next == null || ticks < next)) next = ticks;
       }
+      if (next != null && next - start > maxInferredSpanTicks) return null;
       return next;
     }
 
