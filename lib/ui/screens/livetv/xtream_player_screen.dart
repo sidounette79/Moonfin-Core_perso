@@ -52,11 +52,27 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
     _sub = _service.changes.listen((_) {
       if (mounted) setState(() {});
     });
-    // Already on this exact list/index when opened from the channels
-    // screen's own preview row - openChannels() is cheap to call again
-    // regardless (see its own doc) and guarantees this screen always shows
-    // what it was asked to, even if it's the sole entry point one day.
-    unawaited(_service.openChannels(widget.channels, widget.initialIndex));
+    // 02.10, bug trouvé en audit: les deux points d'entrée de cet écran
+    // (_openFullscreen et _openFullscreenCurrent dans xtream_channels_
+    // screen.dart) ont déjà ouvert exactement ce channel dans le service
+    // AVANT de pousser cet écran - rappeler openChannels() ici n'était pas
+    // "sans frais" comme le disait l'ancien commentaire: ça relançait
+    // _player!.open() depuis zéro sur un flux déjà en train de démarrer
+    // (reset d'EPG visible, flash de rebuffering, deux .open() concurrents
+    // sur le même Player). On ne rouvre que si ce n'est vraiment pas déjà
+    // le cas - garde utile si cet écran devient un jour accessible par un
+    // autre chemin que ces deux-là.
+    final targetIndex = widget.initialIndex;
+    final target = targetIndex >= 0 && targetIndex < widget.channels.length
+        ? widget.channels[targetIndex]
+        : null;
+    final alreadyOpen =
+        target != null &&
+        identical(_service.channels, widget.channels) &&
+        _service.current?.streamUrl == target.streamUrl;
+    if (!alreadyOpen) {
+      unawaited(_service.openChannels(widget.channels, widget.initialIndex));
+    }
     _scheduleOsdAutoHide();
   }
 

@@ -486,10 +486,31 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     );
   }
 
-  Widget _sidebarSection(String key, String title, List<Widget> children) {
-    if (children.isEmpty) return const SizedBox.shrink();
+  /// [itemCount] decides whether the section exists at all (e.g. no
+  /// providers configured); [buildChildren] is only called when the
+  /// section will actually mount its children.
+  ///
+  /// 02.10, bug trouvé en audit: cette méthode prenait avant une
+  /// `List<Widget> children` déjà construite par l'appelant - mais un
+  /// literal `[for (...) _sidebarTile(...)]` est évalué par Dart avant
+  /// même d'être passé ici, donc chaque tuile consommait un FocusNode via
+  /// `_nextSidebarFocusNode()` MÊME quand la section était repliée (ou le
+  /// panneau entier réduit en rail). Ces noeuds restaient enregistrés dans
+  /// `_sidebarFocusNodes` sans jamais être montés dans l'arbre, et
+  /// `_onSidebarTileKeyEvent` pouvait appeler `.requestFocus()` sur l'un
+  /// d'eux - sans effet visible, UP/DOWN semblait ne rien faire depuis
+  /// l'en-tête d'une section repliée. Un callback appelé seulement quand
+  /// les enfants vont réellement être montés ferme cet écart.
+  Widget _sidebarSection(
+    String key,
+    String title,
+    int itemCount,
+    List<Widget> Function() buildChildren,
+  ) {
+    if (itemCount == 0) return const SizedBox.shrink();
     final expanded = _expandedSections.contains(key);
     final node = _nextSidebarFocusNode();
+    final showChildren = expanded && _sidebarExpanded;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -512,7 +533,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
             color: Colors.white38,
           ),
         ),
-        if (expanded && _sidebarExpanded) ...children,
+        if (showChildren) ...buildChildren(),
       ],
     );
   }
@@ -595,22 +616,37 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                   count: channels.length,
                   focusNode: _allChannelsTileFocusNode,
                 ),
-                _sidebarSection('favorites', 'Favoris', [
-                  _sidebarTile(
-                    'Favoris',
-                    'Favorites',
-                    icon: Icons.favorite,
-                    count: _favorites.length,
-                  ),
-                ]),
-                _sidebarSection('providers', 'Fournisseurs', [
-                  for (final p in providers)
-                    _sidebarTile(p, 'provider:$p', icon: Icons.dns_outlined),
-                ]),
-                _sidebarSection('groups', 'Groupes (${groups.length})', [
-                  for (final g in groups)
-                    _sidebarTile(g, 'group:$g', icon: Icons.folder_outlined),
-                ]),
+                _sidebarSection(
+                  'favorites',
+                  'Favoris',
+                  1,
+                  () => [
+                    _sidebarTile(
+                      'Favoris',
+                      'Favorites',
+                      icon: Icons.favorite,
+                      count: _favorites.length,
+                    ),
+                  ],
+                ),
+                _sidebarSection(
+                  'providers',
+                  'Fournisseurs',
+                  providers.length,
+                  () => [
+                    for (final p in providers)
+                      _sidebarTile(p, 'provider:$p', icon: Icons.dns_outlined),
+                  ],
+                ),
+                _sidebarSection(
+                  'groups',
+                  'Groupes (${groups.length})',
+                  groups.length,
+                  () => [
+                    for (final g in groups)
+                      _sidebarTile(g, 'group:$g', icon: Icons.folder_outlined),
+                  ],
+                ),
               ],
             ),
           ),

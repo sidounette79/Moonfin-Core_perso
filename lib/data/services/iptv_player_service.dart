@@ -162,14 +162,25 @@ class IptvPlayerService {
       unawaited(_healthTracker.recordSuccess(entry.streamUrl));
     } on TimeoutException {
       if (token != _openToken) return;
-      if (await _tryFailover()) return;
+      // 02.10, bug trouvé en audit: _tryFailover() s'incrémente son propre
+      // _openToken en interne - recharger l'EPG avec CE token (le plus
+      // récent), pas l'ancien `token` de cette méthode, sinon le `return`
+      // ci-dessous sautait purement et simplement _loadEpg et la chaîne de
+      // secours affichait un programme vide jusqu'au prochain changement.
+      if (await _tryFailover()) {
+        unawaited(_loadEpg(_openToken));
+        return;
+      }
       if (token != _openToken) return;
       _loading = false;
       _error = 'La chaîne ne répond pas (délai dépassé)';
       _notify();
     } catch (_) {
       if (token != _openToken) return;
-      if (await _tryFailover()) return;
+      if (await _tryFailover()) {
+        unawaited(_loadEpg(_openToken));
+        return;
+      }
       if (token != _openToken) return;
       _loading = false;
       _error = 'Impossible de lire cette chaîne';
@@ -236,8 +247,15 @@ class IptvPlayerService {
       await _player!.open(Media(next.streamUrl)).timeout(_openTimeout);
       unawaited(_healthTracker.recordSuccess(next.streamUrl));
     } catch (_) {
-      // Opening this alternative itself failed/timed out - treat it the
-      // same as a stall on it and keep going below.
+      // 02.10, bug trouvé en audit: opening this alternative itself
+      // failed/timed out outright (not just slow to buffer) - retry
+      // immediately with whatever's left rather than counting on the
+      // buffering stream below to re-arm the stall timer, which isn't
+      // guaranteed to flip true on a hard failure (unsupported codec,
+      // connection refused...). Without this, the loading spinner could
+      // get stuck forever with failover attempts still unspent.
+      if (token == _openToken) return _tryFailover();
+      return true;
     }
     if (token != _openToken) return true;
 
