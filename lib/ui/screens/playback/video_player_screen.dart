@@ -2597,6 +2597,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       return;
     }
 
+    // 02.10, défense en profondeur pour le bug "plays nothing, jumps
+    // straight to next" sur Faites entrer l'accusé: state.position reste
+    // celle de l'épisode précédent jusqu'au premier vrai tick du nouveau
+    // backend. playback_manager.dart remet déjà position à zéro au même
+    // moment où la nouvelle duration est posée, mais un tick de
+    // position_stream resté en file d'attente côté ancien backend peut
+    // encore écraser ce reset juste après - ce court sursis absorbe ce
+    // résidu sans retarder le vrai "next up" de fin d'épisode (qui, lui,
+    // n'arrive jamais aussi tôt après le début de lecture).
+    final startedAt = _manager.playbackStartTime;
+    if (startedAt != null &&
+        DateTime.now().difference(startedAt) < const Duration(seconds: 1)) {
+      return;
+    }
+
     final nextUpBehavior = _prefs.get(UserPreferences.nextUpBehavior);
 
     final duration = _state.duration;

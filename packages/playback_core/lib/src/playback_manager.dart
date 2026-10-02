@@ -186,6 +186,12 @@ class PlaybackManager implements AudioOwnable {
   /// uncapped.
   Future<int?> Function()? autoBitrateProvider;
   DateTime? _playbackStartTime;
+
+  /// When the current item's bringup set this, or null before any item has
+  /// started. Lets a caller guard against reacting to a transient bad
+  /// position/duration reading in the first instants of a new item, the
+  /// same way [_onTrackCompleted] already guards itself below.
+  DateTime? get playbackStartTime => _playbackStartTime;
   bool _waitingForMedia = false;
   SubtitleRendererMode _subtitleRendererMode = SubtitleRendererMode.native;
   bool _isAutoNexting = false;
@@ -2486,6 +2492,16 @@ class PlaybackManager implements AudioOwnable {
     if (_itemKnownDuration > Duration.zero) {
       state.setDuration(_itemKnownDuration);
     }
+    // 02.10, bug Sid a signalé sur "Faites entrer l'accusé": sans ce reset,
+    // state.position garde encore la position (proche de la fin) du
+    // précédent épisode jusqu'au premier vrai tick du nouveau backend, alors
+    // que la duration ci-dessus vient déjà d'être réglée sur le NOUVEL item.
+    // Un seul tick de position_stream en retard dans cette fenêtre suffit à
+    // calculer un "remaining" minuscule/négatif entre une ancienne position
+    // et une nouvelle duration -> _checkNextUp (video_player_screen.dart)
+    // déclenche l'overlay "suivant" instantanément, avant la moindre image
+    // du nouvel épisode. Remettre position à zéro ici ferme cette fenêtre.
+    state.setPosition(Duration.zero);
 
     _playbackStartTime = clock();
     _unsupportedAudioRecoveryInFlight = false;
