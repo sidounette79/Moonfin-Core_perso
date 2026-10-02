@@ -4,6 +4,29 @@ import 'package:moonfin_design/moonfin_design.dart';
 import '../../../../widgets/bounded_network_image.dart';
 import '../../../../widgets/marquee_text.dart';
 
+/// 02.10, Sid: "reprendre le visuel clubtivi à l'identique" for the IPTV
+/// screen specifically - but this cell is ALSO used by Emby's own native
+/// Live TV guide (live_tv_guide_screen.dart), which should keep its own
+/// Moonfin look untouched. Rather than hardcode clubTivi's literal colors
+/// into this shared widget (which would silently reskin the Emby screen
+/// too), an optional override bundle: null everywhere except the IPTV
+/// screen, which is the only caller that constructs one.
+class EpgCellStyleOverride {
+  final Color restingBackground;
+  final Color focusedBackground;
+  final Color focusBorderColor;
+  final Color nameColor;
+  final Color logoFallbackBackground;
+
+  const EpgCellStyleOverride({
+    required this.restingBackground,
+    required this.focusedBackground,
+    required this.focusBorderColor,
+    required this.nameColor,
+    required this.logoFallbackBackground,
+  });
+}
+
 /// Channel identity cell for the guide rail: logo pinned left, with the accent
 /// number chip and the channel name right-justified against the cell's trailing
 /// edge. The cell itself provides the contrast surface for the bare logo. Pure
@@ -28,6 +51,10 @@ class EpgChannelCell extends StatelessWidget {
   /// Playing now gets its own small, quiet indicator instead of sharing
   /// the focus ring/background.
   final bool playing;
+
+  /// See [EpgCellStyleOverride] - null everywhere except the clubTivi-style
+  /// IPTV screen.
+  final EpgCellStyleOverride? styleOverride;
 
   /// Above this the rail is the one a television lays out, and the cell steps
   /// up to a face that carries at ten feet. Below it the rail belongs to a
@@ -64,23 +91,26 @@ class EpgChannelCell extends StatelessWidget {
     required this.apple,
     this.isFavorite = false,
     this.playing = false,
+    this.styleOverride,
   });
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final scaler = MediaQuery.textScalerOf(context);
-    final accent = AppColorScheme.accent;
+    final override = styleOverride;
+    final accent = override?.focusBorderColor ?? AppColorScheme.accent;
     final radius = apple ? 14.0 : 10.0;
     final Color bg;
     if (focused) {
-      bg = apple
-          ? Colors.white.withValues(alpha: 0.16)
-          : accent.withValues(alpha: 0.16);
+      bg = override?.focusedBackground ??
+          (apple
+              ? Colors.white.withValues(alpha: 0.16)
+              : accent.withValues(alpha: 0.16));
     } else {
       // This is the cell surface, not a logo tile. The muted slate is bright
       // enough for black station marks while keeping white rail text legible.
-      bg = _restingCellColor;
+      bg = override?.restingBackground ?? _restingCellColor;
     }
 
     // Sized from the rail rather than left on the body token, which is meant
@@ -89,7 +119,7 @@ class EpgChannelCell extends StatelessWidget {
     TextStyle? nameStyleFor(double width) => textTheme.bodySmall?.copyWith(
       fontSize: _nameSize(width),
       fontWeight: focused ? FontWeight.w600 : FontWeight.w500,
-      color: AppColorScheme.onSurface,
+      color: override?.nameColor ?? AppColorScheme.onSurface,
     );
 
     Widget bodyFor(double width) {
@@ -203,11 +233,17 @@ class EpgChannelCell extends StatelessWidget {
         : _fallback(),
   );
 
-  Widget _fallback() => Icon(
-    Icons.tv,
-    size: 16,
-    color: AppColorScheme.onSurface.withValues(alpha: 0.5),
-  );
+  Widget _fallback() {
+    final bg = styleOverride?.logoFallbackBackground;
+    final icon = Icon(
+      Icons.tv,
+      size: 16,
+      color: bg != null
+          ? Colors.white24
+          : AppColorScheme.onSurface.withValues(alpha: 0.5),
+    );
+    return bg == null ? icon : ColoredBox(color: bg, child: icon);
+  }
 
   Widget _numberChip(String number, Color accent, double size) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 6),

@@ -525,9 +525,22 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   // (#111127 sidebar bg), a deliberate one-screen exception to Moonfin's
   // own dynamic AppColorScheme since an "identical copy" was the ask.
   static const _clubTiviSidebarBg = Color(0xFF111127);
-  static const _clubTiviFocusBorder = Color(0xFFBB86FC); // Colors.purpleAccent
+  // 02.10: their own _sidebarIcon helper uses the lighter Colors.purpleAccent
+  // for JUST that one collapsed-icon widget, but every other focus ring in
+  // their source (channel rows, programme cells) uses the theme's real
+  // accent (ClubTiviTheme._accent) - using that one consistently here so
+  // the sidebar's focus ring matches the rest of this screen, not the
+  // one inconsistent spot in their own code.
+  static const _clubTiviFocusBorder = Color(0xFF6C5CE7);
   static const _clubTiviSidebarExpandedWidth = 220.0;
   static const _clubTiviSidebarCollapsedWidth = 44.0;
+  static const _clubTiviCellStyle = EpgCellStyleOverride(
+    restingBackground: Color(0xFF16213E),
+    focusedBackground: Color(0x296C5CE7), // 0xFF6C5CE7 at ~16% alpha
+    focusBorderColor: Color(0xFF6C5CE7),
+    nameColor: Colors.white,
+    logoFallbackBackground: Color(0xFF16213E),
+  );
 
   bool _sidebarExpanded = true;
 
@@ -896,6 +909,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                 playing: isCurrent,
                 apple: false,
                 isFavorite: _isFavorite(channel),
+                styleOverride: _clubTiviCellStyle,
               ),
             ),
           ),
@@ -929,6 +943,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                             focused: false,
                             apple: false,
                             loading: true,
+                            styleOverride: _clubTiviCellStyle,
                           )
                         : Stack(
                             children: [
@@ -969,6 +984,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                                         startsBeforeWindow: p.start.isBefore(
                                           _windowStart,
                                         ),
+                                        styleOverride: _clubTiviCellStyle,
                                       ),
                                     ),
                                   ),

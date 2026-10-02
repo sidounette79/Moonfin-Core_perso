@@ -3,6 +3,7 @@ import 'package:moonfin_design/moonfin_design.dart';
 
 import '../../../../widgets/marquee_text.dart';
 import '../epg_genre.dart';
+import 'epg_channel_cell.dart' show EpgCellStyleOverride;
 
 /// A single program in the guide grid. Pure presentation: the host positions it
 /// (left/width along the timeline) and owns focus, passing [focused]. The genre
@@ -50,6 +51,10 @@ class EpgProgramCell extends StatelessWidget {
   /// Category labels (`Sports`, `News`) shown after the rating.
   final List<String> tags;
 
+  /// See EpgCellStyleOverride on EpgChannelCell - same reasoning, shared
+  /// with Emby's own native Live TV guide so colors stay null there.
+  final EpgCellStyleOverride? styleOverride;
+
   const EpgProgramCell({
     super.key,
     required this.title,
@@ -67,26 +72,30 @@ class EpgProgramCell extends StatelessWidget {
     this.startsBeforeWindow = false,
     this.rating,
     this.tags = const [],
+    this.styleOverride,
   });
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final accent = AppColorScheme.accent;
+    final override = styleOverride;
+    final accent = override?.focusBorderColor ?? AppColorScheme.accent;
     final muted = AppColorScheme.onSurface.withValues(alpha: 0.55);
     final radius = apple ? 12.0 : 6.0;
 
     final Color bg;
     if (focused) {
-      bg = apple
-          ? Colors.white.withValues(alpha: 0.18)
-          : const Color(0xFF1C2C3C);
+      bg = override?.focusedBackground ??
+          (apple
+              ? Colors.white.withValues(alpha: 0.18)
+              : const Color(0xFF1C2C3C));
     } else if (apple) {
       bg = Colors.white.withValues(alpha: 0.06);
     } else {
-      bg = isLive
-          ? genre.color.withValues(alpha: 0.14)
-          : AppColorScheme.surface.withValues(alpha: 0.5);
+      bg = override?.restingBackground ??
+          (isLive
+              ? genre.color.withValues(alpha: 0.14)
+              : AppColorScheme.surface.withValues(alpha: 0.5));
     }
 
     final focusBorder = focused
