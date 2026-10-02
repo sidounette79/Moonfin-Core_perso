@@ -89,16 +89,17 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   late final DateTime _windowStart;
   late final DateTime _windowEnd;
 
-  // 01.10, Sid: TiviMate's own "staircase" layout - the sidebar is full
-  // width while focus is in it, and disappears entirely once focus moves
-  // into the grid, so the grid gets the full screen width. "Tant qu'on y
-  // est, fais aussi cellule par cellule" - a real grid: LEFT/RIGHT move
-  // between a channel's own programmes in time (LEFT goes further into the
-  // past, for replay), UP/DOWN move to the adjacent channel's programme at
-  // roughly the same time, BACK (not LEFT) leaves the grid for the
-  // sidebar. One Focus node for the whole grid rather than one per cell -
-  // hundreds of real FocusNodes for a grid this size would be wasteful and
-  // the highlighted cell is drawn from this logical position instead.
+  // 01.10, Sid: originally a TiviMate-style full show/hide staircase;
+  // 02.10 switched the sidebar itself to clubTivi's own real behaviour
+  // (shrinks to a 44px icon rail instead of disappearing - see
+  // _buildSidebar's own note), but the grid's own focus model here is
+  // unchanged: LEFT/RIGHT move between a channel's own programmes in time
+  // (LEFT goes further into the past, for replay), UP/DOWN move to the
+  // adjacent channel's programme at roughly the same time, BACK (not
+  // LEFT) leaves the grid for the sidebar. One Focus node for the whole
+  // grid rather than one per cell - hundreds of real FocusNodes for a
+  // grid this size would be wasteful and the highlighted cell is drawn
+  // from this logical position instead.
   bool _gridHasFocus = false;
   final _gridFocusNode = FocusNode(debugLabel: 'iptvGrid');
   int _focusedChannelIndex = 0;
