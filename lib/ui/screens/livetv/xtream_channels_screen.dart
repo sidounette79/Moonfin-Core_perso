@@ -366,9 +366,26 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   /// comment. UP/DOWN move between sidebar tiles explicitly (see the
   /// _sidebarFocusNodes note above) rather than through Flutter's default
   /// traversal.
-  KeyEventResult _onSidebarTileKeyEvent(FocusNode node, KeyEvent event) {
+  // 03.10, Sid: "j'ai bien des lignes... mais quand je clique dessus, il
+  // ne se passe rien (pas branché derrière)" - cette fonction gérait déjà
+  // LEFT/UP/DOWN mais jamais la touche "select" télécommande/clavier, donc
+  // le onTap de chaque ligne (filtre "Favoris", fournisseur, groupe)
+  // n'était accessible qu'à la souris/au tactile. Reçoit maintenant le
+  // onTap de la ligne concernée (closure construite dans _sidebarRow) pour
+  // pouvoir l'invoquer sur select, comme _onGridKeyEvent le fait déjà pour
+  // sa propre grille.
+  KeyEventResult _onSidebarTileKeyEvent(
+    FocusNode node,
+    KeyEvent event,
+    VoidCallback onTap,
+  ) {
     if (!event.isActionable) return KeyEventResult.ignored;
     final key = event.logicalKey;
+
+    if (key.isSelectKey) {
+      onTap();
+      return KeyEventResult.handled;
+    }
 
     if (key.isRightKey) {
       final list = _filtered;
@@ -390,7 +407,22 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
       if (nextIndex < 0 || nextIndex >= _sidebarFocusNodes.length) {
         return KeyEventResult.handled;
       }
-      _sidebarFocusNodes[nextIndex].requestFocus();
+      final nextNode = _sidebarFocusNodes[nextIndex];
+      nextNode.requestFocus();
+      // 03.10, Sid: "la section ne scrolle pas vers le bas" - requestFocus()
+      // sur un noeud qu'on cible nous-mêmes (plutôt que la traversée par
+      // défaut de Flutter, voir le commentaire au-dessus de
+      // _sidebarFocusNodes) ne fait jamais défiler le ListView pour suivre
+      // le focus - il fallait le demander explicitement.
+      final nextContext = nextNode.context;
+      if (nextContext != null) {
+        unawaited(
+          Scrollable.ensureVisible(
+            nextContext,
+            duration: const Duration(milliseconds: 150),
+          ),
+        );
+      }
       return KeyEventResult.handled;
     }
 
@@ -412,7 +444,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   }) {
     return Focus(
       focusNode: node,
-      onKeyEvent: _onSidebarTileKeyEvent,
+      onKeyEvent: (n, event) => _onSidebarTileKeyEvent(n, event, onTap),
       child: ListenableBuilder(
         listenable: node,
         builder: (context, _) {

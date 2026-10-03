@@ -26,6 +26,8 @@ class XtreamProvidersScreen extends StatefulWidget {
   State<XtreamProvidersScreen> createState() => _XtreamProvidersScreenState();
 }
 
+enum _ProviderAction { edit, delete }
+
 class _XtreamProvidersScreenState extends State<XtreamProvidersScreen> {
   final _prefs = GetIt.instance<UserPreferences>();
   late List<XtreamProvider> _providers;
@@ -86,6 +88,65 @@ class _XtreamProvidersScreenState extends State<XtreamProvidersScreen> {
     if (result == null) return;
     await _prefs.addOrUpdateXtreamProvider(result);
     await _reload();
+  }
+
+  // 03.10, Sid: "le d-pad ne me permet pas d'aller sur l'icône pour
+  // modifier un fournisseur" - les IconButton bruts dans trailing ne sont
+  // jamais atteints par le D-pad télécommande/clavier (l'appui "select"
+  // sur la ligne va toujours au onTap du ListTile, qui ouvre la liste des
+  // chaînes). Même convention que le reste de l'appli pour les actions
+  // secondaires d'une ligne (ex. showContextMenu sur les cartes média) :
+  // un appui long, pas un bouton séparé à atteindre au D-pad.
+  Future<void> _showProviderActions(XtreamProvider provider) async {
+    final choice = await showDialog<_ProviderAction>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(provider.name),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop(_ProviderAction.edit),
+            child: const Text('Modifier'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop(_ProviderAction.delete),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || choice == null) return;
+    switch (choice) {
+      case _ProviderAction.edit:
+        await _openEditor(existing: provider);
+      case _ProviderAction.delete:
+        await _delete(provider);
+    }
+  }
+
+  Future<void> _showM3uProviderActions(M3uProvider provider) async {
+    final choice = await showDialog<_ProviderAction>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(provider.name),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop(_ProviderAction.edit),
+            child: const Text('Modifier'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop(_ProviderAction.delete),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || choice == null) return;
+    switch (choice) {
+      case _ProviderAction.edit:
+        await _openM3uEditor(existing: provider);
+      case _ProviderAction.delete:
+        await _deleteM3u(provider);
+    }
   }
 
   Future<void> _delete(XtreamProvider provider) async {
@@ -255,6 +316,7 @@ class _XtreamProvidersScreenState extends State<XtreamProvidersScreen> {
                             XtreamCategoryPickerScreen(provider: provider),
                       ),
                     ),
+                    onLongPress: () => _showProviderActions(provider),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -292,6 +354,7 @@ class _XtreamProvidersScreenState extends State<XtreamProvidersScreen> {
                     ),
                     isThreeLine:
                         provider.epgUrl != null && provider.epgUrl!.isNotEmpty,
+                    onLongPress: () => _showM3uProviderActions(provider),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
