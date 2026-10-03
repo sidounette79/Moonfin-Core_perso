@@ -56,6 +56,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   String? _error;
   String _filter = '';
   Set<String> _favorites = {};
+  Set<String> _hiddenGroups = {};
 
   /// Which slice of the channel list the grid shows - a single string with
   /// a conventional prefix (clubTivi's own trick, see sidebar §5 of the
@@ -213,6 +214,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     _windowStart = now.subtract(_windowBefore);
     _windowEnd = now.add(_windowAfter);
     _favorites = _prefs.getIptvFavoriteChannels();
+    _hiddenGroups = _prefs.getIptvHiddenGroups();
     _playerSub = _service.changes.listen((_) {
       if (mounted) setState(() {});
     });
@@ -271,6 +273,20 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   List<PlayableChannel> get _filtered {
     final all = _channels ?? const <PlayableChannel>[];
     Iterable<PlayableChannel> result = all;
+    // 03.10, Sid: "appui long pour masquer un groupe/chaîne" - exclu
+    // partout (Toutes les chaînes, Favoris, un autre groupe...) sauf si
+    // on a justement sélectionné ce groupe masqué depuis la section
+    // "Masqués" pour le consulter avant de le démasquer.
+    if (_hiddenGroups.isNotEmpty) {
+      result = result.where((c) {
+        if (_selectedFilter == 'provider:${c.sourceName}' ||
+            _selectedFilter == 'group:${c.groupTitle}') {
+          return true;
+        }
+        return !_hiddenGroups.contains('provider:${c.sourceName}') &&
+            !_hiddenGroups.contains('group:${c.groupTitle}');
+      });
+    }
     if (_selectedFilter == 'Favorites') {
       result = result.where(_isFavorite);
     } else if (_selectedFilter.startsWith('provider:')) {
@@ -440,6 +456,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     required String label,
     required bool active,
     required VoidCallback onTap,
+    VoidCallback? onLongPress,
     Widget? expandedTrailing,
   }) {
     return Focus(
@@ -487,7 +504,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
           return Tooltip(
             message: _sidebarExpanded ? '' : label,
             preferBelow: false,
-            child: InkWell(onTap: onTap, child: body),
+            child: InkWell(onTap: onTap, onLongPress: onLongPress, child: body),
           );
         },
       ),
@@ -500,6 +517,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
     IconData? icon,
     int? count,
     FocusNode? focusNode,
+    VoidCallback? onLongPress,
   }) {
     final selected = _selectedFilter == filterValue;
     final node = _nextSidebarFocusNode(reuse: focusNode);
@@ -509,6 +527,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
       label: label,
       active: selected,
       onTap: () => setState(() => _selectedFilter = filterValue),
+      onLongPress: onLongPress,
       expandedTrailing: count != null
           ? Text(
               '$count',
@@ -516,6 +535,22 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
             )
           : null,
     );
+  }
+
+  // 03.10, Sid: "appui long pour masquer un groupe/chaîne" - appui long
+  // sur un fournisseur/groupe déjà masqué le démasque (même geste dans
+  // les deux sens, pas de corbeille à part) ; si le filtre actif pointe
+  // justement sur ce qu'on masque, retombe sur "Toutes les chaînes"
+  // plutôt que de laisser la grille affichée vide sans explication.
+  Future<void> _toggleGroupHidden(String key) async {
+    final nowHidden = !_hiddenGroups.contains(key);
+    await _prefs.setIptvGroupHidden(key, nowHidden);
+    setState(() {
+      _hiddenGroups = _prefs.getIptvHiddenGroups();
+      if (nowHidden && _selectedFilter == key) {
+        _selectedFilter = 'All';
+      }
+    });
   }
 
   /// [itemCount] decides whether the section exists at all (e.g. no
@@ -588,12 +623,17 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   static const _clubTiviFocusBorder = Color(0xFF6C5CE7);
   static const _clubTiviSidebarExpandedWidth = 220.0;
   static const _clubTiviSidebarCollapsedWidth = 44.0;
+  // 03.10, Sid: "police du guide trop grande" - réduit nom de chaîne et
+  // titre/horaire de programme de 15%, seulement sur cet écran IPTV (voir
+  // EpgCellStyleOverride.fontScale - l'écran natif Emby ne passe jamais
+  // d'override et garde sa taille normale).
   static const _clubTiviCellStyle = EpgCellStyleOverride(
     restingBackground: Color(0xFF16213E),
     focusedBackground: Color(0x296C5CE7), // 0xFF6C5CE7 at ~16% alpha
     focusBorderColor: Color(0xFF6C5CE7),
     nameColor: Colors.white,
     logoFallbackBackground: Color(0xFF16213E),
+    fontScale: 0.85,
   );
 
   bool _sidebarExpanded = true;
@@ -601,15 +641,37 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
   Widget _buildSidebar() {
     _sidebarBuildCounter = 0;
     final channels = _channels ?? const <PlayableChannel>[];
-    final providers = channels.map((c) => c.sourceName).toSet().toList()
+    final allProviders = channels.map((c) => c.sourceName).toSet().toList()
       ..sort();
-    final groups =
+    final allGroups =
         channels
             .map((c) => c.groupTitle)
             .where((g) => g.isNotEmpty)
             .toSet()
             .toList()
           ..sort();
+    final providers =
+        allProviders.where((p) => !_hiddenGroups.contains('provider:$p')).toList();
+    final groups =
+        allGroups.where((g) => !_hiddenGroups.contains('group:$g')).toList();
+    // 03.10: seulement les clés encore réellement présentes dans la liste
+    // actuelle - un fournisseur/groupe masqué qui a disparu du flux (plus
+    // configuré, plus de chaînes dedans) ne doit pas laisser une entrée
+    // fantôme éternelle dans "Masqués".
+    final hiddenProviders = allProviders
+        .where((p) => _hiddenGroups.contains('provider:$p'))
+        .toList();
+    final hiddenGroupNames =
+        allGroups.where((g) => _hiddenGroups.contains('group:$g')).toList();
+    final visibleChannelCount = _hiddenGroups.isEmpty
+        ? channels.length
+        : channels
+            .where(
+              (c) =>
+                  !_hiddenGroups.contains('provider:${c.sourceName}') &&
+                  !_hiddenGroups.contains('group:${c.groupTitle}'),
+            )
+            .length;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -645,7 +707,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                   'Toutes les chaînes',
                   'All',
                   icon: Icons.apps,
-                  count: channels.length,
+                  count: visibleChannelCount,
                   focusNode: _allChannelsTileFocusNode,
                 ),
                 _sidebarSection(
@@ -667,7 +729,12 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                   providers.length,
                   () => [
                     for (final p in providers)
-                      _sidebarTile(p, 'provider:$p', icon: Icons.dns_outlined),
+                      _sidebarTile(
+                        p,
+                        'provider:$p',
+                        icon: Icons.dns_outlined,
+                        onLongPress: () => _toggleGroupHidden('provider:$p'),
+                      ),
                   ],
                 ),
                 _sidebarSection(
@@ -676,7 +743,33 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                   groups.length,
                   () => [
                     for (final g in groups)
-                      _sidebarTile(g, 'group:$g', icon: Icons.folder_outlined),
+                      _sidebarTile(
+                        g,
+                        'group:$g',
+                        icon: Icons.folder_outlined,
+                        onLongPress: () => _toggleGroupHidden('group:$g'),
+                      ),
+                  ],
+                ),
+                _sidebarSection(
+                  'hidden',
+                  'Masqués (${hiddenProviders.length + hiddenGroupNames.length})',
+                  hiddenProviders.length + hiddenGroupNames.length,
+                  () => [
+                    for (final p in hiddenProviders)
+                      _sidebarTile(
+                        p,
+                        'provider:$p',
+                        icon: Icons.visibility_off_outlined,
+                        onLongPress: () => _toggleGroupHidden('provider:$p'),
+                      ),
+                    for (final g in hiddenGroupNames)
+                      _sidebarTile(
+                        g,
+                        'group:$g',
+                        icon: Icons.visibility_off_outlined,
+                        onLongPress: () => _toggleGroupHidden('group:$g'),
+                      ),
                   ],
                 ),
               ],
@@ -752,7 +845,7 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  current.name,
+                                  EpgChannelMatcher.displayName(current.name),
                                   style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
@@ -968,11 +1061,17 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
           SizedBox(
             width: _railWidth,
             child: GestureDetector(
-              onTap: () => _openFullscreen(list, index),
+              // 03.10, Sid: "simple clic = mini-lecteur, double-clic =
+              // plein écran" - jusqu'ici un simple tap ouvrait direct le
+              // plein écran. GestureDetector gère seul le petit délai de
+              // distinction simple/double tap dès que les deux callbacks
+              // sont fournis, pas besoin de le coder à la main.
+              onTap: () => _openInPreview(list, index),
+              onDoubleTap: () => _openFullscreen(list, index),
               onLongPress: () => _toggleFavorite(channel),
               child: EpgChannelCell(
                 logoUrl: channel.iconUrl,
-                name: channel.name,
+                name: EpgChannelMatcher.displayName(channel.name),
                 number: '${index + 1}',
                 focused: isFocusedRow,
                 playing: isCurrent,
@@ -1026,7 +1125,9 @@ class _XtreamChannelsScreenState extends State<XtreamChannelsScreen> {
                                     top: 0,
                                     bottom: 0,
                                     child: GestureDetector(
-                                      onTap: () => _openFullscreen(list, index),
+                                      onTap: () => _openInPreview(list, index),
+                                      onDoubleTap: () =>
+                                          _openFullscreen(list, index),
                                       child: EpgProgramCell(
                                         title: p.title,
                                         genre: const EpgGenre(

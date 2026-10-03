@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../../data/models/playable_channel.dart';
+import '../../../data/services/epg_channel_matcher.dart';
 import '../../../data/services/iptv_player_service.dart';
 import '../../screensaver/screensaver_controller.dart';
 
@@ -107,6 +109,65 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
     _scheduleOsdAutoHide();
   }
 
+  // 03.10, Sid: "accès au guide en plein écran" - le guide complet (barre
+  // latérale + grille EPG) vit déjà dans XtreamChannelsScreen, qui reste
+  // en vie derrière cet écran (même IptvPlayerService partagé, la lecture
+  // continue dans la mini-preview) - un bouton dédié et visible plutôt que
+  // de compter sur le fait que la flèche retour fait déjà ça.
+  void _openGuide() {
+    Navigator.of(context).maybePop();
+  }
+
+  Future<void> _showAudioTrackPicker() async {
+    final tracks = _service.audioTracks;
+    if (tracks.length < 2) return;
+    final current = _service.currentAudioTrack;
+    final chosen = await showModalBottomSheet<AudioTrack>(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A2E),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Piste audio',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            for (final track in tracks)
+              ListTile(
+                title: Text(
+                  track.title?.isNotEmpty == true
+                      ? track.title!
+                      : (track.language?.isNotEmpty == true
+                            ? track.language!
+                            : 'Piste ${track.id}'),
+                  style: const TextStyle(color: Colors.white),
+                ),
+                trailing: current?.id == track.id
+                    ? const Icon(Icons.check, color: Colors.white)
+                    : null,
+                onTap: () => Navigator.of(sheetContext).pop(track),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (chosen != null) {
+      await _service.setAudioTrack(chosen);
+    }
+    _scheduleOsdAutoHide();
+  }
+
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = event.logicalKey;
@@ -192,7 +253,7 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                entry.name,
+                EpgChannelMatcher.displayName(entry.name),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -235,6 +296,20 @@ class _XtreamPlayerScreenState extends State<XtreamPlayerScreen> {
                     icon: const Icon(Icons.chevron_right,
                         color: Colors.white, size: 36),
                     onPressed: () => _zap(1),
+                  ),
+                  const Spacer(),
+                  if (_service.audioTracks.length > 1)
+                    IconButton(
+                      icon: const Icon(Icons.audiotrack,
+                          color: Colors.white, size: 28),
+                      tooltip: 'Piste audio',
+                      onPressed: _showAudioTrackPicker,
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.live_tv,
+                        color: Colors.white, size: 28),
+                    tooltip: 'Guide',
+                    onPressed: _openGuide,
                   ),
                 ],
               ),

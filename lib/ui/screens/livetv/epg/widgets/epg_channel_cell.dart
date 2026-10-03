@@ -18,12 +18,20 @@ class EpgCellStyleOverride {
   final Color nameColor;
   final Color logoFallbackBackground;
 
+  /// 03.10, Sid: "police du guide trop grande" - multiplie toutes les
+  /// tailles de police de la cellule (nom de chaîne + titre/horaire du
+  /// programme). Null = taille normale (Emby, qui ne passe jamais
+  /// d'override), jamais touché directement ici pour ne pas reskiner
+  /// l'écran Emby natif au passage.
+  final double? fontScale;
+
   const EpgCellStyleOverride({
     required this.restingBackground,
     required this.focusedBackground,
     required this.focusBorderColor,
     required this.nameColor,
     required this.logoFallbackBackground,
+    this.fontScale,
   });
 }
 
@@ -66,7 +74,8 @@ class EpgChannelCell extends StatelessWidget {
   static double _numberSize(double width) =>
       width >= _tenFootRailWidth ? 20 : 13;
 
-  static double _nameSize(double width) => width >= _tenFootRailWidth ? 18 : 12;
+  static double _nameSize(double width, double fontScale) =>
+      (width >= _tenFootRailWidth ? 18 : 12) * fontScale;
 
   /// Icons set in a line of text take this share of that line's face, so they
   /// keep their weight beside it at any interface size.
@@ -116,8 +125,9 @@ class EpgChannelCell extends StatelessWidget {
     // Sized from the rail rather than left on the body token, which is meant
     // for reading at arm's length and lands under the ten foot floor once a
     // television scales the canvas down onto the panel.
+    final fontScale = override?.fontScale ?? 1.0;
     TextStyle? nameStyleFor(double width) => textTheme.bodySmall?.copyWith(
-      fontSize: _nameSize(width),
+      fontSize: _nameSize(width, fontScale),
       fontWeight: focused ? FontWeight.w600 : FontWeight.w500,
       color: override?.nameColor ?? AppColorScheme.onSurface,
     );

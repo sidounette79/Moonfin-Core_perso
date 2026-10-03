@@ -139,11 +139,12 @@ class EpgProgramCell extends StatelessWidget {
     // focus and on-now treatments. The floor is a painted size, so it has to
     // be read against the canvas a television lays out on rather than against
     // whatever size a given panel reports.
+    final fontScale = override?.fontScale ?? 1.0;
     final titleStyle =
         (textTheme.bodyMedium ??
                 const TextStyle(fontSize: AppTypography.fontSizeLg))
             .copyWith(
-              fontSize: AppTypography.fontSizeLg,
+              fontSize: AppTypography.fontSizeLg * fontScale,
               fontWeight: FontWeight.w400,
               color: placeholderLabel != null
                   ? muted
@@ -153,7 +154,7 @@ class EpgProgramCell extends StatelessWidget {
     final metaStyle =
         (textTheme.labelMedium ??
                 const TextStyle(fontSize: AppTypography.fontSizeSm))
-            .copyWith(fontSize: AppTypography.fontSizeSm, color: muted);
+            .copyWith(fontSize: AppTypography.fontSizeSm * fontScale, color: muted);
 
     final markerStyle = titleStyle.copyWith(
       fontWeight: FontWeight.w700,

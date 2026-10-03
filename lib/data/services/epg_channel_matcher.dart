@@ -34,6 +34,26 @@ class EpgChannelMatcher {
   static final _callSignPattern = RegExp(r'\(([a-z0-9]+)\)', caseSensitive: false);
   static final _leadingRegionPattern = RegExp(r'^[a-z]{2,3}\s*[:|/-]\s*', caseSensitive: false);
 
+  /// 03.10, Sid: "nettoyer l'affichage en supprimant ces infos" (préfixes
+  /// pays/région style "FR|", "DE:", "CH-" devant le nom réel d'une
+  /// chaîne) - un simple wrapper d'affichage autour du même motif déjà
+  /// éprouvé pour le matching EPG (_leadingRegionPattern/segments
+  /// pipe-séparés), mais qui garde la casse et la ponctuation du nom
+  /// réel au lieu de le normaliser en minuscules comme _cleanChannelName
+  /// le fait pour comparer. N'affecte jamais channel.name lui-même (pas
+  /// de risque pour le matching EPG ou la clé de regroupement des
+  /// favoris, qui utilisent toujours le nom brut).
+  static String displayName(String name) {
+    var result = name;
+    final segments = result.split('|');
+    if (segments.length > 1) {
+      result = segments.last;
+    }
+    result = result.replaceAll(_leadingRegionPattern, '');
+    result = result.trim();
+    return result.isEmpty ? name.trim() : result;
+  }
+
   /// Builds a lookup index once per guide so matching every playlist
   /// channel against it doesn't re-scan the whole channel list each time.
   static _GuideIndex _buildIndex(XmltvGuide guide) {

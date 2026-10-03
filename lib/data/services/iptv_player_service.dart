@@ -74,6 +74,18 @@ class IptvPlayerService {
   String? get error => _error;
   List<EpgEntryData> get epg => _epg;
 
+  // 03.10, Sid: "accès à la piste audio en plein écran" - flux IPTV
+  // directs (pas de profil de transcodage Jellyfin, contrairement à
+  // media_kit_player_backend.dart dont la résolution d'ordinal aid ne
+  // s'applique pas ici), donc la liste/le setter media_kit bruts
+  // suffisent sans traduction d'index.
+  List<AudioTrack> get audioTracks => _player?.state.tracks.audio ?? const [];
+  AudioTrack? get currentAudioTrack => _player?.state.track.audio;
+
+  Future<void> setAudioTrack(AudioTrack track) async {
+    await _player?.setAudioTrack(track);
+  }
+
   PlayableChannel? get current =>
       _currentIndex < _channels.length ? _channels[_currentIndex] : null;
 

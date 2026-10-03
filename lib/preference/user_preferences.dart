@@ -3920,6 +3920,37 @@ class UserPreferences extends ChangeNotifier {
     await set(iptvFavoriteChannels, jsonEncode(favorites.toList()));
   }
 
+  // 03.10, Sid: "appui long pour masquer un groupe/chaîne" - même motif
+  // que les favoris ci-dessus. Les entrées sont préfixées ("group:",
+  // "provider:") pour partager un seul set sans collision entre les deux
+  // espaces de noms, et réversible : un appui long sur une entrée déjà
+  // masquée (visible dans la section "Masqués" de la barre latérale) la
+  // démasque - jamais de suppression définitive sans un vrai moyen de
+  // revenir en arrière.
+  static final iptvHiddenGroups = Preference<String>(
+    key: 'iptv_hidden_groups',
+    defaultValue: '[]',
+  );
+
+  Set<String> getIptvHiddenGroups() {
+    try {
+      final list = jsonDecode(get(iptvHiddenGroups)) as List;
+      return list.cast<String>().toSet();
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> setIptvGroupHidden(String key, bool hidden) async {
+    final hiddenSet = getIptvHiddenGroups();
+    if (hidden) {
+      hiddenSet.add(key);
+    } else {
+      hiddenSet.remove(key);
+    }
+    await set(iptvHiddenGroups, jsonEncode(hiddenSet.toList()));
+  }
+
   // 30.09, Sid: "historique de fiabilité" - per-source (streamUrl, since
   // that's what's actually tried/abandoned) success/failure counts, so
   // Smart Channels' failover can try a group's historically reliable
