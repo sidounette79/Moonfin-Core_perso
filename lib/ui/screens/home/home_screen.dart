@@ -5674,6 +5674,16 @@ class _ContentRowsState extends State<_ContentRows>
                       context.push(Destinations.genre(item.name, genreId: item.id));
                     } else if (item.serverId == 'seerr') {
                       _navigateToSeerrItem(context, item);
+                    } else if (row.rowType == HomeRowType.resume ||
+                        row.rowType == HomeRowType.nextUp) {
+                      // 03.10: le onTap partagé plus haut (avec cette même
+                      // branche) n'est câblé QUE sur la touche "select"
+                      // télécommande/clavier (LockedFocusRow._onKeyEvent) -
+                      // jamais sur le tap tactile, qui passe par le onTap
+                      // propre de MediaCard et appelle navigateToItem()
+                      // directement. D'où le bug : lecture directe marchait
+                      // en théorie mais jamais au doigt sur mobile.
+                      unawaited(_playDirectlyFromRow(item));
                     } else {
                       context.push(
                         Destinations.itemOrPhoto(
