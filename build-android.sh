@@ -77,6 +77,41 @@ resolve_shorebird() {
   exit 1
 }
 
+# 09.10: `shorebird release` refuses outright to recreate a release that
+# already exists for the exact same build-name+build-number ("Please bump
+# your version number and try again") - real, not a bug (hit once creating
+# the very first TV release right after mobile's had already gone out).
+# Since mobile/androidTv are versioned independently (APP_VERSION/
+# APP_BUILD_NUMBER vs TV_VERSION/TV_BUILD_NUMBER), one flavor legitimately
+# needing a new release while the other doesn't is a real, recurring case
+# - not fatal to the whole script. Echoes the CLI's own output as it runs
+# (so Gradle progress is still visible live) while also capturing it to
+# detect that one message; sets SHOREBIRD_RELEASE_SKIPPED=1 for the caller
+# to skip that flavor's artifact copy/check below instead of failing on a
+# "file not found" that's really just "nothing new was built".
+shorebird_release() {
+  local shorebird_bin log_file status
+  shorebird_bin="$(resolve_shorebird)"
+  log_file="$(mktemp)"
+  SHOREBIRD_RELEASE_SKIPPED=0
+  if "$shorebird_bin" release android --artifact apk "$@" 2>&1 | tee "$log_file"; then
+    status=0
+  else
+    status=1
+  fi
+  if [ "$status" -ne 0 ]; then
+    if grep -q "existing android release" "$log_file"; then
+      echo "Shorebird release already exists for this version - nothing new to publish, skipping this flavor."
+      SHOREBIRD_RELEASE_SKIPPED=1
+      rm -f "$log_file"
+      return 0
+    fi
+    rm -f "$log_file"
+    exit 1
+  fi
+  rm -f "$log_file"
+}
+
 VERSION_LINE=$(grep '^version:' "$REPO_ROOT/pubspec.yaml" | sed 's/version:[[:space:]]*//' | tr -d '[:space:]')
 APP_VERSION=$(printf '%s' "$VERSION_LINE" | cut -d'+' -f1)
 APP_BUILD_NUMBER=$(printf '%s' "$VERSION_LINE" | cut -d'+' -f2)
@@ -133,13 +168,14 @@ if [ "$SHOREBIRD_MODE" = "patch" ]; then
 fi
 
 echo "Building Android release APK (arm64-v8a, armeabi-v7a, x86_64)..."
+MOBILE_RELEASE_SKIPPED=0
 if [ "$SHOREBIRD_MODE" = "release" ]; then
-  SHOREBIRD="$(resolve_shorebird)"
-  "$SHOREBIRD" release android --artifact apk \
+  shorebird_release \
     --flavor mobile \
     --build-name "$APP_VERSION" \
     --build-number "$APP_BUILD_NUMBER" \
     --dart-define=DISTRIBUTION_CHANNEL=apk
+  MOBILE_RELEASE_SKIPPED="$SHOREBIRD_RELEASE_SKIPPED"
 else
   "$FLUTTER" build apk --release \
     --flavor mobile \
@@ -148,20 +184,24 @@ else
     --dart-define=DISTRIBUTION_CHANNEL=apk
 fi
 
-if [ ! -f "$APK_SOURCE" ]; then
-  echo "Error: APK not found at $APK_SOURCE" >&2
-  exit 1
+if [ "$MOBILE_RELEASE_SKIPPED" = "1" ]; then
+  echo "Mobile flavor: release already existed, nothing new built - skipping APK/AAB copy for it."
+else
+  if [ ! -f "$APK_SOURCE" ]; then
+    echo "Error: APK not found at $APK_SOURCE" >&2
+    exit 1
+  fi
+
+  cp "$APK_SOURCE" "$APK_OUTPUT"
+
+  if [ -x "$PAGE_SIZE_CHECKER" ]; then
+    echo "Running 16 KB page-size compatibility check on APK (informational only)..."
+    "$PAGE_SIZE_CHECKER" "$APK_SOURCE" || echo "Warning: APK 16 KB page-size check failed (not blocking)" >&2
+  fi
+
+  echo "APK created: $APK_SOURCE"
+  echo "APK copied to root: $APK_OUTPUT"
 fi
-
-cp "$APK_SOURCE" "$APK_OUTPUT"
-
-if [ -x "$PAGE_SIZE_CHECKER" ]; then
-  echo "Running 16 KB page-size compatibility check on APK (informational only)..."
-  "$PAGE_SIZE_CHECKER" "$APK_SOURCE" || echo "Warning: APK 16 KB page-size check failed (not blocking)" >&2
-fi
-
-echo "APK created: $APK_SOURCE"
-echo "APK copied to root: $APK_OUTPUT"
 
 # 09.10: `shorebird release --artifact apk` already builds the full AAB
 # internally before extracting the APK from it (confirmed in its own log
@@ -175,44 +215,51 @@ echo "APK copied to root: $APK_OUTPUT"
 # Trade-off accepted: this AAB then carries shorebird's own
 # DISTRIBUTION_CHANNEL=apk define instead of "aab" - harmless, Sid
 # distributes by direct APK install, not the Play Store.
-if [ "$SHOREBIRD_MODE" = "release" ]; then
+if [ "$MOBILE_RELEASE_SKIPPED" = "1" ]; then
+  echo "Mobile flavor: release already existed - skipping App Bundle too (same reason)."
+elif [ "$SHOREBIRD_MODE" = "release" ]; then
   echo "Android App Bundle already built by 'shorebird release' above - skipping the redundant rebuild."
-elif ! "$FLUTTER" build appbundle --release \
-  --flavor mobile \
-  --build-name "$APP_VERSION" \
-  --build-number "$APP_BUILD_NUMBER" \
-  --dart-define=DISTRIBUTION_CHANNEL=aab; then
-  echo "Flutter appbundle build failed. Retrying with Gradle bundleRelease fallback..."
-  (
-    cd "$REPO_ROOT/android"
-    ./gradlew bundleMobileRelease
-  )
+else
+  if ! "$FLUTTER" build appbundle --release \
+    --flavor mobile \
+    --build-name "$APP_VERSION" \
+    --build-number "$APP_BUILD_NUMBER" \
+    --dart-define=DISTRIBUTION_CHANNEL=aab; then
+    echo "Flutter appbundle build failed. Retrying with Gradle bundleRelease fallback..."
+    (
+      cd "$REPO_ROOT/android"
+      ./gradlew bundleMobileRelease
+    )
+  fi
 fi
 
-if [ ! -f "$BUNDLE_SOURCE" ]; then
-  echo "Error: App Bundle not found at $BUNDLE_SOURCE" >&2
-  exit 1
+if [ "$MOBILE_RELEASE_SKIPPED" != "1" ]; then
+  if [ ! -f "$BUNDLE_SOURCE" ]; then
+    echo "Error: App Bundle not found at $BUNDLE_SOURCE" >&2
+    exit 1
+  fi
+
+  cp "$BUNDLE_SOURCE" "$BUNDLE_OUTPUT"
+
+  if [ -x "$PAGE_SIZE_CHECKER" ]; then
+    echo "Running 16 KB page-size compatibility check on App Bundle..."
+    "$PAGE_SIZE_CHECKER" "$BUNDLE_SOURCE"
+  fi
+
+  echo "App Bundle created: $BUNDLE_SOURCE"
+  echo "App Bundle copied to root: $BUNDLE_OUTPUT"
 fi
-
-cp "$BUNDLE_SOURCE" "$BUNDLE_OUTPUT"
-
-if [ -x "$PAGE_SIZE_CHECKER" ]; then
-  echo "Running 16 KB page-size compatibility check on App Bundle..."
-  "$PAGE_SIZE_CHECKER" "$BUNDLE_SOURCE"
-fi
-
-echo "App Bundle created: $BUNDLE_SOURCE"
-echo "App Bundle copied to root: $BUNDLE_OUTPUT"
 
 echo "Building Android TV release APK..."
+TV_RELEASE_SKIPPED=0
 if [ "$SHOREBIRD_MODE" = "release" ]; then
-  SHOREBIRD="$(resolve_shorebird)"
-  "$SHOREBIRD" release android --artifact apk \
+  shorebird_release \
     --flavor androidTv \
     --build-name "$TV_VERSION" \
     --build-number "$TV_BUILD_NUMBER" \
     --dart-define=MOONFIN_FORCE_TV=true \
     --dart-define=DISTRIBUTION_CHANNEL=android_tv_apk
+  TV_RELEASE_SKIPPED="$SHOREBIRD_RELEASE_SKIPPED"
 else
   "$FLUTTER" build apk --release \
     --flavor androidTv \
@@ -222,23 +269,29 @@ else
     --dart-define=DISTRIBUTION_CHANNEL=android_tv_apk
 fi
 
-if [ ! -f "$TV_APK_SOURCE" ]; then
-  echo "Error: TV APK not found at $TV_APK_SOURCE" >&2
-  exit 1
+if [ "$TV_RELEASE_SKIPPED" = "1" ]; then
+  echo "Android TV flavor: release already existed, nothing new built - skipping APK/AAB copy for it."
+else
+  if [ ! -f "$TV_APK_SOURCE" ]; then
+    echo "Error: TV APK not found at $TV_APK_SOURCE" >&2
+    exit 1
+  fi
+
+  cp "$TV_APK_SOURCE" "$TV_APK_OUTPUT"
+
+  if [ -x "$PAGE_SIZE_CHECKER" ]; then
+    echo "Running 16 KB page-size compatibility check on TV APK (informational only)..."
+    "$PAGE_SIZE_CHECKER" "$TV_APK_SOURCE" || echo "Warning: TV APK 16 KB page-size check failed (not blocking)" >&2
+  fi
+
+  echo "TV APK created: $TV_APK_SOURCE"
+  echo "TV APK copied to root: $TV_APK_OUTPUT"
 fi
-
-cp "$TV_APK_SOURCE" "$TV_APK_OUTPUT"
-
-if [ -x "$PAGE_SIZE_CHECKER" ]; then
-  echo "Running 16 KB page-size compatibility check on TV APK (informational only)..."
-  "$PAGE_SIZE_CHECKER" "$TV_APK_SOURCE" || echo "Warning: TV APK 16 KB page-size check failed (not blocking)" >&2
-fi
-
-echo "TV APK created: $TV_APK_SOURCE"
-echo "TV APK copied to root: $TV_APK_OUTPUT"
 
 echo "Building Android TV App Bundle..."
-if [ "$SHOREBIRD_MODE" = "release" ]; then
+if [ "$TV_RELEASE_SKIPPED" = "1" ]; then
+  echo "Android TV flavor: release already existed - skipping App Bundle too (same reason)."
+elif [ "$SHOREBIRD_MODE" = "release" ]; then
   echo "Android TV App Bundle already built by 'shorebird release' above - skipping the redundant rebuild."
 elif ! "$FLUTTER" build appbundle --release \
   --flavor androidTv \
@@ -253,17 +306,19 @@ elif ! "$FLUTTER" build appbundle --release \
   )
 fi
 
-if [ ! -f "$TV_BUNDLE_SOURCE" ]; then
-  echo "Error: TV App Bundle not found at $TV_BUNDLE_SOURCE" >&2
-  exit 1
+if [ "$TV_RELEASE_SKIPPED" != "1" ]; then
+  if [ ! -f "$TV_BUNDLE_SOURCE" ]; then
+    echo "Error: TV App Bundle not found at $TV_BUNDLE_SOURCE" >&2
+    exit 1
+  fi
+
+  cp "$TV_BUNDLE_SOURCE" "$TV_BUNDLE_OUTPUT"
+
+  if [ -x "$PAGE_SIZE_CHECKER" ]; then
+    echo "Running 16 KB page-size compatibility check on TV App Bundle..."
+    "$PAGE_SIZE_CHECKER" "$TV_BUNDLE_SOURCE"
+  fi
+
+  echo "TV App Bundle created: $TV_BUNDLE_SOURCE"
+  echo "TV App Bundle copied to root: $TV_BUNDLE_OUTPUT"
 fi
-
-cp "$TV_BUNDLE_SOURCE" "$TV_BUNDLE_OUTPUT"
-
-if [ -x "$PAGE_SIZE_CHECKER" ]; then
-  echo "Running 16 KB page-size compatibility check on TV App Bundle..."
-  "$PAGE_SIZE_CHECKER" "$TV_BUNDLE_SOURCE"
-fi
-
-echo "TV App Bundle created: $TV_BUNDLE_SOURCE"
-echo "TV App Bundle copied to root: $TV_BUNDLE_OUTPUT"
