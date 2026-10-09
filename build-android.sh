@@ -163,8 +163,21 @@ fi
 echo "APK created: $APK_SOURCE"
 echo "APK copied to root: $APK_OUTPUT"
 
-echo "Building Android App Bundle..."
-if ! "$FLUTTER" build appbundle --release \
+# 09.10: `shorebird release --artifact apk` already builds the full AAB
+# internally before extracting the APK from it (confirmed in its own log
+# output: "Your next step is to upload the app bundle... .aab"), at the
+# exact same $BUNDLE_SOURCE path a plain `flutter build appbundle` would
+# use. Rebuilding it again here doubled the Gradle work for no reason and
+# is the likely cause of a real CI failure (09.10, mobile flavor: killed
+# mid-build, exit 143, right after this redundant second build started -
+# two consecutive full Gradle release builds plausibly exhausting the
+# runner's memory, same OOM pattern already seen on the NAS for this repo).
+# Trade-off accepted: this AAB then carries shorebird's own
+# DISTRIBUTION_CHANNEL=apk define instead of "aab" - harmless, Sid
+# distributes by direct APK install, not the Play Store.
+if [ "$SHOREBIRD_MODE" = "release" ]; then
+  echo "Android App Bundle already built by 'shorebird release' above - skipping the redundant rebuild."
+elif ! "$FLUTTER" build appbundle --release \
   --flavor mobile \
   --build-name "$APP_VERSION" \
   --build-number "$APP_BUILD_NUMBER" \
@@ -225,7 +238,9 @@ echo "TV APK created: $TV_APK_SOURCE"
 echo "TV APK copied to root: $TV_APK_OUTPUT"
 
 echo "Building Android TV App Bundle..."
-if ! "$FLUTTER" build appbundle --release \
+if [ "$SHOREBIRD_MODE" = "release" ]; then
+  echo "Android TV App Bundle already built by 'shorebird release' above - skipping the redundant rebuild."
+elif ! "$FLUTTER" build appbundle --release \
   --flavor androidTv \
   --build-name "$TV_VERSION" \
   --build-number "$TV_BUILD_NUMBER" \
