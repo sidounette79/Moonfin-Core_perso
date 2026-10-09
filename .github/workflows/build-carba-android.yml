@@ -12,6 +12,26 @@ name: Build CARBA TV Android
 on:
   push:
     branches: [carba-tv-changes]
+    # 09.10, Sid ("j'ai trois TV, 3 tél + 3 tablettes + 2 voitures...
+    # réinstaller l'APK à chaque fois est lourd"): a plain push publishes a
+    # Shorebird OTA patch (no reinstall) - see SHOREBIRD_MODE below. Pushing
+    # a version tag instead (after a native change - new plugin, Gradle/
+    # manifest edit, anything Dart-patching can't cover) does a real
+    # release, which still needs a manual reinstall but becomes the new OTA
+    # base. No "v" prefix - matches this repo's existing tag convention
+    # (2.6.0, 2.5.1, ... - plain "git tag"/"git push --tags", not previously
+    # wired to any CI trigger).
+    tags: ['[0-9]*.[0-9]*.[0-9]*']
+  # 09.10: manual escape hatch, mainly for the very first Shorebird release
+  # (no existing tag push will re-trigger on a tag that's already there) and
+  # for re-running a release/patch without needing a throwaway tag.
+  workflow_dispatch:
+    inputs:
+      shorebird_mode:
+        description: 'Shorebird: release (new OTA base) or patch (OTA update)'
+        type: choice
+        options: [patch, release]
+        default: patch
 
 env:
   FLUTTER_VERSION: '3.47.2'
@@ -30,6 +50,11 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Install Shorebird CLI
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh | bash
+          echo "$HOME/.shorebird/bin" >> "$GITHUB_PATH"
 
       - name: Set up signing
         env:
@@ -61,11 +86,25 @@ jobs:
           fi
 
       - name: Build
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+          # 09.10: a version tag (2.6.1, ...) = real release (new OTA base,
+          # needs reinstall). A plain branch push = OTA patch of the
+          # existing release, the everyday case. Manual run uses whatever
+          # was picked in the dropdown. See build-android.sh's
+          # SHOREBIRD_MODE handling.
+          SHOREBIRD_MODE: ${{ github.event.inputs.shorebird_mode || (startsWith(github.ref, 'refs/tags/') && 'release' || 'patch') }}
         run: |
           chmod +x build-android.sh
           ./build-android.sh
 
       - uses: actions/upload-artifact@v4
+        # A Shorebird patch (SHOREBIRD_MODE=patch, the common case) produces
+        # no APK/AAB - it's a binary diff pushed straight to Shorebird's
+        # servers, see build-android.sh. Nothing to upload then; only a
+        # release (same condition as SHOREBIRD_MODE above) produces real
+        # files here.
+        if: github.event.inputs.shorebird_mode == 'release' || (!github.event.inputs.shorebird_mode && startsWith(github.ref, 'refs/tags/'))
         with:
           name: android
           path: |

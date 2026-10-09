@@ -40,6 +40,37 @@ resolve_flutter() {
 
 FLUTTER="$(resolve_flutter)"
 
+# 09.10, Sid ("j'ai trois TV, 3 tél + 3 tablettes + 2 voitures... réinstaller
+# l'APK à chaque fois est lourd"): Shorebird code-push support, APK only (the
+# AAB further down is for a possible future Play Store listing, untouched by
+# OTA - Shorebird patches a directly-installed APK, not a store build).
+#
+# SHOREBIRD_MODE (set by build-carba-android.yml depending on tag vs plain
+# push) picks the operation:
+#   "release" - new install base (needed after a native change) - produces a
+#               real APK, same downstream copy/16kb-check as a plain build.
+#   "patch"   - OTA update of the existing release, no reinstall needed, the
+#               common case. Produces no distributable artifact (the patch
+#               is a binary diff pushed straight to Shorebird's servers) -
+#               so this mode returns early, skipping the AAB/TV-bundle steps
+#               entirely further below.
+#   "" (unset) - unchanged plain "flutter build apk/appbundle", so running
+#               this script by hand still works exactly as before.
+SHOREBIRD_MODE="${SHOREBIRD_MODE:-}"
+
+resolve_shorebird() {
+  if command -v shorebird >/dev/null 2>&1; then
+    command -v shorebird
+    return 0
+  fi
+  if [ -x "$HOME/.shorebird/bin/shorebird" ]; then
+    printf '%s\n' "$HOME/.shorebird/bin/shorebird"
+    return 0
+  fi
+  echo "Error: Shorebird CLI not found (SHOREBIRD_MODE=$SHOREBIRD_MODE needs it)." >&2
+  exit 1
+}
+
 VERSION_LINE=$(grep '^version:' "$REPO_ROOT/pubspec.yaml" | sed 's/version:[[:space:]]*//' | tr -d '[:space:]')
 APP_VERSION=$(printf '%s' "$VERSION_LINE" | cut -d'+' -f1)
 APP_BUILD_NUMBER=$(printf '%s' "$VERSION_LINE" | cut -d'+' -f2)
@@ -63,6 +94,7 @@ TV_BUNDLE_OUTPUT="$REPO_ROOT/${APP_NAME}_AndroidTV_v${TV_VERSION}.aab"
 
 echo "${APP_NAME} version: ${APP_VERSION} (${APP_BUILD_NUMBER})"
 echo "${APP_NAME} Android TV version: ${TV_VERSION} (${TV_BUILD_NUMBER})"
+echo "Shorebird mode: ${SHOREBIRD_MODE:-<none - plain flutter build>}"
 
 cd "$REPO_ROOT"
 
@@ -72,12 +104,43 @@ echo "Cleaning previous Flutter outputs..."
 echo "Resolving packages..."
 "$FLUTTER" pub get
 
+if [ "$SHOREBIRD_MODE" = "patch" ]; then
+  SHOREBIRD="$(resolve_shorebird)"
+
+  echo "Publishing Shorebird OTA patch - mobile flavor..."
+  "$SHOREBIRD" patch android --flavor mobile \
+    --release-version latest \
+    --build-name "$APP_VERSION" \
+    --build-number "$APP_BUILD_NUMBER" \
+    --dart-define=DISTRIBUTION_CHANNEL=apk
+
+  echo "Publishing Shorebird OTA patch - androidTv flavor..."
+  "$SHOREBIRD" patch android --flavor androidTv \
+    --release-version latest \
+    --build-name "$TV_VERSION" \
+    --build-number "$TV_BUILD_NUMBER" \
+    --dart-define=MOONFIN_FORCE_TV=true \
+    --dart-define=DISTRIBUTION_CHANNEL=android_tv_apk
+
+  echo "Both OTA patches published - a patch has no APK/AAB artifact to upload (it's a binary diff pushed straight to Shorebird's servers), nothing else to do."
+  exit 0
+fi
+
 echo "Building Android release APK (arm64-v8a, armeabi-v7a, x86_64)..."
-"$FLUTTER" build apk --release \
-  --flavor mobile \
-  --build-name "$APP_VERSION" \
-  --build-number "$APP_BUILD_NUMBER" \
-  --dart-define=DISTRIBUTION_CHANNEL=apk
+if [ "$SHOREBIRD_MODE" = "release" ]; then
+  SHOREBIRD="$(resolve_shorebird)"
+  "$SHOREBIRD" release android --artifact apk \
+    --flavor mobile \
+    --build-name "$APP_VERSION" \
+    --build-number "$APP_BUILD_NUMBER" \
+    --dart-define=DISTRIBUTION_CHANNEL=apk
+else
+  "$FLUTTER" build apk --release \
+    --flavor mobile \
+    --build-name "$APP_VERSION" \
+    --build-number "$APP_BUILD_NUMBER" \
+    --dart-define=DISTRIBUTION_CHANNEL=apk
+fi
 
 if [ ! -f "$APK_SOURCE" ]; then
   echo "Error: APK not found at $APK_SOURCE" >&2
@@ -123,12 +186,22 @@ echo "App Bundle created: $BUNDLE_SOURCE"
 echo "App Bundle copied to root: $BUNDLE_OUTPUT"
 
 echo "Building Android TV release APK..."
-"$FLUTTER" build apk --release \
-  --flavor androidTv \
-  --build-name "$TV_VERSION" \
-  --build-number "$TV_BUILD_NUMBER" \
-  --dart-define=MOONFIN_FORCE_TV=true \
-  --dart-define=DISTRIBUTION_CHANNEL=android_tv_apk
+if [ "$SHOREBIRD_MODE" = "release" ]; then
+  SHOREBIRD="$(resolve_shorebird)"
+  "$SHOREBIRD" release android --artifact apk \
+    --flavor androidTv \
+    --build-name "$TV_VERSION" \
+    --build-number "$TV_BUILD_NUMBER" \
+    --dart-define=MOONFIN_FORCE_TV=true \
+    --dart-define=DISTRIBUTION_CHANNEL=android_tv_apk
+else
+  "$FLUTTER" build apk --release \
+    --flavor androidTv \
+    --build-name "$TV_VERSION" \
+    --build-number "$TV_BUILD_NUMBER" \
+    --dart-define=MOONFIN_FORCE_TV=true \
+    --dart-define=DISTRIBUTION_CHANNEL=android_tv_apk
+fi
 
 if [ ! -f "$TV_APK_SOURCE" ]; then
   echo "Error: TV APK not found at $TV_APK_SOURCE" >&2
