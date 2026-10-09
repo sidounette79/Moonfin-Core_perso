@@ -9675,6 +9675,15 @@ class AppLocalizationsAf extends AppLocalizations {
   String get contextMenuMarkUnwatched => 'Merk as ongekyk';
 
   @override
+  String get episodeWatched => 'Episode Watched';
+
+  @override
+  String get markEpisodeWatched => 'Mark Episode as Watched';
+
+  @override
+  String get markEpisodeUnwatched => 'Mark Episode as Unwatched';
+
+  @override
   String get contextMenuAddToFavorites => 'Voeg by gunstelinge';
 
   @override

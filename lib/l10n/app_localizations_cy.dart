@@ -9719,6 +9719,15 @@ class AppLocalizationsCy extends AppLocalizations {
   String get contextMenuMarkUnwatched => 'Marciwch fel Heb ei wylio';
 
   @override
+  String get episodeWatched => 'Episode Watched';
+
+  @override
+  String get markEpisodeWatched => 'Mark Episode as Watched';
+
+  @override
+  String get markEpisodeUnwatched => 'Mark Episode as Unwatched';
+
+  @override
   String get contextMenuAddToFavorites => 'Ychwanegu at Ffefrynnau';
 
   @override

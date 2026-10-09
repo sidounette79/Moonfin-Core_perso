@@ -28,6 +28,14 @@ enum DetailButton {
   trailer('trailer'),
   watchWithGroup('watchWithGroup'),
   watched('watched'),
+  // 09.10, Sid: "1 bouton pour l'épisode - un pour la série, au même
+  // endroit" - distinct from `watched` (which toggles the whole item, so
+  // for a Series recursively marks every episode via Emby). This one only
+  // appears on a Series' own page and acts on its current/next-up episode
+  // only. A dedicated button rather than the long-press context menu "pour
+  // que ça suive le même principe" whether the device is Android TV or
+  // touch.
+  episodeWatched('episodeWatched'),
   favorite('favorite'),
   personalRating('personalRating'),
   playlist('playlist'),
@@ -137,6 +145,7 @@ enum DetailButton {
     DetailButton.trailer => Icons.movie_outlined,
     DetailButton.watchWithGroup => Icons.groups_rounded,
     DetailButton.watched => Icons.check_circle_outline,
+    DetailButton.episodeWatched => Icons.playlist_add_check,
     DetailButton.favorite => Icons.favorite_border,
     DetailButton.personalRating => Icons.star_outline,
     DetailButton.playlist => Icons.playlist_add,
@@ -161,6 +170,7 @@ enum DetailButton {
     DetailButton.trailer => l10n.trailer,
     DetailButton.watchWithGroup => l10n.watchWithGroup,
     DetailButton.watched => l10n.watched,
+    DetailButton.episodeWatched => l10n.episodeWatched,
     DetailButton.favorite => l10n.favorite,
     DetailButton.personalRating => l10n.rate,
     DetailButton.playlist => l10n.addToPlaylist,

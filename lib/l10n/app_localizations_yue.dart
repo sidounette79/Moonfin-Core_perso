@@ -9389,6 +9389,15 @@ class AppLocalizationsYue extends AppLocalizations {
   String get contextMenuMarkUnwatched => '標記為未觀看';
 
   @override
+  String get episodeWatched => 'Episode Watched';
+
+  @override
+  String get markEpisodeWatched => 'Mark Episode as Watched';
+
+  @override
+  String get markEpisodeUnwatched => 'Mark Episode as Unwatched';
+
+  @override
   String get contextMenuAddToFavorites => '加入收藏夾';
 
   @override

@@ -9657,6 +9657,15 @@ class AppLocalizationsEo extends AppLocalizations {
   String get contextMenuMarkUnwatched => 'Marki kiel Nerigardita';
 
   @override
+  String get episodeWatched => 'Episode Watched';
+
+  @override
+  String get markEpisodeWatched => 'Mark Episode as Watched';
+
+  @override
+  String get markEpisodeUnwatched => 'Mark Episode as Unwatched';
+
+  @override
   String get contextMenuAddToFavorites => 'Aldoni al Favoritoj';
 
   @override

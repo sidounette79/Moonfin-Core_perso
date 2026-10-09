@@ -7287,12 +7287,42 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         ),
       if (shows(DetailButton.watched))
         DetailButton.watched: _DetailActionButton(
+          // 09.10, Sid: "c'est la traduction qui déconne... il m'affiche
+          // non vu" - this is an action button (toggles via
+          // viewModel.togglePlayed below), but used l10n.watched/unwatched,
+          // whose @-description in app_en.arb says they're "Filter label
+          // for watched/unwatched items" - borrowed from a sort/filter
+          // menu, not meant for a button you tap to change state.
+          // contextMenuMarkWatched/Unwatched ("Marquer comme vu"/"non vu")
+          // are the actual action-phrased pair, already used correctly by
+          // the long-press context menu (context_action.dart).
           label: isBook
               ? (item.isPlayed ? l10n.finished : l10n.unread)
-              : (item.isPlayed ? l10n.watched : l10n.unwatched),
+              : (item.isPlayed
+                  ? l10n.contextMenuMarkUnwatched
+                  : l10n.contextMenuMarkWatched),
           icon: item.isPlayed ? Icons.check_circle : Icons.check_circle_outline,
           onPressed: viewModel.togglePlayed,
           isActive: item.isPlayed,
+          activeColor: AppColorScheme.accent,
+        ),
+      // 09.10, Sid: "1 bouton pour l'épisode - un pour la série, au même
+      // endroit" - distinct from DetailButton.watched above (which, on a
+      // Series, recursively marks every episode via Emby). This one only
+      // shows up on a Series page, acts on viewModel.nextUp (the same
+      // current/next-up episode already surfaced by the page's own
+      // UpNextCard), and is a dedicated button rather than the long-press
+      // context menu so TV and touch behave the same way.
+      if (isSeries && viewModel.nextUp != null && shows(DetailButton.episodeWatched))
+        DetailButton.episodeWatched: _DetailActionButton(
+          label: viewModel.nextUp!.isPlayed
+              ? l10n.markEpisodeUnwatched
+              : l10n.markEpisodeWatched,
+          icon: viewModel.nextUp!.isPlayed
+              ? Icons.playlist_add_check_circle
+              : Icons.playlist_add_check,
+          onPressed: viewModel.toggleNextUpEpisodePlayed,
+          isActive: viewModel.nextUp!.isPlayed,
           activeColor: AppColorScheme.accent,
         ),
       if (shows(DetailButton.favorite))

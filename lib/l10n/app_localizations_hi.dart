@@ -9647,6 +9647,15 @@ class AppLocalizationsHi extends AppLocalizations {
   String get contextMenuMarkUnwatched => 'न देखे गए के रूप में चिह्नित करें';
 
   @override
+  String get episodeWatched => 'Episode Watched';
+
+  @override
+  String get markEpisodeWatched => 'Mark Episode as Watched';
+
+  @override
+  String get markEpisodeUnwatched => 'Mark Episode as Unwatched';
+
+  @override
   String get contextMenuAddToFavorites => 'पसंदीदा में जोड़े';
 
   @override

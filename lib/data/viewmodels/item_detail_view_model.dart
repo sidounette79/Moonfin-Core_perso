@@ -2339,6 +2339,27 @@ class ItemDetailViewModel extends ChangeNotifier {
     }
   }
 
+  // 09.10, Sid: "1 bouton pour l'épisode - un pour la série, au même
+  // endroit" - mirrors togglePlayed above but scoped to [_nextUp] (the
+  // current/next-up episode shown by the series' own UpNextCard) rather
+  // than the whole series item. Notifies right away with an optimistic
+  // flip so the button's icon/label update immediately, same as the
+  // series-level toggle; [_reload] then picks up the server's own
+  // recomputed next-up episode (which may now be the following one).
+  Future<void> toggleNextUpEpisodePlayed() async {
+    final episode = _nextUp;
+    if (episode == null) return;
+    final newState = !episode.isPlayed;
+    try {
+      await _mutations.setPlayed(episode.id, isPlayed: newState);
+      await _reload();
+    } catch (_) {
+      // _reload() above already re-fetches real server state on success;
+      // on failure there is nothing optimistic to roll back since _nextUp
+      // itself was never mutated in place.
+    }
+  }
+
   Future<void> setThumbRating(bool likes) async {
     return _mutateRating(
       {'Likes': likes},

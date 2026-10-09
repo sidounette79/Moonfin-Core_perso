@@ -9773,6 +9773,15 @@ class AppLocalizationsMl extends AppLocalizations {
   String get contextMenuMarkUnwatched => 'കണ്ടിട്ടില്ലെന്ന് അടയാളപ്പെടുത്തുക';
 
   @override
+  String get episodeWatched => 'Episode Watched';
+
+  @override
+  String get markEpisodeWatched => 'Mark Episode as Watched';
+
+  @override
+  String get markEpisodeUnwatched => 'Mark Episode as Unwatched';
+
+  @override
   String get contextMenuAddToFavorites => 'പ്രിയപ്പെട്ടവയിലേക്ക് ചേർക്കുക';
 
   @override

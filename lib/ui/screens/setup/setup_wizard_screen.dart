@@ -562,23 +562,16 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
   Widget _buildDetailStyleStep(AppLocalizations l10n) {
     final selected =
         _detailStyle ?? _prefs.get(UserPreferences.detailScreenStyle);
+    // 09.10, Sid: "beaucoup trop" de styles, "au moins les déconnecter du
+    // front" - classic/spotlight/minimalist stay fully implemented
+    // (reversible, nothing deleted), just no longer offered here either,
+    // same restriction as the settings screen's own picker
+    // (details_screen_settings_screen.dart).
     return _OptionLayout(
-      columns: 5,
+      columns: 2,
       children: [
         _OptionCard(
           order: 0,
-          label: l10n.setupStyleClassic,
-          hint: l10n.setupDetailClassicHint,
-          selected: selected == DetailScreenStyle.classic,
-          autofocus: selected == DetailScreenStyle.classic,
-          preview: SetupPreview(
-            child: detailStylePreview(DetailScreenStyle.classic),
-          ),
-          onPressed: () =>
-              setState(() => _detailStyle = DetailScreenStyle.classic),
-        ),
-        _OptionCard(
-          order: 1,
           label: l10n.setupStyleModern,
           hint: l10n.setupDetailModernHint,
           selected: selected == DetailScreenStyle.modern,
@@ -590,19 +583,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
               setState(() => _detailStyle = DetailScreenStyle.modern),
         ),
         _OptionCard(
-          order: 2,
-          label: l10n.setupStyleSpotlight,
-          hint: l10n.setupDetailSpotlightHint,
-          selected: selected == DetailScreenStyle.spotlight,
-          autofocus: selected == DetailScreenStyle.spotlight,
-          preview: SetupPreview(
-            child: detailStylePreview(DetailScreenStyle.spotlight),
-          ),
-          onPressed: () =>
-              setState(() => _detailStyle = DetailScreenStyle.spotlight),
-        ),
-        _OptionCard(
-          order: 3,
+          order: 1,
           label: l10n.setupStyleNouveau,
           hint: l10n.setupDetailNouveauHint,
           selected: selected == DetailScreenStyle.nouveau,
@@ -612,18 +593,6 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           ),
           onPressed: () =>
               setState(() => _detailStyle = DetailScreenStyle.nouveau),
-        ),
-        _OptionCard(
-          order: 4,
-          label: l10n.setupStyleMinimalist,
-          hint: l10n.setupDetailMinimalistHint,
-          selected: selected == DetailScreenStyle.minimalist,
-          autofocus: selected == DetailScreenStyle.minimalist,
-          preview: SetupPreview(
-            child: detailStylePreview(DetailScreenStyle.minimalist),
-          ),
-          onPressed: () =>
-              setState(() => _detailStyle = DetailScreenStyle.minimalist),
         ),
       ],
     );

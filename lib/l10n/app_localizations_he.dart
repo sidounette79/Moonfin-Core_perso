@@ -9558,6 +9558,15 @@ class AppLocalizationsHe extends AppLocalizations {
   String get contextMenuMarkUnwatched => 'סמן כלא נצפה';
 
   @override
+  String get episodeWatched => 'Episode Watched';
+
+  @override
+  String get markEpisodeWatched => 'Mark Episode as Watched';
+
+  @override
+  String get markEpisodeUnwatched => 'Mark Episode as Unwatched';
+
+  @override
   String get contextMenuAddToFavorites => 'הוסף למועדפים';
 
   @override

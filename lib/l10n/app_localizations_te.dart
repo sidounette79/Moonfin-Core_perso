@@ -9730,6 +9730,15 @@ class AppLocalizationsTe extends AppLocalizations {
   String get contextMenuMarkUnwatched => 'చూడనివిగా గుర్తించండి';
 
   @override
+  String get episodeWatched => 'Episode Watched';
+
+  @override
+  String get markEpisodeWatched => 'Mark Episode as Watched';
+
+  @override
+  String get markEpisodeUnwatched => 'Mark Episode as Unwatched';
+
+  @override
   String get contextMenuAddToFavorites => 'ఇష్టమైన వాటికి జోడించండి';
 
   @override

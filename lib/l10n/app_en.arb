@@ -9450,6 +9450,18 @@
   "@contextMenuMarkUnwatched": {
     "description": "Context menu action to mark an item as unwatched"
   },
+  "episodeWatched": "Episode Watched",
+  "@episodeWatched": {
+    "description": "Detail action buttons settings list entry for the dedicated per-episode watched-toggle button, on a series' own detail page"
+  },
+  "markEpisodeWatched": "Mark Episode as Watched",
+  "@markEpisodeWatched": {
+    "description": "Action button on a series' detail page that marks its current/next-up episode as watched, as a dedicated button (not a long-press) so it behaves the same on Android TV and touch devices"
+  },
+  "markEpisodeUnwatched": "Mark Episode as Unwatched",
+  "@markEpisodeUnwatched": {
+    "description": "Same as markEpisodeWatched, shown when the current/next-up episode is already watched"
+  },
   "contextMenuAddToFavorites": "Add to Favorites",
   "@contextMenuAddToFavorites": {
     "description": "Context menu action to add an item to favorites"

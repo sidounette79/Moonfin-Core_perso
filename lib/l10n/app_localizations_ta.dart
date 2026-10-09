@@ -9738,6 +9738,15 @@ class AppLocalizationsTa extends AppLocalizations {
   String get contextMenuMarkUnwatched => 'பார்க்கப்படாததாகக் குறிக்கவும்';
 
   @override
+  String get episodeWatched => 'Episode Watched';
+
+  @override
+  String get markEpisodeWatched => 'Mark Episode as Watched';
+
+  @override
+  String get markEpisodeUnwatched => 'Mark Episode as Unwatched';
+
+  @override
   String get contextMenuAddToFavorites => 'பிடித்தவைகளில் சேர்க்கவும்';
 
   @override

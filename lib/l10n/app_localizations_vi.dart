@@ -9671,6 +9671,15 @@ class AppLocalizationsVi extends AppLocalizations {
   String get contextMenuMarkUnwatched => 'Đánh dấu là chưa xem';
 
   @override
+  String get episodeWatched => 'Episode Watched';
+
+  @override
+  String get markEpisodeWatched => 'Mark Episode as Watched';
+
+  @override
+  String get markEpisodeUnwatched => 'Mark Episode as Unwatched';
+
+  @override
   String get contextMenuAddToFavorites => 'Thêm vào mục yêu thích';
 
   @override

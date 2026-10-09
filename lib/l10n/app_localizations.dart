@@ -17092,6 +17092,24 @@ abstract class AppLocalizations {
   /// **'Mark as Unwatched'**
   String get contextMenuMarkUnwatched;
 
+  /// Detail action buttons settings list entry for the dedicated per-episode watched-toggle button, on a series' own detail page
+  ///
+  /// In en, this message translates to:
+  /// **'Episode Watched'**
+  String get episodeWatched;
+
+  /// Action button on a series' detail page that marks its current/next-up episode as watched, as a dedicated button (not a long-press) so it behaves the same on Android TV and touch devices
+  ///
+  /// In en, this message translates to:
+  /// **'Mark Episode as Watched'**
+  String get markEpisodeWatched;
+
+  /// Same as markEpisodeWatched, shown when the current/next-up episode is already watched
+  ///
+  /// In en, this message translates to:
+  /// **'Mark Episode as Unwatched'**
+  String get markEpisodeUnwatched;
+
   /// Context menu action to add an item to favorites
   ///
   /// In en, this message translates to:

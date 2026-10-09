@@ -9616,6 +9616,15 @@ class AppLocalizationsFa extends AppLocalizations {
   String get contextMenuMarkUnwatched => 'علامت گذاری به عنوان Unwatched';
 
   @override
+  String get episodeWatched => 'Episode Watched';
+
+  @override
+  String get markEpisodeWatched => 'Mark Episode as Watched';
+
+  @override
+  String get markEpisodeUnwatched => 'Mark Episode as Unwatched';
+
+  @override
   String get contextMenuAddToFavorites => 'به موارد دلخواه اضافه کنید';
 
   @override

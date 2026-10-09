@@ -9421,6 +9421,15 @@ class AppLocalizationsKo extends AppLocalizations {
   String get contextMenuMarkUnwatched => '시청하지 않음으로 표시';
 
   @override
+  String get episodeWatched => 'Episode Watched';
+
+  @override
+  String get markEpisodeWatched => 'Mark Episode as Watched';
+
+  @override
+  String get markEpisodeUnwatched => 'Mark Episode as Unwatched';
+
+  @override
   String get contextMenuAddToFavorites => '즐겨찾기에 추가';
 
   @override

@@ -9601,6 +9601,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contextMenuMarkUnwatched => 'Mark as Unwatched';
 
   @override
+  String get episodeWatched => 'Episode Watched';
+
+  @override
+  String get markEpisodeWatched => 'Mark Episode as Watched';
+
+  @override
+  String get markEpisodeUnwatched => 'Mark Episode as Unwatched';
+
+  @override
   String get contextMenuAddToFavorites => 'Add to Favorites';
 
   @override

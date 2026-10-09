@@ -45,6 +45,15 @@ class _DetailsScreenSettingsScreenState
                     title: l10n.detailScreenStyle,
                     description: l10n.detailScreenStyleSubtitle,
                     icon: Icons.movie_outlined,
+                    // 09.10, Sid: "beaucoup trop" de styles, "au moins les
+                    // déconnecter du front" - classic/spotlight/minimalist
+                    // stay fully implemented (reversible, nothing deleted),
+                    // just no longer offered in the picker. Nouveau and
+                    // Modern are the two she actually wants to keep using.
+                    values: const [
+                      DetailScreenStyle.nouveau,
+                      DetailScreenStyle.modern,
+                    ],
                     labelOf: (v) => switch (v) {
                       DetailScreenStyle.classic =>
                         l10n.detailScreenStyleMoonfin,
