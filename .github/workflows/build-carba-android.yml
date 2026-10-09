@@ -54,6 +54,11 @@ jobs:
       - name: Install Shorebird CLI
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh | bash
+          # 09.10: the installer's actual target dir isn't stable across
+          # environments - observed ~/.config/shorebird/bin on this GitHub
+          # runner but ~/.shorebird/bin in a local Docker container earlier
+          # the same day. Add whichever one it actually used.
+          echo "$HOME/.config/shorebird/bin" >> "$GITHUB_PATH"
           echo "$HOME/.shorebird/bin" >> "$GITHUB_PATH"
 
       - name: Set up signing

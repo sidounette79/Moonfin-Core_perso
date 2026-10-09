@@ -63,10 +63,16 @@ resolve_shorebird() {
     command -v shorebird
     return 0
   fi
-  if [ -x "$HOME/.shorebird/bin/shorebird" ]; then
-    printf '%s\n' "$HOME/.shorebird/bin/shorebird"
-    return 0
-  fi
+  # 09.10: the installer's actual target dir isn't stable across
+  # environments - observed ~/.config/shorebird/bin on a GitHub Actions
+  # runner but ~/.shorebird/bin in a local Docker container the same day.
+  local candidate
+  for candidate in "$HOME/.config/shorebird/bin/shorebird" "$HOME/.shorebird/bin/shorebird"; do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
   echo "Error: Shorebird CLI not found (SHOREBIRD_MODE=$SHOREBIRD_MODE needs it)." >&2
   exit 1
 }
