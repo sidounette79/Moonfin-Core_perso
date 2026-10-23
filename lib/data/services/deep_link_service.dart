@@ -40,6 +40,9 @@ class DeepLinkService {
   ///  - `moonfin://item?id=<itemId>[&serverId=<serverId>][&userId=<userId>]`
   ///  - `moonfin://play?id=<itemId>[&serverId=<serverId>][&userId=<userId>]`
   ///    (starts playback)
+  ///  - `moonfin://library?id=<libraryId>[&serverId=<serverId>][&userId=<userId>]`
+  ///    (lands directly inside that library's browse screen, for a launcher
+  ///    tile - see CarbaHome)
   ///
   /// `userId` optionally pins a stored user for cold starts, skipping the
   /// profile picker. It is only honored for users already signed in on this
@@ -50,6 +53,18 @@ class DeepLinkService {
     if (id == null || id.isEmpty) return null;
     final serverId = uri.queryParameters['serverId'];
     final userId = uri.queryParameters['userId'];
+
+    if (uri.host == 'library') {
+      final params = <String, String>{
+        if (serverId != null && serverId.isNotEmpty) 'serverId': serverId,
+        if (userId != null && userId.isNotEmpty) 'userId': userId,
+      };
+      final query = params.entries
+          .map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}')
+          .join('&');
+      return query.isEmpty ? '/library/$id' : '/library/$id?$query';
+    }
+
     final params = <String, String>{
       if (serverId != null && serverId.isNotEmpty) 'serverId': serverId,
       if (userId != null && userId.isNotEmpty) 'userId': userId,

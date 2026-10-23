@@ -68,5 +68,34 @@ void main() {
         '/item/abc123?autoPlay=true',
       );
     });
+
+    test('routes library host', () {
+      expect(
+        DeepLinkService.routeForDeepLink(
+          Uri.parse('moonfin://library?id=lib123'),
+        ),
+        '/library/lib123',
+      );
+    });
+
+    test('forwards serverId and userId on library host', () {
+      expect(
+        DeepLinkService.routeForDeepLink(
+          Uri.parse(
+            'moonfin://library?id=lib123&serverId=srv-1&userId=user-1',
+          ),
+        ),
+        '/library/lib123?serverId=srv-1&userId=user-1',
+      );
+    });
+
+    test('library host ignores empty serverId and userId', () {
+      expect(
+        DeepLinkService.routeForDeepLink(
+          Uri.parse('moonfin://library?id=lib123&serverId=&userId='),
+        ),
+        '/library/lib123',
+      );
+    });
   });
 }
