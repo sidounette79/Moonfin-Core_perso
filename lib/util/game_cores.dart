@@ -6,7 +6,6 @@ import 'package:jellyfin_preference/jellyfin_preference.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:server_core/server_core.dart';
 
-import '../preference/user_preferences.dart';
 import 'game_cores_abi_stub.dart'
     if (dart.library.io) 'game_cores_abi_io.dart';
 import 'game_storage.dart';
@@ -291,20 +290,20 @@ bool get emulatorJsAvailable =>
 
 /// Whether the user can choose between the two backends here, which decides if
 /// the settings toggle is shown.
-bool get canToggleGameBackend =>
-    nativeGameBackendSupported && emulatorJsAvailable;
+///
+/// 26.10, Sid ("Supprimer tout ce qui a trait aux jeux vidéos partout...
+/// débranche de l'UI et des réglages dans les paramètres") - court-circuité
+/// à false, même choix que [isGameLibrary] dans game_library.dart, pour
+/// masquer le bouton "émulateur natif" des réglages playback.
+bool get canToggleGameBackend => false;
 
 /// Whether games play through the native libretro backend right now: forced on
 /// platforms with a single working backend, the user's choice everywhere else.
 /// The single source of truth for routing, save keys, and core support.
-bool get usesNativeGameBackend {
-  if (!nativeGameBackendSupported) return false;
-  if (!emulatorJsAvailable) return true;
-  if (!GetIt.instance.isRegistered<UserPreferences>()) return true;
-  return GetIt.instance<UserPreferences>().get(
-    UserPreferences.useNativeEmulator,
-  );
-}
+///
+/// 26.10, Sid : court-circuité à false pour masquer les tuiles "Emulator
+/// Cores"/"Downloaded Games" des réglages (voir [canToggleGameBackend]).
+bool get usesNativeGameBackend => false;
 
 /// Whether this platform ships its cores inside the app and loads them from the
 /// bundle rather than downloading them. tvOS, iOS, and macOS bundle (the Apple
@@ -319,10 +318,11 @@ bool get bundlesGameCores =>
 /// emulator cores manager. Bundled platforms (tvOS, macOS) and the WebView on
 /// iOS do not. Android, Windows, and Linux download, and also need an
 /// architecture the libretro buildbot builds for.
-bool get supportsCoreDownloads =>
-    !bundlesGameCores &&
-    (PlatformDetection.isAndroid || PlatformDetection.isDesktop) &&
-    currentBuildbotTarget() != null;
+///
+/// 26.10, Sid : court-circuité à false pour masquer la tuile "Emulator
+/// Cores" des réglages (voir [canToggleGameBackend]). Le téléchargeur de
+/// cores natif reste intact sur le disque.
+bool get supportsCoreDownloads => false;
 
 /// Whether the player screen accepts keyboard gameplay, mapping keys to a
 /// RetroPad mask sent down to the core. All desktops do, so a game is playable

@@ -7,13 +7,10 @@ import '../ui/navigation/destinations.dart';
 /// Shared helpers for recognizing and navigating to retro-game (ROM) libraries so every
 /// entry point (home tiles, sidebar, top navbar, bottom nav) treats them consistently.
 ///
-/// The Moonbase plugin decides which libraries are game libraries: an admin can select any
-/// library, and the plugin exposes that list at /Moonfin/Games/Libraries. The client mirrors
-/// it through [GameLibraryRegistry]. Until that list has loaded (offline, or a server without
-/// the updated plugin) we fall back to the plugin's own auto-detect, which matches a Mixed
-/// Content library by name.
-final RegExp _gameLibraryName = RegExp('game|rom|emulat', caseSensitive: false);
-
+/// 26.10, Sid: jeux vidéo débranchés de l'UI - [isGameLibrary] court-circuite
+/// désormais toujours à false, donc plus rien ici ne décide jamais qu'une
+/// bibliothèque est une bibliothèque de jeux.
+///
 /// Caches the game-library ids the Moonbase plugin reports, so routing can tell a game
 /// library from a normal one synchronously. Refreshed when the library list loads.
 class GameLibraryRegistry {
@@ -58,17 +55,19 @@ class GameLibraryRegistry {
   }
 }
 
-bool isGameLibrary(String id, String? collectionType, String? name) {
-  if (GetIt.instance.isRegistered<GameLibraryRegistry>()) {
-    final registry = GetIt.instance<GameLibraryRegistry>();
-    if (registry.loaded) return registry.contains(id);
-  }
-  if (name == null || name.isEmpty) return false;
-  final ct = (collectionType ?? '').toLowerCase();
-  // Mixed Content libraries report an empty/unknown/mixed collection type.
-  if (ct.isNotEmpty && ct != 'mixed' && ct != 'unknown') return false;
-  return _gameLibraryName.hasMatch(name);
-}
+// 26.10, Sid ("Supprimer tout ce qui a trait aux jeux vidéos partout...
+// débranche de l'UI et des réglages dans les paramètres") - point de
+// passage UNIQUE (voir la doc de libraryRoute ci-dessous : "Shared with
+// the sidebar, toolbar and bottom nav") par lequel toute la navigation
+// jeux/émulateur décide de s'activer. Court-circuité à false partout :
+// libraryRoute() ne route donc plus jamais vers games_library/game_system,
+// et les helpers d'icône (home_screen.dart/left_sidebar.dart) ne montrent
+// plus jamais l'icône manette. Toute l'UI jeux (~75 fichiers : lecteur
+// émulateur, manettes, succès...) reste intacte sur le disque mais devient
+// inatteignable par aucun chemin normal - réversible en un coup (voir git
+// blame sur cette fonction) plutôt qu'une suppression définitive des
+// fichiers eux-mêmes, qui reste à faire dans une session dédiée.
+bool isGameLibrary(String id, String? collectionType, String? name) => false;
 
 /// The route a library tile should open, for every entry point: home tiles, the
 /// sidebar, the top toolbar and the mobile bottom nav.

@@ -453,7 +453,25 @@ class _NavigationLayoutState extends State<NavigationLayout>
   }
 
   Widget _buildSidebar() {
-    final content = _content;
+    // 26.10, Sid ("box voiture... la barre de navigation du système passe
+    // devant Moonfin, côté gauche, toujours en paysage" puis "j'utilise la
+    // version mobile et pas TV") - `content` remplit tout l'écran (left:0)
+    // dans les DEUX branches ci-dessous, avec ZÉRO padding, contrairement
+    // à `sidebar` qui a déjà son propre SafeArea (right:false, dans
+    // LeftSidebar). Un lanceur tiers superposé par la box (confirmé par
+    // Sid : pas une vraie barre système avec geste, un dock façon
+    // CarPlay) - Android le signale quand même via le MediaQuery padding
+    // standard sur ce genre de ROM (confirmé : Meelo n'a aucun code
+    // spécial pour .left et s'en sort très bien, juste via le mécanisme
+    // standard react-native-safe-area-context - donc Android fournit bien
+    // la valeur, Flutter avait juste oublié de la lire ici).
+    final carBoxLeftInset = MediaQuery.paddingOf(context).left;
+    final content = carBoxLeftInset > 0
+        ? Padding(
+            padding: EdgeInsets.only(left: carBoxLeftInset),
+            child: _content,
+          )
+        : _content;
 
     final sidebar = ValueListenableBuilder<bool>(
       valueListenable: NavigationLayout.trailerImmersiveNotifier,
