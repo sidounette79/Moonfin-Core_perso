@@ -48,6 +48,8 @@ import 'detail_episode_images.dart';
 import 'minimalist/minimalist_detail_content.dart';
 import 'nouveau/nouveau_detail_content.dart';
 import 'nouveau/hero/nouveau_action_buttons.dart';
+import 'nouveau/hero/nouveau_resume_progress_bar.dart';
+import 'nouveau/hero/nouveau_track_info_bar.dart';
 import 'modern/modern_detail_content.dart';
 import 'spotlight/spotlight_detail_content.dart';
 import '../../widgets/skeleton/skeleton_detail_screen.dart';
@@ -7227,7 +7229,14 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
                 )
               : null,
         ),
-      if ((isPlayableVideo || isSeries) &&
+      // 26.10, Sid ("il faudrait que ça soit lié au reprendre... le sortir
+      // de la barre des boutons") - Nouveau les affiche désormais dans sa
+      // propre ligne Vidéo/Audio/Sous-titres juste au-dessus de Reprendre
+      // (voir NouveauTrackInfoBar plus bas) - jamais aussi comme boutons
+      // ici, ce serait redondant. Modern/Classic gardent ce bouton
+      // inchangé (pas concernés par sa demande).
+      if (!widget.nouveauStyle &&
+          (isPlayableVideo || isSeries) &&
           audioStreams.length > 1 &&
           shows(DetailButton.audio))
         DetailButton.audio: _DetailActionButton(
@@ -7235,7 +7244,8 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           icon: Icons.audiotrack,
           onPressed: () => _showAudioSelector(context, audioStreams),
         ),
-      if ((isPlayableVideo || isSeries) &&
+      if (!widget.nouveauStyle &&
+          (isPlayableVideo || isSeries) &&
           (subtitleStreams.isNotEmpty ||
               (!isSeries && _canDownloadRemoteSubtitles(item))) &&
           shows(DetailButton.subtitles))
@@ -7313,17 +7323,37 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       // current/next-up episode already surfaced by the page's own
       // UpNextCard), and is a dedicated button rather than the long-press
       // context menu so TV and touch behave the same way.
+      // 26.10, Sid ("marquer un episode un vu simple comme dans emby... pas
+      // vu = blanc, vu = bleu") - icône FIXE (coche simple, plus de
+      // bascule de forme selon l'état) ; seule la couleur change
+      // (_DetailActionButton/NouveauAction peignent déjà isActive=false en
+      // blanc par défaut, voir nouveau_action_buttons.dart).
       if (isSeries && viewModel.nextUp != null && shows(DetailButton.episodeWatched))
         DetailButton.episodeWatched: _DetailActionButton(
           label: viewModel.nextUp!.isPlayed
               ? l10n.markEpisodeUnwatched
               : l10n.markEpisodeWatched,
-          icon: viewModel.nextUp!.isPlayed
-              ? Icons.playlist_add_check_circle
-              : Icons.playlist_add_check,
+          icon: Icons.check,
           onPressed: viewModel.toggleNextUpEpisodePlayed,
           isActive: viewModel.nextUp!.isPlayed,
-          activeColor: AppColorScheme.accent,
+          activeColor: AppColors.blue500,
+        ),
+      // 26.10, Sid ("marquer une saison un double vu qui devient vert
+      // quand c'est effectif") - viewModel.episodes est déjà la saison
+      // actuellement chargée sur cette page (voir isSeasonPlayed/
+      // toggleSeasonPlayed, item_detail_view_model.dart) ; vert =
+      // AppColorScheme.badgeWatched, le même vert déjà utilisé partout
+      // ailleurs dans l'appli pour signaler un item vu (cohérence visuelle
+      // avec le reste, pas une couleur inventée pour ce seul bouton).
+      if (isSeries && viewModel.episodes.isNotEmpty && shows(DetailButton.seasonWatched))
+        DetailButton.seasonWatched: _DetailActionButton(
+          label: viewModel.isSeasonPlayed
+              ? l10n.markSeasonUnwatched
+              : l10n.markSeasonWatched,
+          icon: Icons.done_all,
+          onPressed: viewModel.toggleSeasonPlayed,
+          isActive: viewModel.isSeasonPlayed,
+          activeColor: AppColorScheme.badgeWatched,
         ),
       if (shows(DetailButton.favorite))
         DetailButton.favorite: _DetailActionButton(
@@ -7683,16 +7713,93 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
 
       final downloads = seerrItemDownloads(viewModel);
 
-      final withDownloads = downloads == null
-          ? rowContent
-          : Column(
+      // 26.10, Sid ("la petite barre de progression... à créer à l'identique
+      // de emby avec saison, épisode, titre, la barre en bleu... et le temps
+      // restant") - sur une page série/saison, item est la série elle-même
+      // (jamais de runtime/position propres côté serveur) ; le véritable
+      // épisode en cours est viewModel.nextUp (même source déjà utilisée par
+      // le bouton "épisode suivant vu", voir plus haut dans ce fichier).
+      final isTvShowForResume = item.type == 'Series' || item.type == 'Season';
+      final resumeItem = isTvShowForResume ? widget.viewModel.nextUp : item;
+      final resumeBar = resumeItem == null
+          ? null
+          : NouveauResumeProgressBar(resumeItem: resumeItem);
+
+      // 26.10, Sid ("Dans emby, je peux facilement changer les sous-titres
+      // ou l'audio... lié au reprendre... le audio devient déroulant aussi
+      // quand il existe") - texte simple quand il n'y a qu'une seule piste,
+      // sinon une puce qui ouvre le même sélecteur déjà prouvé (voir plus
+      // haut dans ce fichier) - jamais de menu natif réimplémenté.
+      String trackLabel(Map<String, dynamic> s) =>
+          (s['DisplayTitle'] as String?) ??
+          (s['Language'] as String?) ??
+          l10n.unknown;
+      int? resolveCurrentIndex(
+        List<Map<String, dynamic>> streams,
+        int? selectedStreamIndex,
+      ) {
+        if (streams.isEmpty) return null;
+        if (selectedStreamIndex != null) {
+          final idx = streams.indexWhere(
+            (s) => s['Index'] == selectedStreamIndex,
+          );
+          if (idx >= 0) return idx;
+        }
+        final def = streams.indexWhere((s) => s['IsDefault'] == true);
+        return def;
+      }
+
+      final videoStreams = mediaStreams
+          .where((s) => s['Type'] == 'Video')
+          .toList();
+      String? videoLabel;
+      if (videoStreams.isNotEmpty) {
+        final v = videoStreams.first;
+        final height = v['Height']?.toString();
+        final codec = v['Codec']?.toString().toUpperCase();
+        videoLabel = [
+          if (height != null) '${height}p',
+          if (codec != null) codec,
+        ].join(' ');
+      }
+
+      final currentAudioIdx = resolveCurrentIndex(
+        audioStreams,
+        viewModel.selectedAudioIndex,
+      );
+      final currentSubtitleIdx = resolveCurrentIndex(
+        subtitleStreams,
+        viewModel.selectedSubtitleIndex,
+      );
+
+      final trackInfoBar = (videoLabel == null && audioStreams.isEmpty && subtitleStreams.isEmpty)
+          ? null
+          : NouveauTrackInfoBar(
+              videoLabel: videoLabel ?? '',
+              audioTitle: l10n.audio,
+              audioLabel: currentAudioIdx != null && currentAudioIdx >= 0
+                  ? trackLabel(audioStreams[currentAudioIdx])
+                  : (audioStreams.isNotEmpty ? trackLabel(audioStreams.first) : null),
+              onAudioTap: audioStreams.length > 1
+                  ? () => _showAudioSelector(context, audioStreams)
+                  : null,
+              subtitleTitle: l10n.subtitles,
+              subtitleLabel: currentSubtitleIdx != null && currentSubtitleIdx >= 0
+                  ? trackLabel(subtitleStreams[currentSubtitleIdx])
+                  : (subtitleStreams.isNotEmpty ? l10n.none : null),
+              onSubtitleTap: subtitleStreams.isNotEmpty
+                  ? () => _openSubtitleSelector(context, streamSourceItem)
+                  : null,
+            );
+
+      final withDownloads = Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (trackInfoBar != null) trackInfoBar,
           rowContent,
-          SeerrItemDownloadBars(
-            state: downloads,
-          ),
+          if (resumeBar != null) resumeBar,
+          if (downloads != null) SeerrItemDownloadBars(state: downloads),
         ],
       );
 

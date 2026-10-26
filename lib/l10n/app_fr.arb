@@ -6240,6 +6240,18 @@
     "@markEpisodeUnwatched": {
         "description": "Same as markEpisodeWatched, shown when the current/next-up episode is already watched"
     },
+    "seasonWatched": "Saison vue",
+    "@seasonWatched": {
+        "description": "Detail action buttons settings list entry for the dedicated whole-season watched-toggle button, on a series' own detail page"
+    },
+    "markSeasonWatched": "Marquer la saison comme vue",
+    "@markSeasonWatched": {
+        "description": "Action button on a series' detail page that marks every episode of the current/next-up season as watched"
+    },
+    "markSeasonUnwatched": "Marquer la saison comme non vue",
+    "@markSeasonUnwatched": {
+        "description": "Same as markSeasonWatched, shown when the whole season is already watched"
+    },
     "contextMenuAddToFavorites": "Ajouter aux favoris",
     "@contextMenuAddToFavorites": {
         "description": "Context menu action to add an item to favorites"

@@ -12,7 +12,6 @@ import '../../../../../preference/preference_constants.dart';
 import '../../../../../preference/user_preferences.dart';
 import '../../../../../util/platform_detection.dart';
 import '../../../../widgets/navigation_layout.dart';
-import '../../../../widgets/focus/locked_focus_row.dart';
 import '../../../../widgets/seerr/seerr_item_status.dart';
 import '../shared/nouveau_spacing.dart';
 import 'nouveau_discovery_card.dart';
@@ -111,29 +110,23 @@ class NouveauDiscoverySection extends StatefulWidget {
 
 class NouveauDiscoverySectionState extends State<NouveauDiscoverySection>
     with TickerProviderStateMixin {
-  static int _hubSession = 0;
-
   static const Duration _skeletonGracePeriod = Duration(milliseconds: 450);
 
   static const Duration _railFadeDuration = Duration(milliseconds: 220);
-
-  late final String _relatedHubKey;
-
-  late final String _recommendationsHubKey;
 
   late final AnimationController _relatedOpacityController;
 
   late final AnimationController _recommendationsOpacityController;
 
-  final ScrollController _relatedScrollController = ScrollController();
+  // 26.10 : type mis à jour vers NouveauDiscoveryRailState (grille Wrap, plus
+  // de LockedFocusRow) - requestFocusFromMemory() y existe toujours, même
+  // rôle qu'avant. hubKey/scrollController retirés avec le rail lui-même,
+  // plus rien à leur passer ici.
+  final GlobalKey<NouveauDiscoveryRailState> _relatedRowKey =
+      GlobalKey<NouveauDiscoveryRailState>();
 
-  final ScrollController _recommendationsScrollController = ScrollController();
-
-  final GlobalKey<LockedFocusRowState<AggregatedItem>> _relatedRowKey =
-      GlobalKey<LockedFocusRowState<AggregatedItem>>();
-
-  final GlobalKey<LockedFocusRowState<AggregatedItem>> _recommendationsRowKey =
-      GlobalKey<LockedFocusRowState<AggregatedItem>>();
+  final GlobalKey<NouveauDiscoveryRailState> _recommendationsRowKey =
+      GlobalKey<NouveauDiscoveryRailState>();
 
   final GlobalKey _relatedRevealKey = GlobalKey();
 
@@ -193,12 +186,6 @@ class NouveauDiscoverySectionState extends State<NouveauDiscoverySection>
   void initState() {
     super.initState();
 
-    final session = _hubSession++;
-
-    _relatedHubKey = 'nouveau-discovery-related-$session';
-
-    _recommendationsHubKey = 'nouveau-discovery-recommendations-$session';
-
     _relatedOpacityController = AnimationController(
       vsync: this,
       duration: _railFadeDuration,
@@ -242,10 +229,6 @@ class NouveauDiscoverySectionState extends State<NouveauDiscoverySection>
     _relatedOpacityController.dispose();
 
     _recommendationsOpacityController.dispose();
-
-    _relatedScrollController.dispose();
-
-    _recommendationsScrollController.dispose();
 
     super.dispose();
   }
@@ -843,15 +826,13 @@ class NouveauDiscoverySectionState extends State<NouveauDiscoverySection>
           KeyedSubtree(
             key: _relatedRevealKey,
             child: NouveauDiscoveryRail(
+              key: _relatedRowKey,
               // Existing localization key kept because changing generated
               // localization API is outside this UI cleanup.
               title: l10n.similar,
               items: related,
               showSkeleton: _relatedSkeletonShown && related.isEmpty,
               opacity: _relatedOpacityController,
-              rowKey: _relatedRowKey,
-              hubKey: _relatedHubKey,
-              controller: _relatedScrollController,
               onNavigateUp: () {
                 return widget.onNavigateUp?.call() ?? false;
               },
@@ -885,14 +866,12 @@ class NouveauDiscoverySectionState extends State<NouveauDiscoverySection>
           KeyedSubtree(
             key: _recommendationsRevealKey,
             child: NouveauDiscoveryRail(
+              key: _recommendationsRowKey,
               title: l10n.recommendations,
               items: recommendations,
               showSkeleton:
                   _recommendationsSkeletonShown && recommendations.isEmpty,
               opacity: _recommendationsOpacityController,
-              rowKey: _recommendationsRowKey,
-              hubKey: _recommendationsHubKey,
-              controller: _recommendationsScrollController,
               onNavigateUp: () {
                 if (_focusRelated()) {
                   return true;

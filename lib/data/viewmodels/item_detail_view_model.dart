@@ -2360,6 +2360,31 @@ class ItemDetailViewModel extends ChangeNotifier {
     }
   }
 
+  // 26.10, Sid ("marquer comme vu un seul épisode ou toute la saison" +
+  // "marquer une saison un double vu qui devient vert quand c'est
+  // effectif") - [_episodes] est déjà la saison actuellement chargée/
+  // affichée sur cette page (voir episodesOf() plus haut dans ce fichier),
+  // pas besoin d'un appel serveur dédié : une saison est "vue" quand CHAQUE
+  // épisode qu'elle contient l'est. Même esprit que togglePlayed/
+  // toggleNextUpEpisodePlayed ci-dessus, juste étendu à toute la liste.
+  bool get isSeasonPlayed =>
+      _episodes.isNotEmpty && _episodes.every((e) => e.isPlayed);
+
+  Future<void> toggleSeasonPlayed() async {
+    if (_episodes.isEmpty) return;
+    final newState = !isSeasonPlayed;
+    try {
+      await Future.wait(
+        _episodes.map((e) => _mutations.setPlayed(e.id, isPlayed: newState)),
+      );
+      await _reload();
+    } catch (_) {
+      // _reload() re-fetches real server state regardless of which
+      // individual episode calls above actually succeeded - no manual
+      // rollback needed, same reasoning as toggleNextUpEpisodePlayed.
+    }
+  }
+
   Future<void> setThumbRating(bool likes) async {
     return _mutateRating(
       {'Likes': likes},

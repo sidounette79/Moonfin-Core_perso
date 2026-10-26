@@ -9670,6 +9670,15 @@ class AppLocalizationsSi extends AppLocalizations {
   String get markEpisodeUnwatched => 'Mark Episode as Unwatched';
 
   @override
+  String get seasonWatched => 'Season Watched';
+
+  @override
+  String get markSeasonWatched => 'Mark Season as Watched';
+
+  @override
+  String get markSeasonUnwatched => 'Mark Season as Unwatched';
+
+  @override
   String get contextMenuAddToFavorites => 'ප්‍රියතමයන් වෙත එක් කරන්න';
 
   @override

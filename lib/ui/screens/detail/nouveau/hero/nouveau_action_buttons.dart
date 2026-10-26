@@ -51,7 +51,16 @@ class NouveauAction {
 bool _nouveauActionsUsePhoneLayout(BuildContext context) {
   final size = MediaQuery.sizeOf(context);
 
-  return size.height > size.width && size.width < 600;
+  // 26.10, Sid ("si j'active plus de boutons dans nouveau, on ne les voit
+  // pas... ils sont déjà en dessous sur mobile mais pas sur tablette") - le
+  // "< 600" limitait cet empilement (bouton principal en pleine largeur,
+  // puis la rangée secondaire juste en dessous, voir _buildPhoneLayout) aux
+  // seuls téléphones. Une tablette en portrait (souvent >= 600 de large)
+  // retombait sur _buildStandardLayout (tout sur UNE rangée) qui déborde
+  // silencieusement hors écran dès qu'on active plus de boutons que ce qui
+  // tient - exactement ce qu'elle a vu. Toute orientation portrait profite
+  // maintenant du même empilement, plus de seuil de largeur.
+  return size.height > size.width;
 }
 
 double _nouveauActionScale(BuildContext context) {

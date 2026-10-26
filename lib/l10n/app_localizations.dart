@@ -17110,6 +17110,24 @@ abstract class AppLocalizations {
   /// **'Mark Episode as Unwatched'**
   String get markEpisodeUnwatched;
 
+  /// Detail action buttons settings list entry for the dedicated whole-season watched-toggle button, on a series' own detail page
+  ///
+  /// In en, this message translates to:
+  /// **'Season Watched'**
+  String get seasonWatched;
+
+  /// Action button on a series' detail page that marks every episode of the current/next-up season as watched
+  ///
+  /// In en, this message translates to:
+  /// **'Mark Season as Watched'**
+  String get markSeasonWatched;
+
+  /// Same as markSeasonWatched, shown when the whole season is already watched
+  ///
+  /// In en, this message translates to:
+  /// **'Mark Season as Unwatched'**
+  String get markSeasonUnwatched;
+
   /// Context menu action to add an item to favorites
   ///
   /// In en, this message translates to:

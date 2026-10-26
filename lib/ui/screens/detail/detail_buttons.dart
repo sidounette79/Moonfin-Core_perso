@@ -36,6 +36,11 @@ enum DetailButton {
   // que ça suive le même principe" whether the device is Android TV or
   // touch.
   episodeWatched('episodeWatched'),
+  // 26.10, Sid ("marquer une saison... un double vu qui devient vert quand
+  // c'est effectif") - même principe qu'episodeWatched juste au-dessus,
+  // mais marque TOUS les épisodes de la saison en cours (viewModel.episodes,
+  // la saison actuellement chargée/affichée) plutôt qu'un seul épisode.
+  seasonWatched('seasonWatched'),
   favorite('favorite'),
   personalRating('personalRating'),
   playlist('playlist'),
@@ -145,7 +150,13 @@ enum DetailButton {
     DetailButton.trailer => Icons.movie_outlined,
     DetailButton.watchWithGroup => Icons.groups_rounded,
     DetailButton.watched => Icons.check_circle_outline,
-    DetailButton.episodeWatched => Icons.playlist_add_check,
+    // 26.10, Sid ("marquer un episode un vu simple comme dans emby, marquer
+    // une saison un double vu") - icône FIXE par bouton (plus de bascule
+    // simple/rempli selon l'état), seule la couleur change avec isActive -
+    // voir _DetailActionButton pour épisode/seasonWatched dans
+    // item_detail_screen.dart.
+    DetailButton.episodeWatched => Icons.check,
+    DetailButton.seasonWatched => Icons.done_all,
     DetailButton.favorite => Icons.favorite_border,
     DetailButton.personalRating => Icons.star_outline,
     DetailButton.playlist => Icons.playlist_add,
@@ -171,6 +182,7 @@ enum DetailButton {
     DetailButton.watchWithGroup => l10n.watchWithGroup,
     DetailButton.watched => l10n.watched,
     DetailButton.episodeWatched => l10n.episodeWatched,
+    DetailButton.seasonWatched => l10n.seasonWatched,
     DetailButton.favorite => l10n.favorite,
     DetailButton.personalRating => l10n.rate,
     DetailButton.playlist => l10n.addToPlaylist,
