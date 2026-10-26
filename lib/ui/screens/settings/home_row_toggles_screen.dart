@@ -4,6 +4,8 @@ import 'package:get_it/get_it.dart';
 import 'package:server_core/server_core.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 
+import '../../../data/models/aggregated_library.dart';
+import '../../../data/repositories/user_views_repository.dart';
 import '../../../data/services/plugin_sync_service.dart';
 import '../home/home_view_model.dart';
 import '../../../l10n/app_localizations.dart';
@@ -144,6 +146,28 @@ class _HomeRowTogglesScreenState extends State<HomeRowTogglesScreen> {
         await _prefs.set(UserPreferences.displayStudiosRows, true);
       }
       _onStudiosRowsToggleChanged();
+    }
+  }
+
+  // 26.10, Sid ("me donner a quelque part la possibilité de choisir
+  // lesquels je veux voir") - même mécanique que _openStudioSelectionDialog
+  // juste au-dessus, mais plus simple : pas de toggle "afficher la
+  // rangée" à gérer en cascade (la grille "Mes bibliothèques" est déjà
+  // toujours affichée, ça ne change que SON contenu), voir
+  // LibrarySelectionDialog plus bas.
+  Future<void> _openLibrarySelectionDialog(BuildContext context) async {
+    final currentIds = _prefs.get(UserPreferences.libraryTilesSelectedIds);
+    final previousFocus = FocusManager.instance.primaryFocus;
+    final result = await showDialog<String>(
+      context: context,
+      useRootNavigator: true,
+      builder: (ctx) => LibrarySelectionDialog(selectedIdsCsv: currentIds),
+    );
+    previousFocus?.requestFocus();
+    if (result != null && result != currentIds && mounted) {
+      await _prefs.set(UserPreferences.libraryTilesSelectedIds, result);
+      _pushPersonalizationSync();
+      _reloadHomeRows();
     }
   }
 
@@ -715,6 +739,31 @@ class _HomeRowTogglesScreenState extends State<HomeRowTogglesScreen> {
                   ],
                 ],
               ),
+              _SectionHeader(l10n.myMedia.toUpperCase()),
+              adaptiveListSection(
+                children: [
+                  TvFocusHighlight(
+                    builder: (_, focused) => ListTile(
+                      focusColor: Colors.transparent,
+                      hoverColor: Colors.transparent,
+                      leading: buildSettingsLeadingIconShell(
+                        context,
+                        icon: const Icon(Icons.video_library),
+                        focused: focused,
+                        iconColor: focused
+                            ? AppColors.black.withValues(alpha: 0.87)
+                            : AppColorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                      title: Text(l10n.myMedia),
+                      subtitle: const Text(
+                        'Choisir les bibliothèques affichées d\'office - les autres restent accessibles via "Voir plus"',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => _openLibrarySelectionDialog(context),
+                    ),
+                  ),
+                ],
+              ),
               _SectionHeader('STUDIOS'),
               adaptiveListSection(
                 children: [
@@ -1278,6 +1327,202 @@ class _SectionHeader extends StatelessWidget {
           color: theme.colorScheme.primary,
           fontWeight: FontWeight.bold,
           letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+}
+
+// 26.10, Sid ("me donner a quelque part la possibilité de choisir lesquels
+// je veux voir, les autres via un bouton voir plus") - même coquille
+// (AlertDialog + _FocusableTile/_FocusableActionButton) que
+// StudioSelectionDialog ci-dessus, en bien plus simple : pas de filtre
+// film/série (une bibliothèque n'a qu'un seul type), juste une liste plate
+// à cocher - source: UserViewsRepository.getAllViewsIncludingHidden(),
+// même appel que LibraryVisibilityScreen (library_settings_screen.dart).
+class LibrarySelectionDialog extends StatefulWidget {
+  final String selectedIdsCsv;
+
+  const LibrarySelectionDialog({super.key, required this.selectedIdsCsv});
+
+  @override
+  State<LibrarySelectionDialog> createState() =>
+      _LibrarySelectionDialogState();
+}
+
+class _LibrarySelectionDialogState extends State<LibrarySelectionDialog> {
+  final _viewsRepo = GetIt.instance<UserViewsRepository>();
+  bool _loading = true;
+  String? _error;
+  List<AggregatedLibrary> _allLibraries = [];
+  final Set<String> _selectedIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIds.addAll(
+      widget.selectedIdsCsv
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty),
+    );
+    _fetchLibraries();
+  }
+
+  Future<void> _fetchLibraries() async {
+    try {
+      final libraries = await _viewsRepo.getAllViewsIncludingHidden();
+      if (!mounted) return;
+      setState(() {
+        _allLibraries = libraries;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = describeError(e, AppLocalizations.of(context));
+        _loading = false;
+      });
+    }
+  }
+
+  bool get _allLibrariesSelected =>
+      _allLibraries.isNotEmpty &&
+      _allLibraries.every((lib) => _selectedIds.contains(lib.id));
+
+  void _toggleAll() {
+    final selectAll = !_allLibrariesSelected;
+    setState(() {
+      for (final lib in _allLibraries) {
+        if (selectAll) {
+          _selectedIds.add(lib.id);
+        } else {
+          _selectedIds.remove(lib.id);
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final allSelected = _allLibrariesSelected;
+
+    return withBackClose(
+      context,
+      AlertDialog(
+        title: Text(l10n.myMedia),
+        content: SizedBox(
+          width: 520,
+          height: 480,
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+              ? Center(child: Text('Erreur: $_error'))
+              : _allLibraries.isEmpty
+              ? const Center(child: Text('Aucune bibliothèque trouvée.'))
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '${_selectedIds.length} / ${_allLibraries.length} sélectionnée(s) - vide = tout afficher',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: _allLibraries.length,
+                        itemBuilder: (context, index) {
+                          final lib = _allLibraries[index];
+                          final isSelected = _selectedIds.contains(lib.id);
+                          return _FocusableTile(
+                            child: CheckboxListTile(
+                              dense: true,
+                              visualDensity: VisualDensity.compact,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 0,
+                              ),
+                              controlAffinity: ListTileControlAffinity.trailing,
+                              title: Text(lib.name),
+                              activeColor: theme.colorScheme.primary,
+                              checkColor: theme.colorScheme.onPrimary,
+                              side: BorderSide(
+                                color: theme.colorScheme.primary,
+                                width: 1.5,
+                              ),
+                              value: isSelected,
+                              onChanged: (checked) {
+                                setState(() {
+                                  if (checked == true) {
+                                    _selectedIds.add(lib.id);
+                                  } else {
+                                    _selectedIds.remove(lib.id);
+                                  }
+                                });
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _FocusableActionButton(
+                            autofocus: true,
+                            onPressed: _toggleAll,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  allSelected
+                                      ? Icons.deselect
+                                      : Icons.select_all,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  allSelected ? l10n.deselectAllStudios : l10n.selectAllStudios,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _FocusableActionButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: Text(l10n.cancel),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _FocusableActionButton(
+                            isFilled: true,
+                            onPressed: _loading
+                                ? null
+                                : () =>
+                                    Navigator.of(context).pop(_selectedIds.join(',')),
+                            child: Text(l10n.save),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
         ),
       ),
     );

@@ -824,6 +824,13 @@ class _ContentRowsState extends State<_ContentRows>
   // never show up here the way Emby's own library tile sometimes does.
   final Map<String, String> _libraryBackdropUrls = {};
   final Set<String> _fetchingLibraryBackdrops = {};
+  // 26.10, Sid ("choisir lesquels je veux voir, les autres via un bouton
+  // voir plus") - état purement local (pas une préférence) : repart à faux
+  // à chaque ouverture de l'app/retour sur l'accueil, exprès - elle garde
+  // le contrôle sur CE que montre la grille par défaut (via
+  // UserPreferences.libraryTilesSelectedIds), pas sur si elle l'a laissée
+  // dépliée la dernière fois.
+  bool _showAllLibraryTiles = false;
   final Map<int, double> _staticRowHeightCache = {};
   final ValueNotifier<int?> _activeFocusedRowNotifier = ValueNotifier(null);
   // Id of the row that last held focus. Unlike _activeFocusedRowIndex (which is
@@ -4030,6 +4037,47 @@ class _ContentRowsState extends State<_ContentRows>
     return perLine < 1 ? 1 : perLine;
   }
 
+  // 26.10, Sid ("choisir lesquels je veux voir, les autres via un bouton
+  // voir plus") - les items réellement affichés dans la grille "Mes
+  // bibliothèques", avant toute mise en page. Vide (rien choisi) ou
+  // dépliée (_showAllLibraryTiles) ou plus aucun id choisi ne correspond
+  // à une bibliothèque existante -> tout afficher, comportement actuel
+  // inchangé par défaut.
+  List<AggregatedItem> _visibleLibraryTiles(HomeRow row) {
+    if (row.rowType != HomeRowType.libraryTiles || _showAllLibraryTiles) {
+      return row.items;
+    }
+    final selectedIds = widget.prefs
+        .get(UserPreferences.libraryTilesSelectedIds)
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toSet();
+    if (selectedIds.isEmpty) return row.items;
+    final visible = row.items
+        .where((item) => selectedIds.contains(item.id))
+        .toList();
+    return visible.isEmpty ? row.items : visible;
+  }
+
+  bool _hasHiddenLibraryTiles(HomeRow row) {
+    if (row.rowType != HomeRowType.libraryTiles || _showAllLibraryTiles) {
+      return false;
+    }
+    return _visibleLibraryTiles(row).length < row.items.length;
+  }
+
+  /// Nombre de cases réellement rendues dans la grille (items visibles + 1
+  /// pour la tuile "Voir plus" si des bibliothèques restent masquées) -
+  /// doit rester en phase avec [_buildLibraryTilesGrid] (mise en page) ET
+  /// [_libraryGridNodesFor] (focus D-pad), sinon la hauteur réservée par le
+  /// ListView externe ne correspond plus à ce qui est réellement dessiné.
+  int _effectiveLibraryTileCount(HomeRow row) {
+    final visible = _visibleLibraryTiles(row);
+    final base = visible.isEmpty ? 1 : visible.length;
+    return base + (_hasHiddenLibraryTiles(row) ? 1 : 0);
+  }
+
   double _libraryGridChildHeight(HomeRow row, PosterSize posterSize) {
     const spacing = 12.0;
     final metadataScale = _desktopUiScaleFactor();
@@ -4038,7 +4086,7 @@ class _ContentRowsState extends State<_ContentRows>
     final availableWidth =
         MediaQuery.sizeOf(context).width - (_kHomeRowLabelInset + 20.0);
     final perLine = _libraryGridItemsPerLine(availableWidth, squarePosterSide);
-    final itemCount = row.items.isEmpty ? 1 : row.items.length;
+    final itemCount = _effectiveLibraryTileCount(row);
     final lines = (itemCount / perLine).ceil();
     return lines * tileHeight + (lines - 1) * spacing;
   }
@@ -5090,15 +5138,18 @@ class _ContentRowsState extends State<_ContentRows>
   /// [LockedFocusRowState] equivalent the rest of the vertical-nav pipeline
   /// can call in to.
   List<FocusNode> _libraryGridNodesFor(HomeRow row) {
+    // 26.10 : compte EFFECTIF (items visibles + tuile "Voir plus"
+    // éventuelle), pas row.items.length - voir _effectiveLibraryTileCount.
+    final count = _effectiveLibraryTileCount(row);
     final existing = _libraryGridFocusNodes[row.id];
-    if (existing != null && existing.length == row.items.length) {
+    if (existing != null && existing.length == count) {
       return existing;
     }
     for (final node in existing ?? const <FocusNode>[]) {
       node.dispose();
     }
     final nodes = List<FocusNode>.generate(
-      row.items.length,
+      count,
       (i) => FocusNode(debugLabel: 'LibraryGridTile:${row.id}:$i'),
     );
     _libraryGridFocusNodes[row.id] = nodes;
@@ -5133,6 +5184,9 @@ class _ContentRowsState extends State<_ContentRows>
     final squarePosterSide = _squarePosterSide(posterSize);
     final childHeight = _libraryGridChildHeight(row, posterSize);
     final nodes = _libraryGridNodesFor(row);
+    final visibleItems = _visibleLibraryTiles(row);
+    final hasHidden = _hasHiddenLibraryTiles(row);
+    final hiddenCount = row.items.length - visibleItems.length;
     // 29.09, Sid: "toujours pas le pad gauche pour atteindre la barre de
     // navigation" - this grid never had any left-edge handling at all
     // (only UP/DOWN were wired tonight), unlike every GridView-based
@@ -5146,29 +5200,15 @@ class _ContentRowsState extends State<_ContentRows>
       availableWidth,
       squarePosterSide,
     );
-    return _buildTitledRow(
-      key: _rowContainerKey(rowIndex),
-      title: _localizedRowTitle(row, l10n),
-      rowIndex: rowIndex,
-      hasItems: row.items.isNotEmpty,
-      height: childHeight,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(_kHomeRowLabelInset, 5, 20, 5),
-        child: Wrap(
-          spacing: 12.0,
-          runSpacing: 12.0,
-          children: [
-            for (final (i, item) in row.items.indexed)
-              _buildLibraryGridTile(
-                item,
-                squarePosterSide,
-                focusColor,
-                cardExpansion,
-                focusNode: nodes[i],
-                onKeyEvent: (node, event) {
-                  if (!PlatformDetection.isTV || !event.isActionable) {
-                    return KeyEventResult.ignored;
-                  }
+    // 26.10 : extrait en fonction (était un closure inline dupliqué par
+    // tuile) pour pouvoir câbler EXACTEMENT la même nav D-pad sur la
+    // nouvelle tuile "Voir plus" (index = visibleItems.length) sans
+    // dupliquer ~80 lignes de logique gauche/droite/haut/bas.
+    KeyEventResult Function(FocusNode, KeyEvent) buildKeyHandler(int i) {
+      return (node, event) {
+        if (!PlatformDetection.isTV || !event.isActionable) {
+          return KeyEventResult.ignored;
+        }
                   // 01.10, Sid: "Si je clique à droite depuis pepette
                   // series, ca part en diagonale sur carba old" - LEFT/
                   // RIGHT had no explicit handling at all here (only the
@@ -5269,8 +5309,51 @@ class _ContentRowsState extends State<_ContentRows>
                         ? KeyEventResult.handled
                         : KeyEventResult.ignored;
                   }
-                  return KeyEventResult.ignored;
-                },
+        return KeyEventResult.ignored;
+      };
+    }
+
+    return _buildTitledRow(
+      key: _rowContainerKey(rowIndex),
+      title: _localizedRowTitle(row, l10n),
+      rowIndex: rowIndex,
+      hasItems: row.items.isNotEmpty,
+      height: childHeight,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(_kHomeRowLabelInset, 5, 20, 5),
+        child: Wrap(
+          spacing: 12.0,
+          runSpacing: 12.0,
+          children: [
+            for (final (i, item) in visibleItems.indexed)
+              _buildLibraryGridTile(
+                item,
+                squarePosterSide,
+                focusColor,
+                cardExpansion,
+                focusNode: nodes[i],
+                onKeyEvent: buildKeyHandler(i),
+              ),
+            // 26.10, Sid ("me donner a quelque part la possibilité de
+            // choisir lesquels je veux voir, les autres via un bouton
+            // voir plus") - même GridButtonCard, même nav D-pad que les
+            // vraies tuiles (index = visibleItems.length, juste après la
+            // dernière tuile réelle).
+            if (hasHidden)
+              SizedBox.square(
+                dimension: squarePosterSide,
+                child: GridButtonCard(
+                  icon: Icons.add,
+                  showIcon: true,
+                  label: '$hiddenCount+',
+                  width: squarePosterSide,
+                  height: squarePosterSide,
+                  focusColor: focusColor,
+                  cardFocusExpansion: cardExpansion,
+                  focusNode: nodes[visibleItems.length],
+                  onKeyEvent: buildKeyHandler(visibleItems.length),
+                  onTap: () => setState(() => _showAllLibraryTiles = true),
+                ),
               ),
           ],
         ),
@@ -5302,6 +5385,7 @@ class _ContentRowsState extends State<_ContentRows>
       dimension: squarePosterSide,
       child: GridButtonCard(
         icon: icon,
+        showIcon: false,
         label: item.name,
         width: squarePosterSide,
         height: squarePosterSide,

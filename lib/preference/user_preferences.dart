@@ -1305,6 +1305,18 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: '',
   );
 
+  /// 26.10, Sid ("me donner a quelque part la possibilité de choisir
+  /// lesquels je veux voir, les autres via un bouton voir plus") - même
+  /// principe que [studiosRowSelectedIds] juste au-dessus : CSV d'ids,
+  /// vide = tout afficher (comportement actuel inchangé par défaut), non
+  /// vide = seules ces bibliothèques s'affichent d'office dans "Mes
+  /// bibliothèques", les autres derrière "Voir plus" (voir
+  /// _buildLibraryTilesGrid, home_screen.dart).
+  static final libraryTilesSelectedIds = Preference<String>(
+    key: 'pref_library_tiles_selected_ids',
+    defaultValue: '',
+  );
+
   static final genresRowItemFilter = EnumPreference(
     key: 'pref_genres_row_item_filter',
     defaultValue: GenresRowItemFilter.both,

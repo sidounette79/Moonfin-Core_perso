@@ -150,6 +150,7 @@ final List<SyncedField> syncedFields = <SyncedField>[
   SyncedField('studiosRowSortBy', UserPreferences.studiosRowSortBy, SyncCodec.enumName, enumValues: prefs.LibrarySortBy.values),
   SyncedField('studiosRowSortOrder', UserPreferences.studiosRowSortOrder, SyncCodec.enumName, enumValues: prefs.SortDirection.values),
   SyncedField('studiosRowSelectedIds', UserPreferences.studiosRowSelectedIds, SyncCodec.text),
+  SyncedField('libraryTilesSelectedIds', UserPreferences.libraryTilesSelectedIds, SyncCodec.text),
   SyncedField('displayAudioRows', UserPreferences.displayAudioRows, SyncCodec.boolean),
   SyncedField('displaySinceYouWatchedRows', UserPreferences.displaySinceYouWatchedRows, SyncCodec.boolean),
   SyncedField('sinceYouWatchedSource', UserPreferences.sinceYouWatchedSource, SyncCodec.enumName, enumValues: prefs.SinceYouWatchedSource.values),

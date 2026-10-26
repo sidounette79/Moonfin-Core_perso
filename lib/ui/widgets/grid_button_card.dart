@@ -19,6 +19,13 @@ class GridButtonCard extends StatefulWidget {
   final ValueChanged<bool>? onFocusChanged;
   final bool? externalIsFocused;
 
+  /// 26.10, Sid ("supprimer l'icône du type de dossier") - "Mes
+  /// bibliothèques" a déjà une vraie pochette/backdrop en fond, l'icône
+  /// générique (écran TV/clap/dossier) par-dessus n'apporte plus rien.
+  /// Gardé par défaut à true pour ne rien changer ailleurs (ce widget est
+  /// aussi utilisé sans fond, où l'icône reste le seul repère visuel).
+  final bool showIcon;
+
   /// 01.10, Sid: "est ce que le fond des icones de mes medias peut avoir
   /// une pochette en fond flou?" - caller-built (e.g. an already-blurred
   /// network image), not a URL, so this widget stays free of any network
@@ -43,6 +50,7 @@ class GridButtonCard extends StatefulWidget {
     this.onFocusChanged,
     this.externalIsFocused,
     this.background,
+    this.showIcon = true,
   });
 
   @override
@@ -111,16 +119,18 @@ class _GridButtonCardState extends State<GridButtonCard> with FocusStateMixin {
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  widget.iconBuilder?.call(
-                        36 * visualScale,
-                        foregroundColor,
-                      ) ??
-                      Icon(
-                        widget.icon,
-                        size: 36 * visualScale,
-                        color: foregroundColor,
-                      ),
-                  const SizedBox(height: AppSpacing.spaceSm),
+                  if (widget.showIcon) ...[
+                    widget.iconBuilder?.call(
+                          36 * visualScale,
+                          foregroundColor,
+                        ) ??
+                        Icon(
+                          widget.icon,
+                          size: 36 * visualScale,
+                          color: foregroundColor,
+                        ),
+                    const SizedBox(height: AppSpacing.spaceSm),
+                  ],
                   Text(
                     widget.label,
                     style: TextStyle(
