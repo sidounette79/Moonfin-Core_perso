@@ -7311,10 +7311,20 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
               : (item.isPlayed
                   ? l10n.contextMenuMarkUnwatched
                   : l10n.contextMenuMarkWatched),
-          icon: item.isPlayed ? Icons.check_circle : Icons.check_circle_outline,
+          // 26.10, Sid ("reproduire pour les films... icône") - un film n'a
+          // ni saison ni épisode, donc ce bouton EST l'équivalent film de
+          // episodeWatched : même coche fixe, même blanc -> bleu. Séries et
+          // livres gardent leur style existant (le "watched" d'une série
+          // bascule récursivement toute la série, c'est un niveau
+          // conteneur, pas un item unique).
+          icon: item.type == 'Movie'
+              ? Icons.check
+              : (item.isPlayed ? Icons.check_circle : Icons.check_circle_outline),
           onPressed: viewModel.togglePlayed,
           isActive: item.isPlayed,
-          activeColor: AppColorScheme.accent,
+          activeColor: item.type == 'Movie'
+              ? AppColors.blue500
+              : AppColorScheme.accent,
         ),
       // 09.10, Sid: "1 bouton pour l'épisode - un pour la série, au même
       // endroit" - distinct from DetailButton.watched above (which, on a
@@ -7759,7 +7769,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         final codec = v['Codec']?.toString().toUpperCase();
         videoLabel = [
           if (height != null) '${height}p',
-          if (codec != null) codec,
+          ?codec,
         ].join(' ');
       }
 
@@ -7796,9 +7806,9 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (trackInfoBar != null) trackInfoBar,
+          ?trackInfoBar,
           rowContent,
-          if (resumeBar != null) resumeBar,
+          ?resumeBar,
           if (downloads != null) SeerrItemDownloadBars(state: downloads),
         ],
       );

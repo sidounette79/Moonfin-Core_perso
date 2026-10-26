@@ -11376,6 +11376,10 @@
   "@playbackTimeTotal": {
     "description": "Progress bar time option showing the full runtime"
   },
+  "playbackTimeTitle": "Title",
+  "@playbackTimeTitle": {
+    "description": "Progress bar slot option showing the series/episode or movie title"
+  },
   "playbackTimeRemaining": "Time remaining",
   "@playbackTimeRemaining": {
     "description": "Progress bar time option showing how much is left to play"

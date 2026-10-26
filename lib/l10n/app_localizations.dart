@@ -21865,6 +21865,12 @@ abstract class AppLocalizations {
   /// **'Total duration'**
   String get playbackTimeTotal;
 
+  /// Progress bar slot option showing the series/episode or movie title
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get playbackTimeTitle;
+
   /// Progress bar time option showing how much is left to play
   ///
   /// In en, this message translates to:

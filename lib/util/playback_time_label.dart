@@ -56,6 +56,10 @@ String formatPlaybackEndsAt(
 }
 
 /// Formats a [PlaybackTimeSlot] into its label.
+///
+/// [titleLabel] only feeds [PlaybackTimeSlot.title] - callers with no item
+/// title to show (e.g. the live TV player) can leave it null and that slot
+/// collapses like [PlaybackTimeSlot.none].
 String formatPlaybackTimeSlot(
   BuildContext context, {
   required PlaybackTimeSlot slot,
@@ -63,6 +67,7 @@ String formatPlaybackTimeSlot(
   required Duration duration,
   required bool use24Hour,
   double playbackSpeed = 1.0,
+  String? titleLabel,
 }) {
   switch (slot) {
     case PlaybackTimeSlot.none:
@@ -88,6 +93,8 @@ String formatPlaybackTimeSlot(
         DateTime.now(),
         use24Hour: use24Hour,
       );
+    case PlaybackTimeSlot.title:
+      return titleLabel ?? '';
   }
 }
 

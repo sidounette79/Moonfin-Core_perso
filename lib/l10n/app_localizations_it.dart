@@ -12527,6 +12527,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get playbackTimeTotal => 'Durata totale';
 
   @override
+  String get playbackTimeTitle => 'Title';
+
+  @override
   String get playbackTimeRemaining => 'Tempo rimanente';
 
   @override

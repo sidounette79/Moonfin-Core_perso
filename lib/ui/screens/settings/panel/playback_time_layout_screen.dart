@@ -12,6 +12,7 @@ class _PlaybackTimeLayoutScreen extends StatefulWidget {
 class _PlaybackTimeLayoutScreenState extends State<_PlaybackTimeLayoutScreen> {
   static const _previewPosition = Duration(minutes: 42, seconds: 10);
   static const _previewDuration = Duration(hours: 1, minutes: 58, seconds: 33);
+  static const _previewTitle = 'Stranger Things - Chapitre un';
 
   late final UserPreferences _prefs;
 
@@ -41,6 +42,7 @@ class _PlaybackTimeLayoutScreenState extends State<_PlaybackTimeLayoutScreen> {
       PlaybackTimeSlot.timeRemaining => l10n.playbackTimeRemaining,
       PlaybackTimeSlot.endsAt => l10n.playbackTimeEndsAt,
       PlaybackTimeSlot.time => l10n.currentTime,
+      PlaybackTimeSlot.title => l10n.playbackTimeTitle,
     };
   }
 
@@ -51,6 +53,7 @@ class _PlaybackTimeLayoutScreenState extends State<_PlaybackTimeLayoutScreen> {
       position: _previewPosition,
       duration: _previewDuration,
       use24Hour: _prefs.get(UserPreferences.use24HourClock),
+      titleLabel: _previewTitle,
     );
   }
 

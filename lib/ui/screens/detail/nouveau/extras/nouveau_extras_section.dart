@@ -7,14 +7,17 @@ import '../../../../../data/models/aggregated_item.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../../../../preference/user_preferences.dart';
 import '../../../../../preference/preference_constants.dart';
+import '../../../../../util/focus/dpad_keys.dart';
 import '../../../../../util/platform_detection.dart';
 import '../../../../widgets/navigation_layout.dart';
 import '../../../../navigation/destinations.dart';
-import '../../../../widgets/focus/hub_focus_memory.dart';
-import '../../../../widgets/focus/locked_focus_row.dart';
 import '../shared/nouveau_media_rail_card.dart';
 import '../shared/nouveau_spacing.dart';
 
+// 26.10, Sid ("après tu peux attaquer toutes les zones de scroll") - même
+// conversion que nouveau_discovery_rail.dart : LockedFocusRow (scroll
+// horizontal forcé) remplacé par une vraie grille Wrap, largeur de carte
+// fixe, déborde sur une ligne de plus plutôt que de scroller.
 class NouveauExtrasSection extends StatefulWidget {
   const NouveauExtrasSection({
     super.key,
@@ -36,14 +39,18 @@ class NouveauExtrasSection extends StatefulWidget {
 }
 
 class NouveauExtrasSectionState extends State<NouveauExtrasSection> {
-  static int _hubSession = 0;
+  final Map<int, FocusNode> _focusNodes = {};
+  int? _lastFocusedIndex;
 
-  late final String _hubKey = 'nouveau-extras-${_hubSession++}';
-
-  final ScrollController _scrollController = ScrollController();
-
-  final GlobalKey<LockedFocusRowState<AggregatedItem>> _rowKey =
-      GlobalKey<LockedFocusRowState<AggregatedItem>>();
+  FocusNode _nodeFor(int index) => _focusNodes.putIfAbsent(index, () {
+    final node = FocusNode(debugLabel: 'extras:$index');
+    node.addListener(() {
+      if (node.hasFocus) {
+        _lastFocusedIndex = index;
+      }
+    });
+    return node;
+  });
 
   bool _isCompactMobile(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
@@ -57,13 +64,14 @@ class NouveauExtrasSectionState extends State<NouveauExtrasSection> {
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    for (final node in _focusNodes.values) {
+      node.dispose();
+    }
 
     super.dispose();
   }
 
-  bool get canFocusTop =>
-      mounted && widget.items.isNotEmpty && _rowKey.currentState != null;
+  bool get canFocusTop => mounted && widget.items.isNotEmpty;
 
   bool get _navbarIsLeft =>
       widget.prefs.get(UserPreferences.navbarPosition) == NavbarPosition.left;
@@ -77,12 +85,8 @@ class NouveauExtrasSectionState extends State<NouveauExtrasSection> {
       return false;
     }
 
-    final row = _rowKey.currentState!;
-    final remembered = HubFocusMemory.peek(_hubKey);
-
-    row.requestFocusAt(
-      remembered != null && remembered < widget.items.length ? remembered : 0,
-    );
+    final index = (_lastFocusedIndex ?? 0).clamp(0, widget.items.length - 1);
+    _nodeFor(index).requestFocus();
 
     return true;
   }
@@ -116,34 +120,31 @@ class NouveauExtrasSectionState extends State<NouveauExtrasSection> {
   _ExtrasLayout _layoutFor(BuildContext context, double availableWidth) {
     final compact = _isCompactMobile(context);
 
+    final double cardWidth;
+    final double cardSpacing;
     if (compact) {
       final metrics = NouveauSpacing.compactEpisodes;
-
-      final cardWidth = metrics.itemWidth(availableWidth);
-
-      final artworkHeight = cardWidth * 9 / 16;
-
-      final cardHeight = artworkHeight + 98;
-
-      return _ExtrasLayout(
-        cardWidth: cardWidth,
-        artworkHeight: artworkHeight,
-        cardHeight: cardHeight,
-        cardSpacing: metrics.gap,
-        compact: true,
-      );
+      cardWidth = metrics.itemWidth(availableWidth);
+      cardSpacing = metrics.gap;
+    } else {
+      cardWidth = NouveauMediaRailMetrics.cardWidth(availableWidth);
+      cardSpacing = NouveauMediaRailMetrics.itemGap;
     }
 
-    final cardWidth = NouveauMediaRailMetrics.cardWidth(availableWidth);
+    final artworkHeight = compact
+        ? cardWidth * 9 / 16
+        : NouveauMediaRailMetrics.artworkHeight(cardWidth);
 
-    final artworkHeight = NouveauMediaRailMetrics.artworkHeight(cardWidth);
+    final itemsPerLine = ((availableWidth + cardSpacing) / (cardWidth + cardSpacing))
+        .floor()
+        .clamp(1, 1000);
 
     return _ExtrasLayout(
       cardWidth: cardWidth,
       artworkHeight: artworkHeight,
-      cardHeight: NouveauMediaRailMetrics.cardHeight(cardWidth),
-      cardSpacing: NouveauMediaRailMetrics.itemGap,
-      compact: false,
+      cardSpacing: cardSpacing,
+      compact: compact,
+      itemsPerLine: itemsPerLine,
     );
   }
 
@@ -192,70 +193,88 @@ class NouveauExtrasSectionState extends State<NouveauExtrasSection> {
                   : NouveauSpacing.titleToContent,
             ),
 
-            SizedBox(
-              width: double.infinity,
-              height: layout.cardHeight,
-              child: OverflowBox(
-                alignment: Alignment.topLeft,
-                minWidth: availableWidth,
-                maxWidth: availableWidth,
-                minHeight: layout.cardHeight,
-                maxHeight: layout.cardHeight,
-                child: SizedBox(
-                  width: availableWidth,
-                  height: layout.cardHeight,
-                  child: LockedFocusRow<AggregatedItem>(
-                    key: _rowKey,
-                    items: widget.items,
-                    hubKey: _hubKey,
-                    controller: _scrollController,
-                    height: layout.cardHeight,
-                    itemExtent: layout.itemExtent,
-                    clipBehavior: Clip.none,
-                    onVerticalNavigation: (isUp) =>
-                        (isUp ? widget.onNavigateUp : widget.onNavigateDown)
-                            ?.call() ??
-                        false,
-                    onTap: (_, item) {
-                      _openItem(item);
-                    },
-                    onLeftEdge: _navbarIsLeft ? _handleLeftEdge : null,
-                    itemBuilder: (context, item, index, isFocused) {
-                      final title = item.name.trim();
-
-                      final hasNext = index < widget.items.length - 1;
-
-                      return SizedBox(
-                        width: layout.itemExtent,
-                        height: layout.cardHeight,
-                        child: Padding(
-                          padding: EdgeInsets.only(
-                            right: hasNext ? layout.cardSpacing : 0,
-                          ),
-                          child: NouveauMediaRailCard(
-                            imageUrl: _imageUrl(item),
-                            title: title,
-                            subtitle: item.subtitle,
-                            placeholderLabel: title,
-                            width: layout.cardWidth,
-                            artworkHeight: layout.artworkHeight,
-                            isFocused: isFocused,
-                            isPlayed: item.isPlayed,
-                            progress: _progress(item),
-                            onTap: () {
-                              _openItem(item);
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
+            _buildGrid(context, layout),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildGrid(BuildContext context, _ExtrasLayout layout) {
+    final items = widget.items;
+
+    KeyEventResult Function(FocusNode, KeyEvent) keyHandler(int i) {
+      return (node, event) {
+        if (!PlatformDetection.isTV || !event.isActionable) {
+          return KeyEventResult.ignored;
+        }
+        if (event.logicalKey.isLeftKey) {
+          final atLineStart = i % layout.itemsPerLine == 0;
+          if (atLineStart) {
+            if (_navbarIsLeft) {
+              _handleLeftEdge();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          }
+          _nodeFor(i - 1).requestFocus();
+          return KeyEventResult.handled;
+        }
+        if (event.logicalKey.isRightKey) {
+          final atLineEnd = i % layout.itemsPerLine == layout.itemsPerLine - 1;
+          if (!atLineEnd && i + 1 < items.length) {
+            _nodeFor(i + 1).requestFocus();
+          }
+          return KeyEventResult.handled;
+        }
+        if (event.logicalKey.isUpKey) {
+          final above = i - layout.itemsPerLine;
+          if (above >= 0) {
+            _nodeFor(above).requestFocus();
+            return KeyEventResult.handled;
+          }
+          return (widget.onNavigateUp?.call() ?? false)
+              ? KeyEventResult.handled
+              : KeyEventResult.ignored;
+        }
+        if (event.logicalKey.isDownKey) {
+          final below = i + layout.itemsPerLine;
+          if (below < items.length) {
+            _nodeFor(below).requestFocus();
+            return KeyEventResult.handled;
+          }
+          return (widget.onNavigateDown?.call() ?? false)
+              ? KeyEventResult.handled
+              : KeyEventResult.ignored;
+        }
+        return KeyEventResult.ignored;
+      };
+    }
+
+    return Wrap(
+      spacing: layout.cardSpacing,
+      runSpacing: layout.cardSpacing,
+      children: [
+        for (final (i, item) in items.indexed)
+          Focus(
+            focusNode: _nodeFor(i),
+            onKeyEvent: keyHandler(i),
+            child: Builder(
+              builder: (context) => NouveauMediaRailCard(
+                imageUrl: _imageUrl(item),
+                title: item.name.trim(),
+                subtitle: item.subtitle,
+                placeholderLabel: item.name.trim(),
+                width: layout.cardWidth,
+                artworkHeight: layout.artworkHeight,
+                isFocused: Focus.of(context).hasFocus,
+                isPlayed: item.isPlayed,
+                progress: _progress(item),
+                onTap: () => _openItem(item),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -263,17 +282,15 @@ class NouveauExtrasSectionState extends State<NouveauExtrasSection> {
 class _ExtrasLayout {
   final double cardWidth;
   final double artworkHeight;
-  final double cardHeight;
   final double cardSpacing;
   final bool compact;
+  final int itemsPerLine;
 
   const _ExtrasLayout({
     required this.cardWidth,
     required this.artworkHeight,
-    required this.cardHeight,
     required this.cardSpacing,
     required this.compact,
+    required this.itemsPerLine,
   });
-
-  double get itemExtent => cardWidth + cardSpacing;
 }

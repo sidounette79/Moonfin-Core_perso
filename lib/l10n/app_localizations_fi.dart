@@ -12482,6 +12482,9 @@ class AppLocalizationsFi extends AppLocalizations {
   String get playbackTimeTotal => 'Kokonaiskesto';
 
   @override
+  String get playbackTimeTitle => 'Title';
+
+  @override
   String get playbackTimeRemaining => 'Jäljellä oleva aika';
 
   @override

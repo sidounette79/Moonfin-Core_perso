@@ -12093,6 +12093,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get playbackTimeTotal => '총 재생 시간';
 
   @override
+  String get playbackTimeTitle => 'Title';
+
+  @override
   String get playbackTimeRemaining => '남은 시간';
 
   @override

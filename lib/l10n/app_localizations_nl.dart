@@ -12497,6 +12497,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get playbackTimeTotal => 'Totale speelduur';
 
   @override
+  String get playbackTimeTitle => 'Title';
+
+  @override
   String get playbackTimeRemaining => 'Resterende tijd';
 
   @override

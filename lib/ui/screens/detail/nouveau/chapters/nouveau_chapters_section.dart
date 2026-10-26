@@ -6,9 +6,9 @@ import '../../../../../data/models/aggregated_item.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../../../../preference/user_preferences.dart';
 import '../../../../../preference/preference_constants.dart';
+import '../../../../../util/focus/dpad_keys.dart';
 import '../../../../../util/platform_detection.dart';
 import '../../../../widgets/navigation_layout.dart';
-import '../../../../widgets/focus/locked_focus_row.dart';
 import '../../detail_episode_images.dart';
 import '../shared/nouveau_media_rail_card.dart';
 import '../shared/nouveau_spacing.dart';
@@ -45,24 +45,26 @@ class NouveauChaptersSection extends StatefulWidget {
 }
 
 class NouveauChaptersSectionState extends State<NouveauChaptersSection> {
-  static int _hubSession = 0;
+  final Map<int, FocusNode> _focusNodes = {};
+  int? _lastFocusedIndex;
 
-  final ScrollController _scrollController = ScrollController();
+  FocusNode _nodeFor(int index) => _focusNodes.putIfAbsent(index, () {
+    final node = FocusNode(debugLabel: 'chapters:$index');
+    node.addListener(() {
+      if (node.hasFocus) {
+        _lastFocusedIndex = index;
+      }
+    });
+    return node;
+  });
 
-  final GlobalKey<LockedFocusRowState<Map<String, dynamic>>> _rowKey =
-      GlobalKey<LockedFocusRowState<Map<String, dynamic>>>();
-
-  late final String _hubKey =
-      'nouveau-chapters-${widget.item.id}-${_hubSession++}';
-
-  bool get canFocusTop =>
-      mounted &&
-      widget.item.chapters.isNotEmpty &&
-      _rowKey.currentState != null;
+  bool get canFocusTop => mounted && widget.item.chapters.isNotEmpty;
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    for (final node in _focusNodes.values) {
+      node.dispose();
+    }
 
     super.dispose();
   }
@@ -78,7 +80,11 @@ class NouveauChaptersSectionState extends State<NouveauChaptersSection> {
       return false;
     }
 
-    _rowKey.currentState!.requestFocusFromMemory();
+    final index = (_lastFocusedIndex ?? 0).clamp(
+      0,
+      widget.item.chapters.length - 1,
+    );
+    _nodeFor(index).requestFocus();
 
     return true;
   }
@@ -96,32 +102,28 @@ class NouveauChaptersSectionState extends State<NouveauChaptersSection> {
   _ChaptersLayout _layoutFor(BuildContext context, double availableWidth) {
     final compact = _isCompactMobile(context);
 
+    final double cardWidth;
+    final double cardGap;
     if (compact) {
       final metrics = NouveauSpacing.compactChapters;
-
-      final cardWidth = metrics.itemWidth(availableWidth);
-
-      final artworkHeight = NouveauMediaRailMetrics.artworkHeight(cardWidth);
-
-      return _ChaptersLayout(
-        cardWidth: cardWidth,
-        cardGap: metrics.gap,
-        artworkHeight: artworkHeight,
-        railHeight: NouveauMediaRailMetrics.cardHeight(cardWidth),
-        compact: true,
-      );
+      cardWidth = metrics.itemWidth(availableWidth);
+      cardGap = metrics.gap;
+    } else {
+      cardWidth = NouveauMediaRailMetrics.cardWidth(availableWidth);
+      cardGap = NouveauMediaRailMetrics.itemGap;
     }
 
-    final cardWidth = NouveauMediaRailMetrics.cardWidth(availableWidth);
-
     final artworkHeight = NouveauMediaRailMetrics.artworkHeight(cardWidth);
+    final itemsPerLine = ((availableWidth + cardGap) / (cardWidth + cardGap))
+        .floor()
+        .clamp(1, 1000);
 
     return _ChaptersLayout(
       cardWidth: cardWidth,
-      cardGap: NouveauMediaRailMetrics.itemGap,
+      cardGap: cardGap,
       artworkHeight: artworkHeight,
-      railHeight: NouveauMediaRailMetrics.cardHeight(cardWidth),
-      compact: false,
+      compact: compact,
+      itemsPerLine: itemsPerLine,
     );
   }
 
@@ -170,71 +172,107 @@ class NouveauChaptersSectionState extends State<NouveauChaptersSection> {
                   : NouveauSpacing.titleToContent,
             ),
 
-            SizedBox(
-              width: double.infinity,
-              height: layout.railHeight,
-              child: LockedFocusRow<Map<String, dynamic>>(
-                key: _rowKey,
-                items: chapters,
-                hubKey: _hubKey,
-                controller: _scrollController,
-                height: layout.railHeight,
-                itemExtent: layout.itemExtent,
-                clipBehavior: Clip.none,
-                onTap: (_, chapter) {
-                  widget.onPlayFromChapter(_chapterPosition(chapter));
-                },
-                onVerticalNavigation: (isUp) {
-                  return (isUp ? widget.onNavigateUp : widget.onNavigateDown)
-                          ?.call() ??
-                      false;
-                },
-                onLeftEdge: _navbarIsLeft ? _handleLeftEdge : null,
-                itemBuilder: (context, chapter, index, isFocused) {
-                  final position = _chapterPosition(chapter);
-
-                  final rawName = (chapter['Name'] as String?)?.trim();
-
-                  final name = rawName?.isNotEmpty == true
-                      ? rawName!
-                      : l10n.chapterNumber(index + 1);
-
-                  final imageUrl = _chapterImageUrl(
-                    context,
-                    chapter,
-                    index,
-                    layout.cardWidth,
-                    useSeriesThumbs,
-                  );
-
-                  final displayName = _cleanChapterDisplay(name, position);
-
-                  return SizedBox(
-                    width: layout.itemExtent,
-                    height: layout.railHeight,
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        right: index < chapters.length - 1 ? layout.cardGap : 0,
-                      ),
-                      child: NouveauMediaRailCard(
-                        imageUrl: imageUrl,
-                        title: displayName,
-                        placeholderLabel: name,
-                        width: layout.cardWidth,
-                        artworkHeight: layout.artworkHeight,
-                        isFocused: isFocused,
-                        onTap: () {
-                          widget.onPlayFromChapter(position);
-                        },
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+            _buildGrid(context, chapters, layout, l10n, useSeriesThumbs),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildGrid(
+    BuildContext context,
+    List<Map<String, dynamic>> chapters,
+    _ChaptersLayout layout,
+    AppLocalizations l10n,
+    bool useSeriesThumbs,
+  ) {
+    KeyEventResult Function(FocusNode, KeyEvent) keyHandler(int i) {
+      return (node, event) {
+        if (!PlatformDetection.isTV || !event.isActionable) {
+          return KeyEventResult.ignored;
+        }
+        if (event.logicalKey.isLeftKey) {
+          final atLineStart = i % layout.itemsPerLine == 0;
+          if (atLineStart) {
+            if (_navbarIsLeft) {
+              _handleLeftEdge();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          }
+          _nodeFor(i - 1).requestFocus();
+          return KeyEventResult.handled;
+        }
+        if (event.logicalKey.isRightKey) {
+          final atLineEnd = i % layout.itemsPerLine == layout.itemsPerLine - 1;
+          if (!atLineEnd && i + 1 < chapters.length) {
+            _nodeFor(i + 1).requestFocus();
+          }
+          return KeyEventResult.handled;
+        }
+        if (event.logicalKey.isUpKey) {
+          final above = i - layout.itemsPerLine;
+          if (above >= 0) {
+            _nodeFor(above).requestFocus();
+            return KeyEventResult.handled;
+          }
+          return (widget.onNavigateUp?.call() ?? false)
+              ? KeyEventResult.handled
+              : KeyEventResult.ignored;
+        }
+        if (event.logicalKey.isDownKey) {
+          final below = i + layout.itemsPerLine;
+          if (below < chapters.length) {
+            _nodeFor(below).requestFocus();
+            return KeyEventResult.handled;
+          }
+          return (widget.onNavigateDown?.call() ?? false)
+              ? KeyEventResult.handled
+              : KeyEventResult.ignored;
+        }
+        return KeyEventResult.ignored;
+      };
+    }
+
+    return Wrap(
+      spacing: layout.cardGap,
+      runSpacing: layout.cardGap,
+      children: [
+        for (final (i, chapter) in chapters.indexed)
+          Builder(
+            builder: (context) {
+              final position = _chapterPosition(chapter);
+              final rawName = (chapter['Name'] as String?)?.trim();
+              final name = rawName?.isNotEmpty == true
+                  ? rawName!
+                  : l10n.chapterNumber(i + 1);
+              final imageUrl = _chapterImageUrl(
+                context,
+                chapter,
+                i,
+                layout.cardWidth,
+                useSeriesThumbs,
+              );
+              final displayName = _cleanChapterDisplay(name, position);
+
+              return Focus(
+                focusNode: _nodeFor(i),
+                onKeyEvent: keyHandler(i),
+                child: Builder(
+                  builder: (context) => NouveauMediaRailCard(
+                    imageUrl: imageUrl,
+                    title: displayName,
+                    placeholderLabel: name,
+                    width: layout.cardWidth,
+                    artworkHeight: layout.artworkHeight,
+                    isFocused: Focus.of(context).hasFocus,
+                    onTap: () => widget.onPlayFromChapter(position),
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
     );
   }
 
@@ -342,16 +380,14 @@ class _ChaptersLayout {
   final double cardWidth;
   final double cardGap;
   final double artworkHeight;
-  final double railHeight;
   final bool compact;
+  final int itemsPerLine;
 
   const _ChaptersLayout({
     required this.cardWidth,
     required this.cardGap,
     required this.artworkHeight,
-    required this.railHeight,
     required this.compact,
+    required this.itemsPerLine,
   });
-
-  double get itemExtent => cardWidth + cardGap;
 }

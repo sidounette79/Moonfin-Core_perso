@@ -12762,6 +12762,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get playbackTimeTotal => 'Całkowity czas trwania';
 
   @override
+  String get playbackTimeTitle => 'Title';
+
+  @override
   String get playbackTimeRemaining => 'Pozostały czas';
 
   @override

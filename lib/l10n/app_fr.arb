@@ -9539,6 +9539,10 @@
     "@playbackTimeTotal": {
         "description": "Progress bar time option showing the full runtime"
     },
+    "playbackTimeTitle": "Titre",
+    "@playbackTimeTitle": {
+        "description": "Progress bar slot option showing the series/episode or movie title"
+    },
     "playbackTimeDisplay": "Temps sur la barre de progression",
     "@playbackTimeDisplay": {
         "description": "Setting title for what is shown next to the playback progress bar"

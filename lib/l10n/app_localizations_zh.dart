@@ -11977,6 +11977,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get playbackTimeTotal => '总时长';
 
   @override
+  String get playbackTimeTitle => 'Title';
+
+  @override
   String get playbackTimeRemaining => '剩余时间';
 
   @override

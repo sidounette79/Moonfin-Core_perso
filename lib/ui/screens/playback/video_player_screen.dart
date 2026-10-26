@@ -4759,6 +4759,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     required Duration position,
     required Duration duration,
     required bool use24Hour,
+    required String titleLabel,
   }) {
     return formatPlaybackTimeSlot(
       context,
@@ -4767,7 +4768,39 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       duration: duration,
       use24Hour: use24Hour,
       playbackSpeed: _state.playbackSpeed,
+      titleLabel: titleLabel,
     );
+  }
+
+  /// 26.10, Sid (capture Emby) : "nom de la série + nom de l'épisode" pour
+  /// [PlaybackTimeSlot.title] - mêmes champs que [_buildTitleInfo], mais en
+  /// une seule ligne condensée puisque ce slot partage sa place avec les
+  /// temps. Un film (pas de série) retombe sur son propre titre.
+  String _currentPlaybackTitleLabel() {
+    final item = _queue.currentItem;
+    if (item == null) return '';
+
+    final String title;
+    final String? seriesName;
+    if (item is AggregatedItem) {
+      title = item.name;
+      seriesName = item.seriesName;
+    } else if (item is Map) {
+      title = (item['Name'] ?? '') as String;
+      seriesName = item['SeriesName'] as String?;
+    } else if (item is String) {
+      final meta = _manager.currentOfflineMetadata;
+      title = (meta?['Name'] as String?) ?? item.split('/').last;
+      seriesName = meta?['SeriesName'] as String?;
+    } else {
+      title = item.toString();
+      seriesName = null;
+    }
+
+    if (seriesName != null && seriesName.isNotEmpty && title.isNotEmpty) {
+      return '$seriesName - $title';
+    }
+    return title;
   }
 
   Widget _buildTimeSlotRow({
@@ -4985,6 +5018,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     final belowRightSlot = _prefs.get(UserPreferences.playbackTimeBelowRight);
     final use24Hour = _prefs.get(UserPreferences.use24HourClock);
     final showChapterMarks = _prefs.get(UserPreferences.showChapterMarkers);
+    final titleLabel = _currentPlaybackTitleLabel();
     return StreamBuilder<Duration>(
       stream: _state.positionStream,
       initialData: _state.position,
@@ -5018,18 +5052,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                   position: livePosition,
                   duration: duration,
                   use24Hour: use24Hour,
+                  titleLabel: titleLabel,
                 );
                 final aboveCenter = _timeSlotLabel(
                   aboveCenterSlot,
                   position: livePosition,
                   duration: duration,
                   use24Hour: use24Hour,
+                  titleLabel: titleLabel,
                 );
                 final aboveRight = _timeSlotLabel(
                   aboveRightSlot,
                   position: livePosition,
                   duration: duration,
                   use24Hour: use24Hour,
+                  titleLabel: titleLabel,
                 );
                 final hasAboveRow =
                     aboveLeft.isNotEmpty ||
@@ -5136,18 +5173,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                             position: livePosition,
                             duration: duration,
                             use24Hour: use24Hour,
+                            titleLabel: titleLabel,
                           ),
                           center: _timeSlotLabel(
                             belowCenterSlot,
                             position: livePosition,
                             duration: duration,
                             use24Hour: use24Hour,
+                            titleLabel: titleLabel,
                           ),
                           right: _timeSlotLabel(
                             belowRightSlot,
                             position: livePosition,
                             duration: duration,
                             use24Hour: use24Hour,
+                            titleLabel: titleLabel,
                           ),
                         ),
                       ],

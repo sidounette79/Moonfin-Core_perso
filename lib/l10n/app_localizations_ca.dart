@@ -12630,6 +12630,9 @@ class AppLocalizationsCa extends AppLocalizations {
   String get playbackTimeTotal => 'Duració total';
 
   @override
+  String get playbackTimeTitle => 'Title';
+
+  @override
   String get playbackTimeRemaining => 'Temps restant';
 
   @override

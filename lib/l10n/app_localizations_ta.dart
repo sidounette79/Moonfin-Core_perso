@@ -12520,6 +12520,9 @@ class AppLocalizationsTa extends AppLocalizations {
   String get playbackTimeTotal => 'Total duration';
 
   @override
+  String get playbackTimeTitle => 'Title';
+
+  @override
   String get playbackTimeRemaining => 'Time remaining';
 
   @override

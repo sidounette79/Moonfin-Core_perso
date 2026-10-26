@@ -12449,6 +12449,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get playbackTimeTotal => 'Toplam süre';
 
   @override
+  String get playbackTimeTitle => 'Title';
+
+  @override
   String get playbackTimeRemaining => 'Kalan süre';
 
   @override

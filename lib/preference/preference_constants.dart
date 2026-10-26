@@ -232,6 +232,10 @@ enum PlaybackTimeSlot {
 
   /// The current time
   time,
+
+  /// 26.10, Sid (capture Emby) : nom de la série + nom de l'épisode (ou le
+  /// titre du film, sans série) au-dessus de la barre de lecture.
+  title,
 }
 
 enum DesktopScrollWheelAction {
