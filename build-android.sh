@@ -148,12 +148,26 @@ echo "Resolving packages..."
 if [ "$SHOREBIRD_MODE" = "patch" ]; then
   SHOREBIRD="$(resolve_shorebird)"
 
+  # 27.10: every patch attempt since the 2.6.3 release has hit "Your app
+  # contains asset changes" on base/assets/flutter_assets/pubspec.yaml
+  # alone - confirmed via `git diff` that the source pubspec.yaml is
+  # byte-identical to the one the release baseline was built from, and the
+  # patch command passes the exact same --build-name/--build-number/
+  # --dart-define as the release did. No deterministic source for the
+  # drift found; looks like Flutter toolchain non-determinism in how it
+  # bundles this one file, not a real asset change. --allow-asset-diffs
+  # per Shorebird's own suggested fix in that warning. Trade-off: this also
+  # waves through a genuine icon-font change in the same patch (as
+  # happened twice before 2.6.3) - that would publish fine but render
+  # without the new glyphs until the next real release. Accepted since
+  # this pubspec.yaml false positive was blocking every patch otherwise.
   echo "Publishing Shorebird OTA patch - mobile flavor..."
   "$SHOREBIRD" patch android --flavor mobile \
     --release-version latest \
     --build-name "$APP_VERSION" \
     --build-number "$APP_BUILD_NUMBER" \
-    --dart-define=DISTRIBUTION_CHANNEL=apk
+    --dart-define=DISTRIBUTION_CHANNEL=apk \
+    --allow-asset-diffs
 
   echo "Publishing Shorebird OTA patch - androidTv flavor..."
   "$SHOREBIRD" patch android --flavor androidTv \
@@ -161,7 +175,8 @@ if [ "$SHOREBIRD_MODE" = "patch" ]; then
     --build-name "$TV_VERSION" \
     --build-number "$TV_BUILD_NUMBER" \
     --dart-define=MOONFIN_FORCE_TV=true \
-    --dart-define=DISTRIBUTION_CHANNEL=android_tv_apk
+    --dart-define=DISTRIBUTION_CHANNEL=android_tv_apk \
+    --allow-asset-diffs
 
   echo "Both OTA patches published - a patch has no APK/AAB artifact to upload (it's a binary diff pushed straight to Shorebird's servers), nothing else to do."
   exit 0

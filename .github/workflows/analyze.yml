@@ -29,8 +29,26 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      - name: Install dependencies
-        run: flutter pub get
+      - name: Install dependencies (root + local packages)
+        # 27.10: the local packages/* (server_jellyfin, playback_core,
+        # design...) each have their own pubspec.yaml and were never getting
+        # their own `pub get` here - a fresh GitHub checkout has no
+        # pre-resolved .dart_tool for them (unlike the local Docker
+        # container's bind-mounted working copy, which kept whatever
+        # earlier manual runs had already resolved on disk), so the first
+        # run of this workflow failed on every packages/*/test/*.dart file
+        # with "Target of URI doesn't exist: 'package:test/test.dart'".
+        # flutter analyze walks every path dependency reachable from the
+        # root, so each one needs its own resolved pubspec.lock first.
+        run: |
+          flutter pub get
+          for pkg in packages/*/; do
+            if [ -f "$pkg/pubspec.yaml" ]; then
+              echo "::group::pub get - $pkg"
+              (cd "$pkg" && flutter pub get)
+              echo "::endgroup::"
+            fi
+          done
 
       - name: Analyze
         run: flutter analyze
