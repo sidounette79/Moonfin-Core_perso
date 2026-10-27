@@ -904,7 +904,13 @@ class ItemDetailViewModel extends ChangeNotifier {
     } else if (type == 'Series') {
       futures.add(_loadRatings());
       futures.add(_loadSeasons());
-      futures.add(_loadNextUp());
+      // 27.10, Sid ("le bouton double vu... n'apparaît pas sur la fiche de
+      // série") - _loadEpisodes() n'était jamais appelé ici, donc
+      // viewModel.episodes restait vide sur la page série (seasonWatched
+      // exige episodes.isNotEmpty). Enchaîné après nextUp puisque
+      // _loadEpisodes se sert de son seasonId pour savoir quelle saison
+      // charger sur cette page.
+      futures.add(_loadNextUpThenEpisodes());
       futures.add(_loadSimilar());
       futures.add(_loadFeatures());
       futures.add(_loadParentCollection());
@@ -972,9 +978,15 @@ class ItemDetailViewModel extends ChangeNotifier {
     if (item == null) return;
     final seriesId = item.seriesId ?? itemId;
     final ownSeasonId = item.type == 'Season' ? itemId : item.seasonId;
+    // 27.10, Sid ("le bouton double vu existe bien... il n'apparaît pas sur
+    // la fiche de série") - sur la page série elle-même, item.seasonId est
+    // toujours null (une série n'a pas de saison propre), donc sans ce
+    // repli sur la saison de nextUp, _episodes restait vide en permanence
+    // ici (_loadEpisodes n'était même jamais appelé pour 'Series' avant ce
+    // correctif) et seasonWatched ne pouvait jamais s'afficher.
     final requestedSeasonId = item.type == 'Season'
         ? itemId
-        : (contextSeasonId ?? item.seasonId);
+        : (contextSeasonId ?? item.seasonId ?? _nextUp?.seasonId);
     try {
       Future<List<AggregatedItem>> episodesOf(String? seasonId) async {
         final data = await _client.itemsApi.getEpisodes(
@@ -1047,6 +1059,11 @@ class ItemDetailViewModel extends ChangeNotifier {
     _seriesEpisodesRequested = false;
     _seriesEpisodesLoaded = false;
     return loadAllSeriesEpisodes();
+  }
+
+  Future<void> _loadNextUpThenEpisodes() async {
+    await _loadNextUp();
+    await _loadEpisodes();
   }
 
   Future<void> _loadNextUp() async {

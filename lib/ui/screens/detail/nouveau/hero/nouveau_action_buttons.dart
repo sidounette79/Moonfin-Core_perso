@@ -356,62 +356,59 @@ class _NouveauActionButtonsState extends State<NouveauActionButtons> {
 
           if (primaryAction != null && hasSecondary) const SizedBox(height: 14),
 
+          // 27.10, Sid ("la barre des boutons scrolle toujours vers la
+          // droite. Il faudrait qu'elle s'adapte à la taille de l'écran") -
+          // Wrap plutôt que SingleChildScrollView horizontal : quand plus de
+          // boutons sont activés qu'une seule ligne n'en tient, ça déborde
+          // sur une 2e ligne au lieu de scroller. Touch uniquement (cette
+          // mise en page ne s'utilise qu'en portrait, jamais sur TV), donc
+          // les callbacks gauche/droite déjà purement séquentiels restent
+          // valables tels quels d'une ligne à l'autre.
           if (hasSecondary)
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (
-                    var index = 0;
-                    index < visibleSecondaryActions.length;
-                    index++
-                  ) ...[
-                    if (index > 0) const SizedBox(width: 14),
-
-                    _NouveauCircleActionButton(
-                      action: visibleSecondaryActions[index],
-                      compact: true,
-                      onArrowLeft: index == 0
-                          ? primaryAction != null
-                                ? _focusPrimary
-                                : visibleSecondaryActions[index].onArrowLeft
-                          : () => _focusSecondary(index - 1),
-                      onArrowRight: index < visibleSecondaryActions.length - 1
-                          ? () => _focusSecondary(index + 1)
-                          : overflowActions.isNotEmpty
-                          ? _focusOverflow
-                          : visibleSecondaryActions[index].onArrowRight,
-                    ),
-                  ],
-
-                  if (overflowActions.isNotEmpty) ...[
-                    if (visibleSecondaryActions.isNotEmpty)
-                      const SizedBox(width: 14),
-
-                    _NouveauMoreButton(
-                      focusNode: _overflowFocusNode,
-                      compact: true,
-                      onPressed: () => _showOverflowActions(context),
-                      onArrowUp:
-                          _lastSecondaryAction?.onArrowUp ??
-                          primaryAction?.onArrowUp,
-                      onArrowDown:
-                          _lastSecondaryAction?.onArrowDown ??
-                          primaryAction?.onArrowDown,
-                      onArrowLeft: visibleSecondaryActions.isNotEmpty
-                          ? () => _focusSecondary(
-                              visibleSecondaryActions.length - 1,
-                            )
-                          : primaryAction != null
-                          ? _focusPrimary
-                          : null,
-                      onArrowRight: _lastSecondaryAction?.onArrowRight,
-                    ),
-                  ],
-                ],
-              ),
+            Wrap(
+              spacing: 14,
+              runSpacing: 10,
+              children: [
+                for (
+                  var index = 0;
+                  index < visibleSecondaryActions.length;
+                  index++
+                )
+                  _NouveauCircleActionButton(
+                    action: visibleSecondaryActions[index],
+                    compact: true,
+                    onArrowLeft: index == 0
+                        ? primaryAction != null
+                              ? _focusPrimary
+                              : visibleSecondaryActions[index].onArrowLeft
+                        : () => _focusSecondary(index - 1),
+                    onArrowRight: index < visibleSecondaryActions.length - 1
+                        ? () => _focusSecondary(index + 1)
+                        : overflowActions.isNotEmpty
+                        ? _focusOverflow
+                        : visibleSecondaryActions[index].onArrowRight,
+                  ),
+                if (overflowActions.isNotEmpty)
+                  _NouveauMoreButton(
+                    focusNode: _overflowFocusNode,
+                    compact: true,
+                    onPressed: () => _showOverflowActions(context),
+                    onArrowUp:
+                        _lastSecondaryAction?.onArrowUp ??
+                        primaryAction?.onArrowUp,
+                    onArrowDown:
+                        _lastSecondaryAction?.onArrowDown ??
+                        primaryAction?.onArrowDown,
+                    onArrowLeft: visibleSecondaryActions.isNotEmpty
+                        ? () => _focusSecondary(
+                            visibleSecondaryActions.length - 1,
+                          )
+                        : primaryAction != null
+                        ? _focusPrimary
+                        : null,
+                    onArrowRight: _lastSecondaryAction?.onArrowRight,
+                  ),
+              ],
             ),
         ],
       ),

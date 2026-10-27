@@ -7333,7 +7333,12 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           isActive: true,
           activeColor: AppColorScheme.accent,
         ),
-      if (shows(DetailButton.watched))
+      // 27.10, Sid ("on peut du coup supprimer le bouton vu dans un
+      // cercle, pas que ça fasse doublon") - sur une page série, episodeWatched
+      // + seasonWatched couvrent déjà "vu"; ce bouton fait doublon avec eux
+      // maintenant qu'ils s'affichent vraiment. Reste pour film/épisode/
+      // livre/etc où c'est le seul bouton "vu" disponible.
+      if (!isSeries && shows(DetailButton.watched))
         DetailButton.watched: _DetailActionButton(
           // 09.10, Sid: "c'est la traduction qui déconne... il m'affiche
           // non vu" - this is an action button (toggles via

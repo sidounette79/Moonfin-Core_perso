@@ -543,6 +543,17 @@ class _HomeShellState extends State<_HomeShell>
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
+        // 27.10, Sid ("si je vais sur plus, ça affiche tout et qu'ensuite
+        // je fais le swipe de retour, ça me propose de fermer Moonfin, ça
+        // ne me renvoie pas à la page d'avant") - "Voir plus" n'est qu'un
+        // setState local, pas une vraie route, donc le retour tombait tout
+        // droit sur la confirmation de sortie de l'appli. Un retour
+        // replie d'abord la grille "Voir plus" quand elle est dépliée.
+        final contentRows = _contentRowsKey.currentState;
+        if (contentRows != null && contentRows._showAllLibraryTiles) {
+          contentRows.setState(() => contentRows._showAllLibraryTiles = false);
+          return;
+        }
         _showExitConfirmation(context);
       },
       child: Scaffold(

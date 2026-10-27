@@ -1,0 +1,36 @@
+name: Analyze CARBA TV
+
+# 27.10, Sid ("tout ce qui peut charger autre chose que mes NAS je
+# prends") - flutter analyze running locally via Docker on FUNMEDIA was
+# loading the NAS enough to starve other containers (Patoune TV's Postgres
+# queries stalling for minutes, event-loop heartbeat delays, restart loop)
+# during a long live debugging session. This workflow moves that check to
+# GitHub's own runners instead: no Android SDK/Gradle/signing, just the
+# Dart analyzer, so it's much faster than the real build workflow
+# (build-carba-android.yml) and never touches FUNMEDIA. Separate file for
+# the same reason build-carba-android.yml is its own file (see that
+# workflow's comment) - this one should run on every push, not only on
+# the conditions the full multi-platform build.yml shares.
+
+on:
+  push:
+    branches: [carba-tv-changes]
+
+env:
+  FLUTTER_VERSION: '3.47.2'
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
