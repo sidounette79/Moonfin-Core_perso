@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../widgets/focus/focusable_wrapper.dart';
+
 /// 26.10, Sid (captures Emby) : "Dans emby, je peux facilement changer les
 /// sous-titres ou l'audio. Il faudrait que ça soit lié au reprendre. Le
 /// audio devient déroulant aussi quand il existe" puis "Mais ça reste
@@ -13,6 +15,14 @@ import 'package:flutter/material.dart';
 /// vrai choix à faire - jamais de menu déroulant natif réimplémenté ici,
 /// juste l'apparence, pour rester compatible D-pad TV comme le reste de
 /// l'app.
+///
+/// 27.10, Sid ("j'ai bien la ligne pour audio et vidéo mais je peux pas
+/// l'atteindre à la télécommande") - les puces Audio/Sous-titres étaient
+/// tapables (InkWell) mais sans FocusNode, donc invisibles pour la
+/// navigation D-pad TV. FocusableWrapper est le même composant déjà
+/// utilisé pour la puce de tri de nouveau_collection_section.dart - gère
+/// focus visuel + onSelect (OK télécommande) + flèches, sans réinventer
+/// la logique.
 class NouveauTrackInfoBar extends StatelessWidget {
   final String videoLabel;
   final String audioTitle;
@@ -21,6 +31,14 @@ class NouveauTrackInfoBar extends StatelessWidget {
   final String subtitleTitle;
   final String? subtitleLabel;
   final VoidCallback? onSubtitleTap;
+
+  /// Where up/down go from whichever pill has focus - the caller wires
+  /// these into the page's own vertical D-pad chain (hero above, the
+  /// action buttons below).
+  final VoidCallback? onNavigateUp;
+  final VoidCallback? onNavigateDown;
+  final FocusNode? audioFocusNode;
+  final FocusNode? subtitleFocusNode;
 
   const NouveauTrackInfoBar({
     super.key,
@@ -31,7 +49,15 @@ class NouveauTrackInfoBar extends StatelessWidget {
     required this.subtitleTitle,
     this.subtitleLabel,
     this.onSubtitleTap,
+    this.onNavigateUp,
+    this.onNavigateDown,
+    this.audioFocusNode,
+    this.subtitleFocusNode,
   });
+
+  bool get _audioFocusable => audioLabel != null && onAudioTap != null;
+  bool get _subtitleFocusable =>
+      subtitleLabel != null && onSubtitleTap != null;
 
   @override
   Widget build(BuildContext context) {
@@ -48,12 +74,24 @@ class NouveauTrackInfoBar extends StatelessWidget {
               title: audioTitle,
               value: audioLabel!,
               onTap: onAudioTap,
+              focusNode: _audioFocusable ? audioFocusNode : null,
+              onNavigateUp: onNavigateUp,
+              onNavigateDown: onNavigateDown,
+              onNavigateRight: _subtitleFocusable
+                  ? () => subtitleFocusNode?.requestFocus()
+                  : null,
             ),
           if (subtitleLabel != null)
             _InfoField(
               title: subtitleTitle,
               value: subtitleLabel!,
               onTap: onSubtitleTap,
+              focusNode: _subtitleFocusable ? subtitleFocusNode : null,
+              onNavigateUp: onNavigateUp,
+              onNavigateDown: onNavigateDown,
+              onNavigateLeft: _audioFocusable
+                  ? () => audioFocusNode?.requestFocus()
+                  : null,
             ),
         ],
       ),
@@ -65,8 +103,22 @@ class _InfoField extends StatelessWidget {
   final String title;
   final String value;
   final VoidCallback? onTap;
+  final FocusNode? focusNode;
+  final VoidCallback? onNavigateUp;
+  final VoidCallback? onNavigateDown;
+  final VoidCallback? onNavigateLeft;
+  final VoidCallback? onNavigateRight;
 
-  const _InfoField({required this.title, required this.value, this.onTap});
+  const _InfoField({
+    required this.title,
+    required this.value,
+    this.onTap,
+    this.focusNode,
+    this.onNavigateUp,
+    this.onNavigateDown,
+    this.onNavigateLeft,
+    this.onNavigateRight,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -118,9 +170,23 @@ class _InfoField extends StatelessWidget {
       return content;
     }
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
+    if (focusNode == null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: content,
+      );
+    }
+
+    return FocusableWrapper(
+      focusNode: focusNode,
+      onSelect: onTap,
+      onNavigateUp: onNavigateUp,
+      onNavigateDown: onNavigateDown,
+      onNavigateLeft: onNavigateLeft,
+      onNavigateRight: onNavigateRight,
+      borderRadius: 999,
+      disableScale: true,
       child: content,
     );
   }

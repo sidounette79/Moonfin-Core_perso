@@ -6077,6 +6077,17 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
   final FocusNode _overflowFirstExtraFocusNode = FocusNode(
     debugLabel: 'detail_overflow_first_extra',
   );
+  // 27.10, Sid ("j'ai bien la ligne pour audio et vidéo mais je peux pas
+  // l'atteindre à la télécommande") - les deux puces tapables de la barre
+  // Vidéo/Audio/Sous-titres (nouveau_track_info_bar.dart) ont besoin de
+  // leur propre FocusNode stable pour entrer dans la chaîne de navigation
+  // D-pad, au même titre que les boutons d'action.
+  final FocusNode _audioTrackInfoFocusNode = FocusNode(
+    debugLabel: 'detail_track_info_audio',
+  );
+  final FocusNode _subtitleTrackInfoFocusNode = FocusNode(
+    debugLabel: 'detail_track_info_subtitle',
+  );
   final List<FocusNode> _primaryFocusNodes = [];
   final List<FocusNode> _extraFocusNodes = [];
 
@@ -6183,6 +6194,8 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     _localTvPlayFocusNode.dispose();
     _overflowMoreFocusNode.dispose();
     _overflowFirstExtraFocusNode.dispose();
+    _audioTrackInfoFocusNode.dispose();
+    _subtitleTrackInfoFocusNode.dispose();
     for (final node in _primaryFocusNodes) {
       node.dispose();
     }
@@ -6462,6 +6475,21 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       }
     } else {
       _focusTarget(widget.upTarget);
+    }
+  }
+
+  /// 27.10, Sid ("j'ai bien la ligne pour audio et vidéo mais je peux pas
+  /// l'atteindre à la télécommande") - entrée dans la barre Vidéo/Audio/
+  /// Sous-titres par le bas (depuis la rangée de boutons) : la puce
+  /// Sous-titres si elle existe, sinon la puce Audio.
+  void _focusTrackInfoBar({
+    required bool hasSubtitle,
+    required bool hasAudio,
+  }) {
+    if (hasSubtitle) {
+      _subtitleTrackInfoFocusNode.requestFocus();
+    } else if (hasAudio) {
+      _audioTrackInfoFocusNode.requestFocus();
     }
   }
 
@@ -7115,6 +7143,16 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       selectedSource,
     ).where((s) => s['Type'] == 'Audio').toList();
 
+    // 27.10, Sid ("j'ai bien la ligne pour audio et vidéo mais je peux pas
+    // l'atteindre à la télécommande") - mêmes conditions que les puces
+    // tapables plus bas (onAudioTap/onSubtitleTap), calculées ici pour que
+    // les boutons d'action sachent, en construisant leur propre onArrowUp,
+    // s'il y a une puce à atteindre au-dessus d'eux.
+    final hasFocusableAudioTrackInfo = audioStreams.length > 1;
+    final hasFocusableSubtitleTrackInfo = subtitleStreams.isNotEmpty;
+    final hasFocusableTrackInfoBar =
+        hasFocusableAudioTrackInfo || hasFocusableSubtitleTrackInfo;
+
     final canShowDownloadActions =
         _isDownloadable(item.type) && userCanDownload();
 
@@ -7670,11 +7708,15 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
               focusNode: primaryFocusNode,
               progress: playbackProgress,
               trailingLabel: remainingLabel,
-              onArrowUp:
-                  NavigationLayout.focusNavbarNotifier.value != null ||
-                      widget.upTarget != null
-                  ? _focusUpTarget
-                  : null,
+              onArrowUp: hasFocusableTrackInfoBar
+                  ? () => _focusTrackInfoBar(
+                      hasSubtitle: hasFocusableSubtitleTrackInfo,
+                      hasAudio: hasFocusableAudioTrackInfo,
+                    )
+                  : (NavigationLayout.focusNavbarNotifier.value != null ||
+                            widget.upTarget != null
+                        ? _focusUpTarget
+                        : null),
               onArrowDown: widget.downTarget != null
                   ? _focusDownTarget
                   : null,
@@ -7694,11 +7736,15 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         return _toNouveauAction(
           button,
           focusNode: _primaryFocusNode(focusIndex),
-          onArrowUp:
-              NavigationLayout.focusNavbarNotifier.value != null ||
-                  widget.upTarget != null
-              ? _focusUpTarget
-              : null,
+          onArrowUp: hasFocusableTrackInfoBar
+              ? () => _focusTrackInfoBar(
+                  hasSubtitle: hasFocusableSubtitleTrackInfo,
+                  hasAudio: hasFocusableAudioTrackInfo,
+                )
+              : (NavigationLayout.focusNavbarNotifier.value != null ||
+                        widget.upTarget != null
+                    ? _focusUpTarget
+                    : null),
           onArrowDown: widget.downTarget != null
               ? _focusDownTarget
               : null,
@@ -7800,6 +7846,14 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
               onSubtitleTap: subtitleStreams.isNotEmpty
                   ? () => _openSubtitleSelector(context, streamSourceItem)
                   : null,
+              audioFocusNode: _audioTrackInfoFocusNode,
+              subtitleFocusNode: _subtitleTrackInfoFocusNode,
+              onNavigateUp:
+                  NavigationLayout.focusNavbarNotifier.value != null ||
+                      widget.upTarget != null
+                  ? _focusUpTarget
+                  : null,
+              onNavigateDown: () => primaryFocusNode.requestFocus(),
             );
 
       final withDownloads = Column(
