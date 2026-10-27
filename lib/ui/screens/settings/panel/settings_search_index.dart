@@ -1765,6 +1765,12 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
         subtitle: l10n.settingsCheckForUpdatesSubtitle,
       ),
     about.leaf(
+      'ota_patch',
+      l10n.settingsCheckForOtaPatch,
+      subtitle: l10n.settingsCheckForOtaPatchSubtitleNoPatch,
+      keywords: ['shorebird', 'patch', 'ota', 'changelog', 'historique'],
+    ),
+    about.leaf(
       'report_issue',
       l10n.settingsReportAnIssue,
       subtitle: l10n.settingsReportAnIssueSubtitle,

@@ -6603,6 +6603,28 @@
     "settingsPrivacyPolicySubtitle": "Comment Moonfin gère vos données",
     "settingsCheckForUpdates": "Vérifier les mises à jour",
     "settingsCheckForUpdatesSubtitle": "Recherchez la dernière version de Moonfin",
+    "settingsCheckForOtaPatch": "Patch OTA (Shorebird)",
+    "settingsCheckForOtaPatchSubtitleWithPatch": "Patch actuel : n° {number}. Appuyez pour vérifier.",
+    "@settingsCheckForOtaPatchSubtitleWithPatch": {
+        "placeholders": {
+            "number": {
+                "type": "int"
+            }
+        }
+    },
+    "settingsCheckForOtaPatchSubtitleNoPatch": "Vérifier s'il y a un patch disponible",
+    "otaPatchUpToDate": "Patch à jour (n° {number}).",
+    "@otaPatchUpToDate": {
+        "placeholders": {
+            "number": {
+                "type": "int"
+            }
+        }
+    },
+    "otaPatchDownloaded": "Patch téléchargé. Redémarre l'app pour l'appliquer.",
+    "otaPatchRestartRequired": "Un patch est déjà téléchargé, redémarre l'app pour l'appliquer.",
+    "otaPatchCheckFailed": "Impossible de vérifier les patchs OTA pour le moment.",
+    "otaPatchUnavailable": "Les patchs OTA ne sont pas disponibles sur cette installation.",
     "settingsPoweredByFlutter": "Propulsé par Flutter",
     "settingsLicenseNoticesCount": "{count, plural, one {# mention de licence} other {# mentions de licence}}",
     "@settingsLicenseNoticesCount": {

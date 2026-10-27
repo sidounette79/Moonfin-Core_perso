@@ -84,6 +84,7 @@ import '../../theme/app_theme_controller.dart';
 import '../home/home_view_model.dart';
 import 'appearance_theme_screen.dart';
 import 'diagnostics_settings_screen.dart';
+import 'ota_patch_screen.dart';
 import 'download_settings_screen.dart';
 import 'saved_themes_screen.dart';
 import 'theme_store_screen.dart';

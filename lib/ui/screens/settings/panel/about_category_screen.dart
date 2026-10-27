@@ -38,6 +38,12 @@ class _AboutCategoryScreen extends StatelessWidget {
               if (AppDistribution.supportsInAppUpdates)
                 const _CheckForUpdatesTile(),
               _TvSettingsListTile(
+                leading: const Icon(Icons.system_update_alt),
+                title: Text(l10n.settingsCheckForOtaPatch),
+                subtitle: Text(l10n.settingsCheckForOtaPatchSubtitleNoPatch),
+                onTap: () => context.pushSettingsScreen(const OtaPatchScreen()),
+              ),
+              _TvSettingsListTile(
                 leading: const Icon(Icons.code),
                 title: Text(l10n.sourceCode),
                 subtitle: Text(l10n.sourceCodeUrl),

@@ -113,6 +113,12 @@ dependencies:
   punycoder: ^0.3.0
   collection: ^1.19.1
   package_info_plus: ^8.3.1
+  # 27.10, Sid ("on doit créer le bouton pour pouvoir manuellement lancer la
+  # màj OTA"): the existing "check for updates" tile only compares against
+  # the upstream Moonfin-Client/Moonfin-Core GitHub releases, which has
+  # nothing to do with this fork's Shorebird patches - needed to talk to
+  # Shorebird itself to offer a real manual patch check/apply button.
+  shorebird_code_push: ^2.0.7
   uuid: ^4.5.3
   cupertino_icons: ^1.0.9
   # Flutter bundles the older Material Icons font, which has no crown or owl

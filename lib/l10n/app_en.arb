@@ -9675,6 +9675,28 @@
   "settingsPrivacyPolicySubtitle": "How Moonfin handles your data",
   "settingsCheckForUpdates": "Check for Updates",
   "settingsCheckForUpdatesSubtitle": "Check for the latest Moonfin release",
+  "settingsCheckForOtaPatch": "OTA Patch (Shorebird)",
+  "settingsCheckForOtaPatchSubtitleWithPatch": "Current patch: #{number}. Tap to check.",
+  "@settingsCheckForOtaPatchSubtitleWithPatch": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsCheckForOtaPatchSubtitleNoPatch": "Check whether a patch is available",
+  "otaPatchUpToDate": "Patch up to date (#{number}).",
+  "@otaPatchUpToDate": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "otaPatchDownloaded": "Patch downloaded. Restart the app to apply it.",
+  "otaPatchRestartRequired": "A patch is already downloaded, restart the app to apply it.",
+  "otaPatchCheckFailed": "Could not check for OTA patches right now.",
+  "otaPatchUnavailable": "OTA patches aren't available on this install.",
   "settingsPoweredByFlutter": "Powered by Flutter",
   "settingsLicenseNoticesCount": "{count, plural, one {# license notice} other {# license notices}}",
   "@settingsLicenseNoticesCount": {
