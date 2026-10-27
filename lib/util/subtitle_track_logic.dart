@@ -94,28 +94,30 @@ int? computeEffectiveSubtitleIndex({
     return -1;
   }
 
+  // 27.10, Sid: audio native -> only the "forced" track should ever kick
+  // in (the odd line of foreign dialogue inside an otherwise-native show);
+  // audio foreign -> a full subtitle track in her language, same as
+  // "flagged"/"always". Used to hard -1 on native audio, which meant a
+  // genuinely forced track (e.g. one subtitled scene in a French show)
+  // never got a chance to show either.
+  var foreignModeAudioIsNative = false;
   if (subtitleMode == SubtitleMode.foreign) {
     final activeAudio = activeAudioLanguage ?? '';
     final preferredAudio = preferredAudioLanguage.trim();
-    
-    bool isAudioNative;
+
     if (preferredAudio.isNotEmpty && preferredAudio != 'auto') {
       final preferredNormalized = normalizeLanguage(preferredAudio);
       final preferredIso3 = toIso3Language(preferredNormalized);
       final activeNormalized = normalizeLanguage(activeAudio);
       final activeIso3 = toIso3Language(activeNormalized);
-      isAudioNative = (preferredIso3 == activeIso3);
+      foreignModeAudioIsNative = (preferredIso3 == activeIso3);
     } else {
       final sysLang = ui.PlatformDispatcher.instance.locale.languageCode;
       final sysNormalized = normalizeLanguage(sysLang);
       final sysIso3 = toIso3Language(sysNormalized);
       final activeNormalized = normalizeLanguage(activeAudio);
       final activeIso3 = toIso3Language(activeNormalized);
-      isAudioNative = (sysIso3 == activeIso3);
-    }
-    
-    if (isAudioNative) {
-      return -1;
+      foreignModeAudioIsNative = (sysIso3 == activeIso3);
     }
   }
 
@@ -140,6 +142,10 @@ int? computeEffectiveSubtitleIndex({
       if (stream['IsDefault'] == true ||
           stream['IsForced'] == true ||
           (bothUnavailable && matchLang(stream['Language'], 'eng'))) {
+        candidates.add(stream);
+      }
+    } else if (subtitleMode == SubtitleMode.foreign && foreignModeAudioIsNative) {
+      if (stream['IsForced'] == true) {
         candidates.add(stream);
       }
     } else {

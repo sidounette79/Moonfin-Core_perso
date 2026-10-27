@@ -472,10 +472,31 @@ void main() {
         -1,
       );
     });
-    test('SubtitleMode.foreign keeps subtitles off when active audio language matches preferred audio language', () {
+    test('SubtitleMode.foreign only allows a forced track when active audio language matches preferred audio language', () {
+      // streams[Index: 2] is the one forced+default 'eng' track in the fixture.
       expect(
         computeEffectiveSubtitleIndex(
           subtitleStreams: streams,
+          selectedSubtitleIndex: null,
+          activePlaybackSubtitleIndex: null,
+          subtitleMode: SubtitleMode.foreign,
+          preferredLanguage: 'eng',
+          fallbackLanguage: '',
+          preferSdh: false,
+          pgsDirectPlay: true,
+          assDirectPlay: true,
+          preferredAudioLanguage: 'eng',
+          activeAudioLanguage: 'eng',
+        ),
+        2,
+      );
+    });
+    test('SubtitleMode.foreign keeps subtitles off on native audio when no forced track is available', () {
+      final noForced =
+          streams.where((s) => s['IsForced'] != true).toList();
+      expect(
+        computeEffectiveSubtitleIndex(
+          subtitleStreams: noForced,
           selectedSubtitleIndex: null,
           activePlaybackSubtitleIndex: null,
           subtitleMode: SubtitleMode.foreign,
