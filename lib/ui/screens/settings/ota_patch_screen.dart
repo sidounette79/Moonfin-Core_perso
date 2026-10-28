@@ -171,7 +171,11 @@ class _OtaPatchScreenState extends State<OtaPatchScreen> {
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     title: Text(entry.title),
-                    subtitle: Text(entry.date),
+                    subtitle: Text(
+                      entry.patchNumber != null
+                          ? '${entry.date} - patch n° ${entry.patchNumber}'
+                          : entry.date,
+                    ),
                   ),
                 ),
             ],
