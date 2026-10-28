@@ -465,7 +465,17 @@ class _NavigationLayoutState extends State<NavigationLayout>
     // spécial pour .left et s'en sort très bien, juste via le mécanisme
     // standard react-native-safe-area-context - donc Android fournit bien
     // la valeur, Flutter avait juste oublié de la lire ici).
-    final carBoxLeftInset = MediaQuery.paddingOf(context).left;
+    // 28.10: ce correctif ne concerne QUE la box voiture, confirmée par Sid
+    // comme tournant en build mobile ("j'utilise la version mobile et pas
+    // TV") - cantonné à la branche mobile pour que ce MediaQuery.paddingOf
+    // ne touche jamais le rendu TV/Desktop, après un signalement de barre
+    // latérale TV coupée au bord gauche qui pourrait être lié à un inset
+    // système mal remonté sur ce boîtier.
+    final isTvOrDesktop = PlatformDetection.isTV ||
+        (PlatformDetection.isDesktop ||
+            (PlatformDetection.isWeb && !PlatformDetection.useMobileUi));
+    final carBoxLeftInset =
+        isTvOrDesktop ? 0.0 : MediaQuery.paddingOf(context).left;
     final content = carBoxLeftInset > 0
         ? Padding(
             padding: EdgeInsets.only(left: carBoxLeftInset),
@@ -494,7 +504,7 @@ class _NavigationLayoutState extends State<NavigationLayout>
       ),
     );
 
-    if (PlatformDetection.isTV || (PlatformDetection.isDesktop || (PlatformDetection.isWeb && !PlatformDetection.useMobileUi))) {
+    if (isTvOrDesktop) {
       return Column(
         children: [
           Expanded(
