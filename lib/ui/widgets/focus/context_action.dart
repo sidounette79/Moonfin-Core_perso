@@ -123,9 +123,16 @@ List<ItemContextAction> contextActionsFor(
       },
     ));
 
+    // 28.10, Sid: confirmed in practice - an item can carry a non-zero
+    // resume position while already marked played (e.g. a rewatch in
+    // progress), and that combination was invisible to this condition, so
+    // the option to hide it from Continue Watching just didn't show up for
+    // those. Only the local hide-preference matters for a played item -
+    // forcing setPlayed(false) on something the user already marked
+    // watched would silently un-mark it, which isn't what hiding a stray
+    // resume position should do.
     final hasProgress = item.playbackPositionTicks != null &&
-        item.playbackPositionTicks! > 0 &&
-        !item.isPlayed;
+        item.playbackPositionTicks! > 0;
     if (hasProgress) {
       actions.add(ItemContextAction(
         icon: Icons.visibility_off_outlined,
@@ -137,9 +144,11 @@ List<ItemContextAction> contextActionsFor(
           } else {
             await prefs.hideFromContinueWatching(item.id);
           }
-          try {
-            await mutations.setPlayed(item.id, isPlayed: false);
-          } catch (_) {}
+          if (!item.isPlayed) {
+            try {
+              await mutations.setPlayed(item.id, isPlayed: false);
+            } catch (_) {}
+          }
           onChanged?.call();
         },
       ));
