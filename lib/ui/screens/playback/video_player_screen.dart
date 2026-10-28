@@ -6882,64 +6882,58 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         child: ListView(
           shrinkWrap: true,
           children: [
-            for (final (button, widget) in entries)
+            for (final (index, (button, widget)) in entries.indexed)
               Builder(
                 builder: (_) {
                   final extracted = _extractControlButtonOnPressed(widget);
-                  final row = Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    child: Row(
-                      children: [
-                        // Whole-row tap only where the callback could be
-                        // pulled out; otherwise the widget keeps handling
-                        // its own tap (icon-only, still works) instead of
-                        // being muted with no row-level fallback.
-                        extracted == null ? widget : IgnorePointer(child: widget),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Text(
-                            button.label(l10n),
-                            style: const TextStyle(color: Colors.white),
+                  // No callback to hand _OsdMenuRow (the volume/quality/zoom
+                  // popups, SyncPlay's own button) - the widget keeps
+                  // handling its own tap and focus, icon-only, same as
+                  // before. Still correctly D-pad focusable on its own
+                  // (_TvFocusButton owns its FocusNode independently of
+                  // being wrapped below), just not full-row highlighted.
+                  if (extracted == null) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        children: [
+                          widget,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              button.label(l10n),
+                              style: const TextStyle(color: Colors.white),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    );
+                  }
+                  return _OsdMenuRow(
+                    icon: button.icon,
+                    // IgnorePointer blocks the embedded widget's own touch
+                    // handling (so it can't double-fire alongside
+                    // _OsdMenuRow's tap/key handling below); ExcludeFocus
+                    // keeps its own FocusNode (e.g. a wrapped
+                    // _TvFocusButton) out of D-pad traversal too, so each
+                    // row is a single focus stop instead of two.
+                    iconWidget: ExcludeFocus(child: IgnorePointer(child: widget)),
+                    label: button.label(l10n),
+                    onTap: () => _handleControlButtonPress(extracted),
+                    autofocus: index == 0,
                   );
-                  return extracted == null
-                      ? row
-                      : InkWell(
-                          onTap: () => _handleControlButtonPress(extracted),
-                          child: row,
-                        );
                 },
               ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 4,
-              ),
-              child: Row(
-                children: [
-                  _controlButton(
-                    Icons.settings,
-                    onPressed: () {
-                      Navigator.of(sheetContext).pop();
-                      SettingsPanel.open(context, const SettingsSidePanel());
-                    },
-                    tooltip: l10n.settings,
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      l10n.settings,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
+            _OsdMenuRow(
+              icon: Icons.settings,
+              label: l10n.settings,
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                SettingsPanel.open(context, const SettingsSidePanel());
+              },
             ),
             const SizedBox(height: 8),
           ],
@@ -7396,15 +7390,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       // vertical position) rather than rebuilding it inline.
       final appearanceRow = audio
           ? null
-          : ListTile(
-              leading: const Icon(Icons.text_fields, color: Colors.white),
-              title: Text(
-                l10n.subtitleCustomization,
-                style: const TextStyle(color: Colors.white),
-              ),
+          : _OsdMenuRow(
+              icon: Icons.text_fields,
+              label: l10n.subtitleCustomization,
               trailing: const Icon(
                 Icons.chevron_right,
                 color: Colors.white54,
+                size: 20,
               ),
               onTap: () => unawaited(
                 context.pushSettingsScreen(
@@ -8064,6 +8056,93 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       ),
     );
     _showControls();
+  }
+}
+
+/// A full-row, D-pad-focusable menu row for the player's quick sheets (OSD
+/// "more" menu, subtitle track picker footer). 28.10, Sid: confirmed the
+/// menu rows weren't fully tappable/focusable - this follows the same
+/// Focus + onKeyEvent(select/enter) + visible-highlight pattern already
+/// proven by _TrackRow in track_selector_dialog.dart, rather than leaving
+/// rows to whatever a plain ListTile/InkWell happens to do with a TV remote.
+class _OsdMenuRow extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool autofocus;
+  /// Replaces the plain [icon] rendering when the caller already has a
+  /// built widget to show (e.g. a state-driven icon like the favorite
+  /// heart or the current playback speed).
+  final Widget? iconWidget;
+  final Widget? trailing;
+
+  const _OsdMenuRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.autofocus = false,
+    this.iconWidget,
+    this.trailing,
+  });
+
+  @override
+  State<_OsdMenuRow> createState() => _OsdMenuRowState();
+}
+
+class _OsdMenuRowState extends State<_OsdMenuRow> {
+  final _focusNode = FocusNode();
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() {
+      if (!mounted) return;
+      setState(() => _focused = _focusNode.hasFocus);
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      focusNode: _focusNode,
+      autofocus: widget.autofocus,
+      onKeyEvent: (_, event) {
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        if (event.logicalKey == LogicalKeyboardKey.select ||
+            event.logicalKey == LogicalKeyboardKey.enter) {
+          widget.onTap();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          color: _focused ? Colors.white.withValues(alpha: 0.15) : Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              widget.iconWidget ?? Icon(widget.icon, color: Colors.white, size: 24),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  widget.label,
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                ),
+              ),
+              if (widget.trailing != null) widget.trailing!,
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
