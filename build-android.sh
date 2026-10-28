@@ -167,6 +167,7 @@ if [ "$SHOREBIRD_MODE" = "patch" ]; then
     --build-name "$APP_VERSION" \
     --build-number "$APP_BUILD_NUMBER" \
     --dart-define=DISTRIBUTION_CHANNEL=apk \
+    --dart-define=NAS_DIAGNOSTICS_KEY="${NAS_DIAGNOSTICS_KEY:-}" \
     --allow-asset-diffs
 
   echo "Publishing Shorebird OTA patch - androidTv flavor..."
@@ -176,6 +177,7 @@ if [ "$SHOREBIRD_MODE" = "patch" ]; then
     --build-number "$TV_BUILD_NUMBER" \
     --dart-define=MOONFIN_FORCE_TV=true \
     --dart-define=DISTRIBUTION_CHANNEL=android_tv_apk \
+    --dart-define=NAS_DIAGNOSTICS_KEY="${NAS_DIAGNOSTICS_KEY:-}" \
     --allow-asset-diffs
 
   echo "Both OTA patches published - a patch has no APK/AAB artifact to upload (it's a binary diff pushed straight to Shorebird's servers), nothing else to do."
@@ -189,14 +191,16 @@ if [ "$SHOREBIRD_MODE" = "release" ]; then
     --flavor mobile \
     --build-name "$APP_VERSION" \
     --build-number "$APP_BUILD_NUMBER" \
-    --dart-define=DISTRIBUTION_CHANNEL=apk
+    --dart-define=DISTRIBUTION_CHANNEL=apk \
+    --dart-define=NAS_DIAGNOSTICS_KEY="${NAS_DIAGNOSTICS_KEY:-}"
   MOBILE_RELEASE_SKIPPED="$SHOREBIRD_RELEASE_SKIPPED"
 else
   "$FLUTTER" build apk --release \
     --flavor mobile \
     --build-name "$APP_VERSION" \
     --build-number "$APP_BUILD_NUMBER" \
-    --dart-define=DISTRIBUTION_CHANNEL=apk
+    --dart-define=DISTRIBUTION_CHANNEL=apk \
+    --dart-define=NAS_DIAGNOSTICS_KEY="${NAS_DIAGNOSTICS_KEY:-}"
 fi
 
 if [ "$MOBILE_RELEASE_SKIPPED" = "1" ]; then
@@ -239,7 +243,8 @@ else
     --flavor mobile \
     --build-name "$APP_VERSION" \
     --build-number "$APP_BUILD_NUMBER" \
-    --dart-define=DISTRIBUTION_CHANNEL=aab; then
+    --dart-define=DISTRIBUTION_CHANNEL=aab \
+    --dart-define=NAS_DIAGNOSTICS_KEY="${NAS_DIAGNOSTICS_KEY:-}"; then
     echo "Flutter appbundle build failed. Retrying with Gradle bundleRelease fallback..."
     (
       cd "$REPO_ROOT/android"
@@ -273,7 +278,8 @@ if [ "$SHOREBIRD_MODE" = "release" ]; then
     --build-name "$TV_VERSION" \
     --build-number "$TV_BUILD_NUMBER" \
     --dart-define=MOONFIN_FORCE_TV=true \
-    --dart-define=DISTRIBUTION_CHANNEL=android_tv_apk
+    --dart-define=DISTRIBUTION_CHANNEL=android_tv_apk \
+    --dart-define=NAS_DIAGNOSTICS_KEY="${NAS_DIAGNOSTICS_KEY:-}"
   TV_RELEASE_SKIPPED="$SHOREBIRD_RELEASE_SKIPPED"
 else
   "$FLUTTER" build apk --release \
@@ -281,7 +287,8 @@ else
     --build-name "$TV_VERSION" \
     --build-number "$TV_BUILD_NUMBER" \
     --dart-define=MOONFIN_FORCE_TV=true \
-    --dart-define=DISTRIBUTION_CHANNEL=android_tv_apk
+    --dart-define=DISTRIBUTION_CHANNEL=android_tv_apk \
+    --dart-define=NAS_DIAGNOSTICS_KEY="${NAS_DIAGNOSTICS_KEY:-}"
 fi
 
 if [ "$TV_RELEASE_SKIPPED" = "1" ]; then
@@ -313,7 +320,8 @@ elif ! "$FLUTTER" build appbundle --release \
   --build-name "$TV_VERSION" \
   --build-number "$TV_BUILD_NUMBER" \
   --dart-define=MOONFIN_FORCE_TV=true \
-  --dart-define=DISTRIBUTION_CHANNEL=android_tv_aab; then
+  --dart-define=DISTRIBUTION_CHANNEL=android_tv_aab \
+  --dart-define=NAS_DIAGNOSTICS_KEY="${NAS_DIAGNOSTICS_KEY:-}"; then
   echo "Flutter appbundle build failed. Retrying with Gradle bundleAndroidTvRelease fallback..."
   (
     cd "$REPO_ROOT/android"

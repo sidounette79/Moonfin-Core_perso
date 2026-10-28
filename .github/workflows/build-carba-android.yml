@@ -93,6 +93,10 @@ jobs:
       - name: Build
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+          # 28.10: shared secret for the NAS diagnostics receiver
+          # (log_service.dart's uploadToNas) - baked in via --dart-define
+          # in build-android.sh, never hardcoded in source.
+          NAS_DIAGNOSTICS_KEY: ${{ secrets.NAS_DIAGNOSTICS_KEY }}
           # 09.10: a version tag (2.6.1, ...) = real release (new OTA base,
           # needs reinstall). A plain branch push = OTA patch of the
           # existing release, the everyday case. Manual run uses whatever

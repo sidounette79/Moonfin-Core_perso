@@ -27,6 +27,7 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
   LogService get _log => GetIt.instance<LogService>();
 
   bool _uploading = false;
+  bool _uploadingToNas = false;
   LogCategory? _filter;
 
   Future<void> _sendReport() async {
@@ -46,6 +47,22 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
       _showSnack('Could not send report: $detail');
     } finally {
       if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<void> _sendReportToNas() async {
+    setState(() => _uploadingToNas = true);
+    ArtworkTimings.prepareReport();
+    try {
+      final fileName = await _log.uploadToNas();
+      if (!mounted) return;
+      _showSnack('Report sent to NAS: $fileName');
+    } catch (e) {
+      if (!mounted) return;
+      final detail = describeError(e, AppLocalizations.of(context));
+      _showSnack('Could not send report to NAS: $detail');
+    } finally {
+      if (mounted) setState(() => _uploadingToNas = false);
     }
   }
 
@@ -176,6 +193,25 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
                       )
                     : null,
                 onTap: _sendReport,
+              ),
+              _ActionTile(
+                icon: Icons.dns_outlined,
+                title: 'Send report to NAS',
+                subtitle: !enabled
+                    ? 'Enable diagnostic logging first.'
+                    : !hasEntries
+                        ? 'No entries captured yet.'
+                        : 'Upload the captured logs straight to Claude\'s NAS '
+                            'receiver (CARBA TV diagnostics).',
+                enabled: enabled && hasEntries && !_uploadingToNas,
+                trailing: _uploadingToNas
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : null,
+                onTap: _sendReportToNas,
               ),
               _ActionTile(
                 icon: Icons.copy_all,

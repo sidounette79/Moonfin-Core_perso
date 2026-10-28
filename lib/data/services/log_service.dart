@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
@@ -344,6 +346,47 @@ class LogService extends ChangeNotifier {
       level: LogLevel.info,
     );
     return fileName;
+  }
+
+  // 28.10, Sid ("faire en sorte que ca arrive chez toi - enfin sur mon NAS
+  // comme ca tu vois direct"): separate from the server upload above - a
+  // minimal receiver on FUNMEDIA so a report lands directly as a file
+  // Claude can read, with no server-side plugin/support needed. The shared
+  // secret is injected at build time via --dart-define (same mechanism as
+  // the Android signing secrets in build-android.sh) - never hardcoded in
+  // source, this repo is pushed to GitHub even if it's a private-ish fork.
+  static const _nasDiagnosticsUrl = 'http://192.168.178.184:8942/diagnostics';
+  static const _nasDiagnosticsKey = String.fromEnvironment(
+    'NAS_DIAGNOSTICS_KEY',
+  );
+
+  /// Uploads the current report straight to the NAS diagnostics receiver,
+  /// independent of whether a media server is even configured.
+  Future<String> uploadToNas() async {
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+    try {
+      final request = await client.postUrl(Uri.parse(_nasDiagnosticsUrl));
+      request.headers.set('X-Diagnostics-Key', _nasDiagnosticsKey);
+      request.headers.set('X-Device-Name', defaultTargetPlatform.name);
+      request.headers.contentType = ContentType.text;
+      final body = exportText();
+      request.add(utf8.encode(body));
+      final response = await request.close().timeout(const Duration(seconds: 15));
+      final responseBody = await response.transform(utf8.decoder).join();
+      if (response.statusCode != 200) {
+        throw StateError(
+          'NAS rejected the report (${response.statusCode}): $responseBody',
+        );
+      }
+      log(
+        LogCategory.general,
+        'Diagnostic report sent to NAS: $responseBody',
+        level: LogLevel.info,
+      );
+      return responseBody;
+    } finally {
+      client.close(force: true);
+    }
   }
 
   @override
