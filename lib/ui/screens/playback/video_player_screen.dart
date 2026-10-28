@@ -22,6 +22,7 @@ import '../../../data/utils/video_range_label.dart';
 import '../../../playback/subtitle_style.dart';
 import '../../../util/fullscreen_helper.dart';
 import '../../../util/scroll_sensitivity_binding.dart';
+import '../../widgets/overlay_sheet.dart';
 import '../../widgets/player_volume_control.dart';
 import '../../widgets/settings/settings_panel.dart';
 import '../settings/settings_side_panel.dart';
@@ -5889,29 +5890,52 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             ),
         };
 
-        // 29.09, Sid: "accessoirement aussi depuis le lecteur pour régler
-        // les boutons" - same reasoning as _settingsActionButton on the
-        // detail page: opening Settings normally shows Home behind the
-        // dialog, not the page actually being tuned. Fixed, not part of the
-        // OsdButton switch/prefs system on purpose - it should never be
-        // hideable, unlike the buttons around it.
-        final settingsButton = _controlButton(
+        // 28.10, Sid ("Moonfin, trop de trucs, faut regroupe certains dans
+        // un truc paramètres" / comparing to Emby's bar: only subtitles,
+        // audio and chapters shown directly, everything else behind one
+        // gear): the row used to show every enabled OsdButton flat, nine-
+        // plus icons wide on her phone. Now only these three stay in the
+        // row; every other currently-enabled button (still respecting her
+        // per-button on/off switches in Réglages > Lecture > barre OSD)
+        // moves into a sheet opened from the gear, alongside the deeper app
+        // settings - same reasoning as the removed comment below for why
+        // the gear itself stays fixed, not part of the OsdButton prefs.
+        const primaryOsdButtons = {
+          OsdButton.chapters,
+          OsdButton.subtitles,
+          OsdButton.audio,
+        };
+
+        final orderedButtons = osdButtonLayout.ordered(
+          OsdButton.values,
+          (button) => button.id,
+          _prefs,
+        );
+
+        final primaryButtonWidgets = <Widget>[
+          for (final button in orderedButtons)
+            if (primaryOsdButtons.contains(button) && byButton[button] != null)
+              byButton[button]!,
+        ];
+
+        final overflowEntries = <(OsdButton, Widget)>[
+          for (final button in orderedButtons)
+            if (!primaryOsdButtons.contains(button) && byButton[button] != null)
+              (button, byButton[button]!),
+        ];
+
+        final moreButton = _controlButton(
           Icons.settings,
           onPressed: () =>
-              SettingsPanel.open(context, const SettingsSidePanel()),
+              unawaited(_showOsdMoreSheet(context, l10n, overflowEntries)),
           size: secondaryIconSize,
           extent: secondaryExtent,
           tooltip: l10n.settings,
         );
 
         final secondaryButtons = _wireTvSecondaryEnds([
-          for (final button in osdButtonLayout.ordered(
-            OsdButton.values,
-            (button) => button.id,
-            _prefs,
-          ))
-            ?byButton[button],
-          settingsButton,
+          ...primaryButtonWidgets,
+          moreButton,
         ]);
 
         final orderedSecondaryButtons = PlatformDetection.isTV
@@ -6818,6 +6842,76 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           ],
         );
       },
+    );
+  }
+
+  /// 28.10, Sid: the gear's quick menu for everything that isn't subtitles/
+  /// audio/chapters - reuses the exact same button widgets already built
+  /// for the row (same onPressed, same state-driven icon), just laid out
+  /// with a label next to each instead of bare in a scrolling row. "App
+  /// settings" at the bottom keeps the old behaviour reachable, now nested
+  /// one tap deeper instead of occupying its own row icon.
+  Future<void> _showOsdMoreSheet(
+    BuildContext context,
+    AppLocalizations l10n,
+    List<(OsdButton, Widget)> entries,
+  ) async {
+    await showFocusRestoringModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.black.withValues(alpha: 0.9),
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final (button, widget) in entries)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                child: Row(
+                  children: [
+                    widget,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        button.label(l10n),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 4,
+              ),
+              child: Row(
+                children: [
+                  _controlButton(
+                    Icons.settings,
+                    onPressed: () {
+                      Navigator.of(sheetContext).pop();
+                      SettingsPanel.open(context, const SettingsSidePanel());
+                    },
+                    tooltip: l10n.settings,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      l10n.settings,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
   }
 

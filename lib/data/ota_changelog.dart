@@ -23,6 +23,18 @@ class OtaChangelogEntry {
 /// displayed version.
 const otaChangelog = [
   OtaChangelogEntry(
+    date: '28.10',
+    title:
+        'Lecteur : la barre ne garde plus que sous-titres/audio/chapitres '
+        'directement visibles - tout le reste (vitesse, zoom, cast, info...) '
+        'est maintenant regroupé dans le bouton réglages (comme Emby).',
+  ),
+  OtaChangelogEntry(
+    date: '28.10',
+    title: 'Diagnostics : nouveau bouton "Send report to NAS", envoi direct '
+        'via Tailscale, en plus de l\'envoi serveur existant.',
+  ),
+  OtaChangelogEntry(
     date: '28.10 07h10',
     title:
         'Réglages > À propos nettoyé : retiré tout ce qui pointait vers le '
