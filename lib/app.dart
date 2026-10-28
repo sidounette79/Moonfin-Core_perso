@@ -38,7 +38,6 @@ import 'ui/navigation/destinations.dart';
 import 'ui/navigation/home_refresh_bus.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/theme/app_theme_controller.dart';
-import 'ui/widgets/app_update_banner.dart';
 import 'ui/widgets/cast_mini_player.dart';
 import 'ui/widgets/offline_banner.dart';
 import 'ui/widgets/server_messages_dialog.dart';
@@ -282,7 +281,6 @@ class _MoonfinAppState extends State<MoonfinApp> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         OfflineBanner(),
-                                        AppUpdateBanner(),
                                       ],
                                     ),
                                   ),

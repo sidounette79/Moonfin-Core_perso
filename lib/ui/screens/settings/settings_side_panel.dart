@@ -40,10 +40,8 @@ import '../../../util/playback_time_label.dart';
 import '../../../util/tv_image_cache_stub.dart'
     if (dart.library.io) '../../../util/tv_image_cache_io.dart';
 import '../../../util/app_beta.dart';
-import '../../../util/app_distribution.dart';
 import '../../../util/pin_code_util.dart';
 import '../../widgets/pin_entry_dialog.dart';
-import '../../widgets/app_update_dialog.dart';
 
 import '../../../auth/store/authentication_preferences.dart';
 import '../../../auth/repositories/session_repository.dart';
@@ -77,7 +75,6 @@ import '../../widgets/settings/settings_panel.dart';
 import '../../widgets/settings/settings_section_header.dart';
 import '../../widgets/bottom_nav/bottom_nav_destinations.dart';
 import '../../widgets/navigation_layout.dart';
-import '../../widgets/support_dialog.dart';
 import '../../widgets/trickplay_settings_preview.dart';
 import '../../widgets/focus/request_initial_focus.dart';
 import '../../theme/app_theme_controller.dart';

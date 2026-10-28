@@ -1753,28 +1753,16 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
       'notifications',
     ]),
 
-    about.screen(keywords: ['version', 'update', 'discord', 'license']),
+    about.screen(keywords: ['version', 'update']),
     if (PlatformDetection.useDesktopUi)
       shortcuts.screen(
         keywords: ['keys', 'hotkeys', 'keybind', 'keyboard', 'player'],
-      ),
-    if (AppDistribution.supportsInAppUpdates)
-      about.leaf(
-        'check_updates',
-        l10n.settingsCheckForUpdates,
-        subtitle: l10n.settingsCheckForUpdatesSubtitle,
       ),
     about.leaf(
       'ota_patch',
       l10n.settingsCheckForOtaPatch,
       subtitle: l10n.settingsCheckForOtaPatchSubtitleNoPatch,
       keywords: ['shorebird', 'patch', 'ota', 'changelog', 'historique'],
-    ),
-    about.leaf(
-      'report_issue',
-      l10n.settingsReportAnIssue,
-      subtitle: l10n.settingsReportAnIssueSubtitle,
-      keywords: ['bug', 'github'],
     ),
     about.leaf(
       'run_setup_again',
