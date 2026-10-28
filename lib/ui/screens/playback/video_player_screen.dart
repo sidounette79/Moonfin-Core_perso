@@ -25,6 +25,7 @@ import '../../../util/scroll_sensitivity_binding.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../widgets/player_volume_control.dart';
 import '../../widgets/settings/settings_panel.dart';
+import '../settings/subtitle_customization_screen.dart';
 import '../settings/settings_side_panel.dart';
 import '../../widgets/playback/playback_time_row.dart';
 import '../../widgets/playback/seek_icons.dart';
@@ -7341,27 +7342,60 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       if (!mounted) return;
 
       final delayLimits = delayLimitsFor(_activeBackend, audio: audio);
+      final delayFooter = delayLimits == null
+          ? null
+          : DelayFooter(
+              initialDelay: audio ? _audioDelay : _subtitleDelay,
+              label: audio ? l10n.audioDelay : l10n.subtitleDelay,
+              minDelay: delayLimits.$1,
+              maxDelay: delayLimits.$2,
+              autoOffset: audio
+                  ? 0.0
+                  : (_activeBackend?.subtitleAutoOffsetSeconds ?? 0.0),
+              autoOffsetStream:
+                  audio ? null : _activeBackend?.subtitleAutoOffsetStream,
+              onDelayChanged: (d) => _applyDelay(audio: audio, delay: d),
+              formatDelay: _formatDelay,
+            );
+      // 28.10, Sid: showing Emby's own subtitle menu as the reference -
+      // "Apparence des sous-titres" sits above the delay row there, same
+      // place here. Opens the existing full customization screen (already
+      // has every control she asked for: size, colors, background,
+      // vertical position) rather than rebuilding it inline.
+      final appearanceRow = audio
+          ? null
+          : ListTile(
+              leading: const Icon(Icons.text_fields, color: Colors.white),
+              title: Text(
+                l10n.subtitleCustomization,
+                style: const TextStyle(color: Colors.white),
+              ),
+              trailing: const Icon(
+                Icons.chevron_right,
+                color: Colors.white54,
+              ),
+              onTap: () => unawaited(
+                context.pushSettingsScreen(
+                  const SubtitleCustomizationScreen(),
+                ),
+              ),
+            );
+      final footer = (appearanceRow == null && delayFooter == null)
+          ? null
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (appearanceRow != null) appearanceRow,
+                if (delayFooter != null) delayFooter,
+              ],
+            );
       final result = await TrackSelectorDialog.show(
         context,
         title: audio ? l10n.audioTrack : l10n.subtitleTrack,
         options: options,
         selectedIndex: selectedIndex,
         useRootNavigator: false,
-        footer: delayLimits == null
-            ? null
-            : DelayFooter(
-                initialDelay: audio ? _audioDelay : _subtitleDelay,
-                label: audio ? l10n.audioDelay : l10n.subtitleDelay,
-                minDelay: delayLimits.$1,
-                maxDelay: delayLimits.$2,
-                autoOffset: audio
-                    ? 0.0
-                    : (_activeBackend?.subtitleAutoOffsetSeconds ?? 0.0),
-                autoOffsetStream:
-                    audio ? null : _activeBackend?.subtitleAutoOffsetStream,
-                onDelayChanged: (d) => _applyDelay(audio: audio, delay: d),
-                formatDelay: _formatDelay,
-              ),
+        footer: footer,
       );
       _suppressBackNavigation();
       if (result == null || !mounted) return;
