@@ -359,7 +359,16 @@ class LogService extends ChangeNotifier {
   // (confirmed: "Ah non, au boulot" the first time this was tested), her
   // phone is already on the same tailnet, so this reaches FUNMEDIA from
   // anywhere without opening any port publicly.
-  static const _nasDiagnosticsUrl = 'http://100.112.31.45:8942/diagnostics';
+  // 28.10, soir: the TV boxes aren't on the tailnet at all (stock Google TV
+  // Streamer, nothing installed on it) - confirmed by Sid's own screenshot,
+  // a straight timeout to the Tailscale IP from the TV. They sit on the home
+  // LAN right next to FUNMEDIA though, so try the LAN IP first (fast, no
+  // VPN needed, works for the TV and for the phone at home) and only fall
+  // back to the Tailscale IP (for the phone away from home) if that fails.
+  static const _nasDiagnosticsLanUrl =
+      'http://192.168.178.184:8942/diagnostics';
+  static const _nasDiagnosticsTailscaleUrl =
+      'http://100.112.31.45:8942/diagnostics';
   static const _nasDiagnosticsKey = String.fromEnvironment(
     'NAS_DIAGNOSTICS_KEY',
   );
@@ -367,9 +376,17 @@ class LogService extends ChangeNotifier {
   /// Uploads the current report straight to the NAS diagnostics receiver,
   /// independent of whether a media server is even configured.
   Future<String> uploadToNas() async {
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
     try {
-      final request = await client.postUrl(Uri.parse(_nasDiagnosticsUrl));
+      return await _postToNas(_nasDiagnosticsLanUrl);
+    } catch (_) {
+      return _postToNas(_nasDiagnosticsTailscaleUrl);
+    }
+  }
+
+  Future<String> _postToNas(String url) async {
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
+    try {
+      final request = await client.postUrl(Uri.parse(url));
       request.headers.set('X-Diagnostics-Key', _nasDiagnosticsKey);
       request.headers.set('X-Device-Name', defaultTargetPlatform.name);
       request.headers.contentType = ContentType.text;
@@ -380,7 +397,7 @@ class LogService extends ChangeNotifier {
       // rejected every report with 413 until this was set explicitly.
       request.contentLength = bytes.length;
       request.add(bytes);
-      final response = await request.close().timeout(const Duration(seconds: 15));
+      final response = await request.close().timeout(const Duration(seconds: 10));
       final responseBody = await response.transform(utf8.decoder).join();
       if (response.statusCode != 200) {
         throw StateError(
@@ -389,7 +406,7 @@ class LogService extends ChangeNotifier {
       }
       log(
         LogCategory.general,
-        'Diagnostic report sent to NAS: $responseBody',
+        'Diagnostic report sent to NAS ($url): $responseBody',
         level: LogLevel.info,
       );
       return responseBody;
