@@ -5010,9 +5010,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // 28.10, Sid, comparing side-by-side TV vs mobile captures:
+                // "le play doit être au dessus de la barre et pas dans la
+                // zone en dessous" - TV used to put transport (play/pause/
+                // skip) and the secondary row side by side in one Row,
+                // both below the seekbar; mobile has always kept its
+                // transport controls (_buildCenterTransportControls, a
+                // separate overlay) above the bottom bar. Split TV the
+                // same way: transport above the seekbar, secondary row
+                // below - was _buildTvBottomControlsRow() combining both
+                // below the seekbar.
+                _buildTvTransportRowFocusWrapped(),
                 _buildSeekbar(),
                 const SizedBox(height: AppSpacing.spaceXs),
-                _buildTvBottomControlsRow(),
+                _buildTvSecondaryRowFocusWrapped(),
               ],
             ),
           ),
@@ -5139,11 +5150,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                                     ),
                                   );
                                   return KeyEventResult.handled;
+                                // 28.10: transport moved above the seekbar
+                                // and the secondary row stayed below it -
+                                // up/down swapped targets to match (was
+                                // down -> transport, up a no-op, when both
+                                // sat together below the seekbar).
                                 case LogicalKeyboardKey.arrowUp:
-                                  return KeyEventResult.handled;
-                                case LogicalKeyboardKey.arrowDown:
                                   if (_tvBottomPrimaryFocus.context != null) {
                                     _tvBottomPrimaryFocus.requestFocus();
+                                  }
+                                  return KeyEventResult.handled;
+                                case LogicalKeyboardKey.arrowDown:
+                                  if (_tvSecondaryFocus.context != null) {
+                                    _tvSecondaryFocus.requestFocus();
                                   }
                                   return KeyEventResult.handled;
                                 case LogicalKeyboardKey.select:
@@ -5626,7 +5645,33 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     );
   }
 
-  Widget _buildTvBottomControlsRow() {
+  // 28.10: transport now sits above the seekbar instead of sharing a row
+  // with the secondary buttons below it - down from here reaches the
+  // seekbar (was up from the combined row below it, inverted now that
+  // transport moved above).
+  Widget _buildTvTransportRowFocusWrapped() {
+    return Focus(
+      skipTraversal: true,
+      canRequestFocus: false,
+      onKeyEvent: (node, event) {
+        if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+          return KeyEventResult.ignored;
+        }
+        if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+          _tvSeekbarFocus.requestFocus();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: _buildTvTransportRow(),
+    );
+  }
+
+  /// Up from the secondary row (now below the seekbar) reaches it - mirrors
+  /// _buildTvTransportRowFocusWrapped() above the seekbar. Only wraps the
+  /// key handling for TV; _buildSecondaryControlsRow() itself is shared
+  /// with mobile and stays platform-agnostic.
+  Widget _buildTvSecondaryRowFocusWrapped() {
     return Focus(
       skipTraversal: true,
       canRequestFocus: false,
@@ -5640,14 +5685,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         }
         return KeyEventResult.ignored;
       },
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _buildTvTransportRow(),
-          const SizedBox(width: AppSpacing.spaceXs),
-          Expanded(child: _buildSecondaryControlsRow()),
-        ],
-      ),
+      child: _buildSecondaryControlsRow(),
     );
   }
 
