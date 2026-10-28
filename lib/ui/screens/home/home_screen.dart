@@ -4042,8 +4042,17 @@ class _ContentRowsState extends State<_ContentRows>
   /// [_buildLibraryTilesGrid] and this height computation MUST stay in sync
   /// (same tile size / spacing) or the outer virtualized list clips or
   /// leaves dead space, since this runs before that method actually renders.
+  // 28.10: espacement réel du Wrap, extrait en fonction partagée - était
+  // dupliqué en dur (12.0) ici ET dans _libraryGridChildHeight, pendant que
+  // le correctif de débordement au focus changeait le vrai espacement du
+  // Wrap sans toucher ces deux copies. Le nombre de tuiles par ligne
+  // calculé ici tombait alors trop haut, et le D-pad BAS (qui saute
+  // directement à l'index i + itemsPerLine) atterrissait sur la mauvaise
+  // tuile - signalé par Sid comme un saut "en diagonale".
+  double _libraryGridTileSpacing(double tileWidth) => 12.0 + tileWidth * 0.06;
+
   int _libraryGridItemsPerLine(double availableWidth, double tileWidth) {
-    const spacing = 12.0;
+    final spacing = _libraryGridTileSpacing(tileWidth);
     final perLine = ((availableWidth + spacing) / (tileWidth + spacing)).floor();
     return perLine < 1 ? 1 : perLine;
   }
@@ -4090,9 +4099,9 @@ class _ContentRowsState extends State<_ContentRows>
   }
 
   double _libraryGridChildHeight(HomeRow row, PosterSize posterSize) {
-    const spacing = 12.0;
     final metadataScale = _desktopUiScaleFactor();
     final squarePosterSide = _squarePosterSide(posterSize);
+    final spacing = _libraryGridTileSpacing(squarePosterSide);
     // 28.10, Sid ("est ce que les vignettes peuvent être rectangulaires au
     // lieu de carrée... et le nom de la bibliothèque écrit dessous et pas
     // dedans, sur le même modèle que continuer à regarder") - squarePosterSide
@@ -5351,8 +5360,8 @@ class _ContentRowsState extends State<_ContentRows>
           // tuiles d'autres grilles mais pas pour celles-ci, nettement plus
           // grandes (squarePosterSide) - calculé proportionnellement pour
           // toujours absorber le débordement, quelle que soit la taille.
-          spacing: 12.0 + squarePosterSide * 0.06,
-          runSpacing: 12.0 + squarePosterSide * 0.06,
+          spacing: _libraryGridTileSpacing(squarePosterSide),
+          runSpacing: _libraryGridTileSpacing(squarePosterSide),
           children: [
             for (final (i, item) in visibleItems.indexed)
               _buildLibraryGridTile(
