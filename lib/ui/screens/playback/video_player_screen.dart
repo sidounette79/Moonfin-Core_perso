@@ -2983,15 +2983,26 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         ? const Duration(seconds: 8)
         : const Duration(seconds: 5);
     _hideTimer = Timer(hideDelay, () {
-      if (mounted && _state.isPlaying) {
-        setState(() {
-          _controlsVisible = false;
-          if (PlatformDetection.isMobile &&
-              _prefs.get(UserPreferences.osdLockEnabled)) {
-            _isOsdLocked = true;
-          }
-        });
+      if (!mounted) return;
+      if (!_state.isPlaying) {
+        // 28.10, Sid: "parfois, après le lancement, [la barre] ne s'efface
+        // pas au bout de quelques secondes" - this is a one-shot Timer, and
+        // the old code did nothing when it fired mid-buffering (isPlaying
+        // still false right after launch is common). Nothing re-armed it
+        // once playback actually started, leaving the controls stuck
+        // visible until some unrelated interaction happened to call
+        // _showControls()/_scheduleHide() again. Retry instead of giving
+        // up, so it self-corrects as soon as isPlaying flips true.
+        _scheduleHide();
+        return;
       }
+      setState(() {
+        _controlsVisible = false;
+        if (PlatformDetection.isMobile &&
+            _prefs.get(UserPreferences.osdLockEnabled)) {
+          _isOsdLocked = true;
+        }
+      });
     });
   }
 
