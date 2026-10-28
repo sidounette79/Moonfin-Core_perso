@@ -25,6 +25,11 @@ class OtaChangelogEntry {
   /// publishes cancels it - several of 28.10's commits never shipped their
   /// own patch, only the last one of a batch does, bundling everything
   /// since the previous published patch).
+  ///
+  /// This is the MOBILE flavor's number - build-android.sh always publishes
+  /// mobile before androidTv in the same run, so TV's own number for the
+  /// same patch is consistently this minus 1 (confirmed 28.10 22h: mobile
+  /// 13 / TV 12). Not worth a second field for a number this derivable.
   final int? patchNumber;
 
   const OtaChangelogEntry({
@@ -50,67 +55,85 @@ class OtaChangelogEntry {
 /// last time.
 const otaChangelog = [
   OtaChangelogEntry(
+    date: '28.10 22h40',
+    patchNumber: 13,
+    title: 'Bibliothèque : le bouton tous/vu/non-vu perdait le focus après '
+        'chaque bascule (fallait remonter au D-pad pour re-toggler).',
+  ),
+  OtaChangelogEntry(
     date: '28.10 22h34',
+    patchNumber: 13,
     title: 'Accueil : chevron pour replier "Voir plus" des bibliothèques - '
         'le geste de retour natif ne le fermait pas, obligeant à sortir de '
         'l\'app.',
   ),
   OtaChangelogEntry(
     date: '28.10 22h22',
+    patchNumber: 13,
     title: 'Fond d\'écran : ne restait plus noir au retour d\'une fiche '
         'série/détail quand la sélection n\'avait pas changé (accueil et '
         'grille de bibliothèque).',
   ),
   OtaChangelogEntry(
     date: '28.10 22h18',
+    patchNumber: 13,
     title: 'Réglages bibliothèques/studios : bouton Enregistrer mis en '
         'avant (gros bouton), Tout sélectionner réduit en dessous.',
   ),
   OtaChangelogEntry(
     date: '28.10 22h14',
+    patchNumber: 13,
     title: 'Réglages bibliothèques/studios : les cases à cocher ne '
         'répondaient plus au D-pad TV (fonctionnaient seulement au tactile).',
   ),
   OtaChangelogEntry(
     date: '28.10 22h10',
+    patchNumber: 13,
     title: 'Accueil : grille "Mes bibliothèques" - espacement des tuiles au '
         'focus et saut D-pad BAS en diagonale corrigés.',
   ),
   OtaChangelogEntry(
     date: '28.10 21h59',
+    patchNumber: 13,
     title: 'Diagnostics : "Send report to NAS" essaie maintenant l\'IP du '
         'réseau local en premier (marche depuis la TV, pas seulement le '
         'téléphone via Tailscale).',
   ),
   OtaChangelogEntry(
     date: '28.10 21h39',
+    patchNumber: 13,
     title: 'Accueil : tuiles "Mes bibliothèques" rectangulaires, titre en '
         'dessous comme Continuer à regarder (au lieu du carré avec le nom '
         'par-dessus).',
   ),
   OtaChangelogEntry(
     date: '28.10 21h17',
+    patchNumber: 13,
     title: 'Logo Moonfin au lancement et sur les écrans serveur remplacé '
         'par celui de CARBA TV (oublié lors du nettoyage de ce matin).',
   ),
   OtaChangelogEntry(
     date: '28.10 20h38',
+    patchNumber: 13,
     title: 'Lecteur : chapitres affichés en bande de miniatures sous la '
         'barre (comme Emby), au lieu d\'une fenêtre flottante.',
   ),
   OtaChangelogEntry(
     date: '28.10 19h57',
+    patchNumber: 13,
     title: 'Lecteur TV : restructuré pour mettre lecture/pause au-dessus '
         'de la barre de progression (comme sur mobile), au lieu de les '
         'mélanger avec les icônes de la rangée du dessous.',
   ),
   OtaChangelogEntry(
     date: '28.10 17h07',
+    patchNumber: 13,
     title: 'Lecteur : la barre de contrôle restait parfois bloquée '
         'affichée au lieu de disparaître après quelques secondes.',
   ),
   OtaChangelogEntry(
     date: '28.10 15h07',
+    patchNumber: 13,
     title:
         'Patch OTA : bouton "Redémarrer maintenant" après téléchargement '
         'd\'un patch - plus besoin de fermer/rouvrir l\'app à la main '
@@ -120,12 +143,14 @@ const otaChangelog = [
   ),
   OtaChangelogEntry(
     date: '28.10 13h07',
+    patchNumber: 13,
     title:
         'Lecteur : lien "Apparence des sous-titres" dans le sélecteur de '
         'piste (comme Emby), ouvre l\'écran de personnalisation existant.',
   ),
   OtaChangelogEntry(
     date: '28.10 11h59',
+    patchNumber: 13,
     title:
         'Lecteur : la barre ne garde plus que sous-titres/audio/chapitres '
         'directement visibles - tout le reste (vitesse, zoom, cast, info...) '
@@ -133,6 +158,7 @@ const otaChangelog = [
   ),
   OtaChangelogEntry(
     date: '28.10 09h37',
+    patchNumber: 13,
     title: 'Diagnostics : nouveau bouton "Send report to NAS", envoi direct '
         'via Tailscale, en plus de l\'envoi serveur existant.',
   ),
