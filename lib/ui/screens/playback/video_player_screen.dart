@@ -5913,11 +5913,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         // moves into a sheet opened from the gear, alongside the deeper app
         // settings - same reasoning as the removed comment below for why
         // the gear itself stays fixed, not part of the OsdButton prefs.
-        const primaryOsdButtons = {
+        // 28.10, Sid: TV and mobile showed chapters/subtitles/audio in a
+        // different order from each other - osdButtonLayout.ordered()
+        // reads a per-platform saved preference (osdButtonOrderTv vs
+        // osdButtonOrderMobile), which happened to differ between the two
+        // from however she'd customized each one previously. A fixed list
+        // here keeps the primary row consistent everywhere regardless of
+        // that saved order; the overflow sheet below still honors it,
+        // where "my customized order" is a more meaningful idea.
+        const primaryOsdButtonOrder = [
           OsdButton.chapters,
           OsdButton.subtitles,
           OsdButton.audio,
-        };
+        ];
+        final primaryOsdButtons = primaryOsdButtonOrder.toSet();
 
         final orderedButtons = osdButtonLayout.ordered(
           OsdButton.values,
@@ -5926,9 +5935,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         );
 
         final primaryButtonWidgets = <Widget>[
-          for (final button in orderedButtons)
-            if (primaryOsdButtons.contains(button) && byButton[button] != null)
-              byButton[button]!,
+          for (final button in primaryOsdButtonOrder)
+            if (byButton[button] != null) byButton[button]!,
         ];
 
         final overflowEntries = <(OsdButton, Widget)>[
