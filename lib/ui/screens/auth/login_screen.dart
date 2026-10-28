@@ -587,7 +587,7 @@ class _LoginScreenState extends State<LoginScreen> {
         maxWidth: 600,
         header: Padding(
           padding: const EdgeInsets.only(bottom: 24),
-          child: Image.asset('assets/images/logo_and_text.png', height: 64),
+          child: Image.asset('assets/images/carba_tv_logo.png', height: 96),
         ),
         footer: AnimatedContainer(
           duration: const Duration(milliseconds: 180),

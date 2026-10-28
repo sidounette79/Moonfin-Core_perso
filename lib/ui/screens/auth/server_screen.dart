@@ -247,7 +247,7 @@ class _ServerScreenState extends State<ServerScreen> {
     return LoginScaffold(
       header: Padding(
         padding: const EdgeInsets.only(bottom: 24),
-        child: Image.asset('assets/images/logo_and_text.png', height: 80),
+        child: Image.asset('assets/images/carba_tv_logo.png', height: 120),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
