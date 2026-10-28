@@ -130,6 +130,16 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
   final _homeButtonFocusNode = FocusNode(debugLabel: 'library_home_button');
+  // 28.10, Sid ("on a créé un bouton toggle tout voir>vu>pas vu. Quand je
+  // clique dessus, ça fait son job mais après le sélecteur passe direct sur
+  // la première série de la liste") - FocusableToolbarButton has no
+  // focusNode of its own here, so it falls back to an internal one that
+  // doesn't survive the VM reload the filter change triggers (a new fetch,
+  // new grid). Giving it a node this State owns, and re-requesting it after
+  // that rebuild lands, keeps focus on the button across repeated toggles.
+  final _playedFilterFocusNode = FocusNode(
+    debugLabel: 'library_played_filter',
+  );
   Timer? _backdropDebounce;
   bool? _hasSubtitlesCache;
 
@@ -198,6 +208,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
     _searchController.dispose();
     _searchFocusNode.dispose();
     _homeButtonFocusNode.dispose();
+    _playedFilterFocusNode.dispose();
     _allLetterFocusNode.dispose();
     _backdropDebounce?.cancel();
     _backgroundSub?.cancel();
@@ -963,6 +974,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
                 onTvSearchKey: _onTvSearchKey,
                 isMusicBrowse: _vm.isMusicBrowse,
                 playedFilter: _vm.playedFilter,
+                playedFilterFocusNode: _playedFilterFocusNode,
                 searchController: _searchController,
                 searchFocusNode: _searchFocusNode,
                 onSearchChanged: (query) => _vm.setSearchQuery(query),
@@ -976,7 +988,17 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
                 onShuffle: _isSongsBrowse ? () => _shuffleSongsLibrary() : null,
                 isSongsBrowse: _isSongsBrowse,
                 onLetterChanged: (l) => _jumpToLetter(l),
-                onPlayedFilterChanged: (status) => _vm.setPlayedFilter(status),
+                onPlayedFilterChanged: (status) {
+                  _vm.setPlayedFilter(status);
+                  // 28.10, Sid: le rechargement déclenché par le changement
+                  // de filtre reconstruit la grille, ce qui perd le focus
+                  // interne du bouton - le réaffirme une fois le nouveau
+                  // rendu posé pour pouvoir re-toggler sans remonter au
+                  // D-pad.
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _playedFilterFocusNode.requestFocus();
+                  });
+                },
               ),
               Expanded(child: _buildBody()),
             ],
@@ -2130,6 +2152,7 @@ class _LibraryHeader extends StatelessWidget {
   final FocusNode? allLetterFocusNode;
   final bool isMusicBrowse;
   final PlayedStatusFilter playedFilter;
+  final FocusNode? playedFilterFocusNode;
   final VoidCallback? onGroupBy;
   final bool isMovieOrSeriesLibrary;
   final VoidCallback onBack;
@@ -2165,6 +2188,7 @@ class _LibraryHeader extends StatelessWidget {
     this.onTvSearchKey,
     this.isMusicBrowse = false,
     this.playedFilter = PlayedStatusFilter.all,
+    this.playedFilterFocusNode,
     this.onGroupBy,
     this.isMovieOrSeriesLibrary = false,
     required this.onBack,
@@ -2261,6 +2285,7 @@ class _LibraryHeader extends StatelessWidget {
               // the icon alone doesn't have to carry that meaning.
               SizedBox(width: 2 * desktopScale),
               FocusableToolbarButton(
+                focusNode: playedFilterFocusNode,
                 icon: switch (playedFilter) {
                   PlayedStatusFilter.all => Icons.check_circle_outline,
                   PlayedStatusFilter.watched => Icons.check_circle,
