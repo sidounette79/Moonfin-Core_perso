@@ -173,6 +173,20 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
   void didPopNext() {
     super.didPopNext();
     unawaited(_vm.syncUserDataIfStale());
+    // 28.10, Sid ("si je suis dans la page série... je rentre dans la
+    // fiche série et je reviens en arrière, le fond d'écran reste noir et
+    // ne redevient pas une projection de la série sélectionnée, je dois
+    // aller sur une autre pour que ça revienne") - the detail screen clears
+    // the shared BackgroundService on its own dispose, and the only thing
+    // that ever repopulates it here is _onItemFocused(), which only fires
+    // on an actual focus CHANGE. Returning to the same still-focused tile
+    // never re-triggers it.
+    if (_vm.focusedItem != null) {
+      _backgroundService.setBackground(
+        _vm.focusedItem,
+        context: BlurContext.browsing,
+      );
+    }
   }
 
   @override

@@ -486,7 +486,27 @@ class _HomeShellState extends State<_HomeShell>
     _maybeRegisterThemeMusic();
     if (_selectedItemNotifier.value != null) {
       _maybePlayThemeMusic(_selectedItemNotifier.value);
+      _restoreBackdropForSelection();
     }
+  }
+
+  // 28.10, Sid ("si je rentre dans la fiche série et que je reviens en
+  // arrière, le fond d'écran reste noir... je dois aller sur une autre pour
+  // que ça revienne") - the detail screen clears the shared
+  // BackgroundService on its own dispose (item_detail_screen.dart), and the
+  // only thing that ever re-populates it is onItemSelected(), which only
+  // fires on an actual focus/selection CHANGE. Returning to the same still-
+  // selected item never re-triggers it, so it stayed whatever the detail
+  // screen left it as - cleared. Theme music already re-asserts itself on
+  // return for the exact same reason; the backdrop needs the same
+  // treatment, from both return paths (go_router's _onRouteChanged and the
+  // RouteAware didPopNext below - which one actually fires depends on how
+  // the detail screen was opened).
+  void _restoreBackdropForSelection() {
+    _backgroundService.setBackground(
+      _selectedItemNotifier.value,
+      context: BlurContext.browsing,
+    );
   }
 
   @override
@@ -522,6 +542,7 @@ class _HomeShellState extends State<_HomeShell>
     _maybeRegisterThemeMusic();
     if (_selectedItemNotifier.value != null) {
       _maybePlayThemeMusic(_selectedItemNotifier.value);
+      _restoreBackdropForSelection();
     }
   }
 
