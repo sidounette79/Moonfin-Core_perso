@@ -355,7 +355,11 @@ class LogService extends ChangeNotifier {
   // secret is injected at build time via --dart-define (same mechanism as
   // the Android signing secrets in build-android.sh) - never hardcoded in
   // source, this repo is pushed to GitHub even if it's a private-ish fork.
-  static const _nasDiagnosticsUrl = 'http://192.168.178.184:8942/diagnostics';
+  // 28.10: Tailscale IP, not the LAN one - Sid is often away from home
+  // (confirmed: "Ah non, au boulot" the first time this was tested), her
+  // phone is already on the same tailnet, so this reaches FUNMEDIA from
+  // anywhere without opening any port publicly.
+  static const _nasDiagnosticsUrl = 'http://100.112.31.45:8942/diagnostics';
   static const _nasDiagnosticsKey = String.fromEnvironment(
     'NAS_DIAGNOSTICS_KEY',
   );
@@ -369,8 +373,13 @@ class LogService extends ChangeNotifier {
       request.headers.set('X-Diagnostics-Key', _nasDiagnosticsKey);
       request.headers.set('X-Device-Name', defaultTargetPlatform.name);
       request.headers.contentType = ContentType.text;
-      final body = exportText();
-      request.add(utf8.encode(body));
+      final bytes = utf8.encode(exportText());
+      // Without an explicit length, HttpClient sends chunked transfer
+      // encoding (no Content-Length header at all) - the NAS's minimal
+      // stdlib server only understands Content-Length, so it saw 0 and
+      // rejected every report with 413 until this was set explicitly.
+      request.contentLength = bytes.length;
+      request.add(bytes);
       final response = await request.close().timeout(const Duration(seconds: 15));
       final responseBody = await response.transform(utf8.decoder).join();
       if (response.statusCode != 200) {
