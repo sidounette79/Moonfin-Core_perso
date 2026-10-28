@@ -6846,19 +6846,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     );
   }
 
-  /// Pulls the onPressed back out of a widget `_controlButton` built, so the
-  /// whole row in the "more" sheet can be tapped instead of only the small
-  /// icon it returns. 28.10, Sid: "les éléments qui sont maintenant dans les
-  /// paramètres ne répondent pas" - confirmed, only the ~48px icon itself
-  /// was tappable, the label text beside it did nothing. Only knows the two
-  /// shapes `_controlButton` actually returns (TV vs touch); anything else
-  /// (the volume/quality/zoom popups, SyncPlay's own button) falls back to
-  /// null and keeps its original icon-only tap target - still works, just
-  /// not full-row yet.
+  /// Pulls the onPressed back out of a widget `_controlButton` (or
+  /// `_buildSpeedButton`) built, so the whole row in the "more" sheet can be
+  /// tapped instead of only the small icon it returns. 28.10, Sid confirmed
+  /// twice: first generally ("les éléments qui sont maintenant dans les
+  /// paramètres ne répondent pas"), then specifically for Speed ("ça marche
+  /// pas le clic sur le test") once the first two shapes were handled -
+  /// _buildSpeedButton wraps its InkWell in a Tooltip, a third shape this
+  /// hadn't covered yet. Anything still unmatched (the volume/quality/zoom
+  /// popups, SyncPlay's own button) falls back to null and keeps its
+  /// original icon-only tap target - still works, just not full-row.
   VoidCallback? _extractControlButtonOnPressed(Widget widget) {
     if (widget is _TvFocusButton) return widget.onPressed;
     if (widget is SizedBox && widget.child is IconButton) {
       return (widget.child! as IconButton).onPressed;
+    }
+    if (widget is SizedBox && widget.child is Tooltip) {
+      final tooltipChild = (widget.child! as Tooltip).child;
+      if (tooltipChild is InkWell) return tooltipChild.onTap;
     }
     return null;
   }
