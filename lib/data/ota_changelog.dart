@@ -25,6 +25,12 @@ const otaChangelog = [
   OtaChangelogEntry(
     date: '28.10',
     title:
+        'Lecteur : lien "Apparence des sous-titres" dans le sélecteur de '
+        'piste (comme Emby), ouvre l\'écran de personnalisation existant.',
+  ),
+  OtaChangelogEntry(
+    date: '28.10',
+    title:
         'Lecteur : la barre ne garde plus que sous-titres/audio/chapitres '
         'directement visibles - tout le reste (vitesse, zoom, cast, info...) '
         'est maintenant regroupé dans le bouton réglages (comme Emby).',

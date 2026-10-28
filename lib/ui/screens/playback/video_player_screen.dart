@@ -6846,6 +6846,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     );
   }
 
+  /// Pulls the onPressed back out of a widget `_controlButton` built, so the
+  /// whole row in the "more" sheet can be tapped instead of only the small
+  /// icon it returns. 28.10, Sid: "les éléments qui sont maintenant dans les
+  /// paramètres ne répondent pas" - confirmed, only the ~48px icon itself
+  /// was tappable, the label text beside it did nothing. Only knows the two
+  /// shapes `_controlButton` actually returns (TV vs touch); anything else
+  /// (the volume/quality/zoom popups, SyncPlay's own button) falls back to
+  /// null and keeps its original icon-only tap target - still works, just
+  /// not full-row yet.
+  VoidCallback? _extractControlButtonOnPressed(Widget widget) {
+    if (widget is _TvFocusButton) return widget.onPressed;
+    if (widget is SizedBox && widget.child is IconButton) {
+      return (widget.child! as IconButton).onPressed;
+    }
+    return null;
+  }
+
   /// 28.10, Sid: the gear's quick menu for everything that isn't subtitles/
   /// audio/chapters - reuses the exact same button widgets already built
   /// for the row (same onPressed, same state-driven icon), just laid out
@@ -6866,23 +6883,38 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           shrinkWrap: true,
           children: [
             for (final (button, widget) in entries)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                child: Row(
-                  children: [
-                    widget,
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        button.label(l10n),
-                        style: const TextStyle(color: Colors.white),
-                      ),
+              Builder(
+                builder: (_) {
+                  final extracted = _extractControlButtonOnPressed(widget);
+                  final row = Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
                     ),
-                  ],
-                ),
+                    child: Row(
+                      children: [
+                        // Whole-row tap only where the callback could be
+                        // pulled out; otherwise the widget keeps handling
+                        // its own tap (icon-only, still works) instead of
+                        // being muted with no row-level fallback.
+                        extracted == null ? widget : IgnorePointer(child: widget),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            button.label(l10n),
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  return extracted == null
+                      ? row
+                      : InkWell(
+                          onTap: () => _handleControlButtonPress(extracted),
+                          child: row,
+                        );
+                },
               ),
             Padding(
               padding: const EdgeInsets.symmetric(
