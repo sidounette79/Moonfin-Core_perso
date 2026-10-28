@@ -5370,6 +5370,13 @@ class _ContentRowsState extends State<_ContentRows>
       rowIndex: rowIndex,
       hasItems: row.items.isNotEmpty,
       height: childHeight,
+      trailing: (hasHidden || _showAllLibraryTiles)
+          ? _LibraryExpandToggle(
+              expanded: _showAllLibraryTiles,
+              onToggle: () =>
+                  setState(() => _showAllLibraryTiles = !_showAllLibraryTiles),
+            )
+          : null,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(_kHomeRowLabelInset, 5, 20, 5),
         child: Wrap(
@@ -6221,6 +6228,7 @@ class _ContentRowsState extends State<_ContentRows>
     required bool hasItems,
     required double height,
     required Widget child,
+    Widget? trailing,
   }) {
     final isRowsV2 = _isHomeRowsStyleV2();
     final showHeaderControls =
@@ -6291,6 +6299,7 @@ class _ContentRowsState extends State<_ContentRows>
                     ),
                   ),
                 ],
+                if (trailing != null) trailing,
               ],
             ),
           ),
@@ -7227,6 +7236,64 @@ class _ContentRowsState extends State<_ContentRows>
     final tags = item.rawData['ImageTags'];
     if (tags is! Map) return null;
     return tags[imageType] as String?;
+  }
+}
+
+/// 28.10, Sid ("vu que le swipe retour fonctionne pas pour les
+/// bibliothèques, est ce qu'on peut faire un principe de chevron qui
+/// développe les bibliothèques masquées et qu'on peut chevronner et
+/// déchevronner ? Là, pour fermer mes bibliothèques je dois sortir de
+/// l'app") - a direct, always-reachable way to collapse "Voir plus" back
+/// to the pinned selection, independent of the native back gesture (which
+/// she's reporting as currently not closing it). Same rotating-chevron
+/// language as the sidebar's own "Bibliothèques" expand/collapse.
+class _LibraryExpandToggle extends StatefulWidget {
+  final bool expanded;
+  final VoidCallback onToggle;
+
+  const _LibraryExpandToggle({required this.expanded, required this.onToggle});
+
+  @override
+  State<_LibraryExpandToggle> createState() => _LibraryExpandToggleState();
+}
+
+class _LibraryExpandToggleState extends State<_LibraryExpandToggle> {
+  bool _isFocused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = AppColorScheme.onSurface.withValues(alpha: _isFocused ? 1.0 : 0.7);
+    return Focus(
+      onFocusChange: (focused) => setState(() => _isFocused = focused),
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.select ||
+                event.logicalKey == LogicalKeyboardKey.enter)) {
+          widget.onToggle();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: InkWell(
+        onTap: widget.onToggle,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: _isFocused
+                ? Border.all(color: Colors.cyanAccent, width: 2.0)
+                : null,
+          ),
+          child: AnimatedRotation(
+            turns: widget.expanded ? 0.5 : 0,
+            duration: const Duration(milliseconds: 250),
+            child: Icon(Icons.expand_more, color: color),
+          ),
+        ),
+      ),
+    );
   }
 }
 
