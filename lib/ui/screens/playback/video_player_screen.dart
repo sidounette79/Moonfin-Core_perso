@@ -25,6 +25,7 @@ import '../../../util/scroll_sensitivity_binding.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../widgets/player_volume_control.dart';
 import '../../widgets/settings/settings_panel.dart';
+import '../detail/nouveau/shared/nouveau_media_rail_card.dart';
 import '../settings/subtitle_customization_screen.dart';
 import '../settings/settings_side_panel.dart';
 import '../../widgets/playback/playback_time_row.dart';
@@ -7573,35 +7574,176 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     return '$label ($shortcut)';
   }
 
+  // 28.10, Sid: showing Emby's chapter thumbnail strip as the reference -
+  // the plain text list (TrackOption/TrackSelectorDialog) that used to sit
+  // here had no pictures at all. Reuses NouveauMediaRailCard and the same
+  // chapter-image resolution (imageApi.getChapterImageUrl, ImageTag per
+  // chapter) already proven on the detail page's NouveauChaptersSection -
+  // not that widget directly (it's built for a page's scroll/nav context,
+  // not a standalone sheet), but the same card + image-URL logic.
   void _showChapters() {
     final l10n = AppLocalizations.of(context);
     final item = _queue.currentItem;
     if (item is! AggregatedItem) return;
     final chapters = item.chapters;
     if (chapters.isEmpty) return;
-    final options = List.generate(chapters.length, (i) {
-      final ch = chapters[i];
-      final name = (ch['Name'] as String?) ?? l10n.chapterNumber(i + 1);
-      final ticks = ch['StartPositionTicks'] as int? ?? 0;
-      return TrackOption(
-        label: name,
-        subtitle: formatPlaybackDuration(Duration(microseconds: ticks ~/ 10)),
-      );
-    });
-    unawaited(() async {
-      final result = await TrackSelectorDialog.show(
-        context,
-        title: l10n.chapters,
-        options: options,
-      );
-      _suppressBackNavigation();
-      if (result == null || !mounted) return;
-      final ch = chapters[result];
-      final ticks = ch['StartPositionTicks'] as int? ?? 0;
-      _suppressSeekPrompts();
-      _seekDirect(Duration(microseconds: ticks ~/ 10));
-    }());
+    final imageApi = _clientForItem(item).imageApi;
+    unawaited(_showChaptersGrid(item, chapters, imageApi, l10n));
     _showControls();
+  }
+
+  Future<void> _showChaptersGrid(
+    AggregatedItem item,
+    List<Map<String, dynamic>> chapters,
+    ImageApi imageApi,
+    AppLocalizations l10n,
+  ) async {
+    final focusNodes = <int, FocusNode>{};
+    FocusNode nodeFor(int i) =>
+        focusNodes.putIfAbsent(i, () => FocusNode(debugLabel: 'chapterGrid:$i'));
+
+    await showFocusRestoringModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.black.withValues(alpha: 0.9),
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: LayoutBuilder(
+          builder: (layoutContext, constraints) {
+            final availableWidth = constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : MediaQuery.sizeOf(layoutContext).width;
+            const cardGap = 12.0;
+            const minCardWidth = 140.0;
+            final itemsPerLine = ((availableWidth + cardGap) /
+                    (minCardWidth + cardGap))
+                .floor()
+                .clamp(1, 1000);
+            final cardWidth =
+                (availableWidth - (itemsPerLine - 1) * cardGap) /
+                    itemsPerLine;
+            final artworkHeight = cardWidth * 9 / 16;
+            final maxImageWidth =
+                (cardWidth * MediaQuery.devicePixelRatioOf(layoutContext))
+                    .ceil();
+
+            KeyEventResult Function(FocusNode, KeyEvent) keyHandler(int i) {
+              return (node, event) {
+                if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+                  return KeyEventResult.ignored;
+                }
+                final key = event.logicalKey;
+                if (key == LogicalKeyboardKey.arrowLeft) {
+                  if (i % itemsPerLine != 0) {
+                    nodeFor(i - 1).requestFocus();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                }
+                if (key == LogicalKeyboardKey.arrowRight) {
+                  final atLineEnd = i % itemsPerLine == itemsPerLine - 1;
+                  if (!atLineEnd && i + 1 < chapters.length) {
+                    nodeFor(i + 1).requestFocus();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                }
+                if (key == LogicalKeyboardKey.arrowUp) {
+                  final above = i - itemsPerLine;
+                  if (above >= 0) {
+                    nodeFor(above).requestFocus();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                }
+                if (key == LogicalKeyboardKey.arrowDown) {
+                  final below = i + itemsPerLine;
+                  if (below < chapters.length) {
+                    nodeFor(below).requestFocus();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                }
+                if (key == LogicalKeyboardKey.select ||
+                    key == LogicalKeyboardKey.enter) {
+                  _playChapterAndClose(sheetContext, chapters[i]);
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              };
+            }
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Wrap(
+                spacing: cardGap,
+                runSpacing: cardGap,
+                children: [
+                  for (final (i, chapter) in chapters.indexed)
+                    Builder(
+                      builder: (cardContext) {
+                        final ticks =
+                            chapter['StartPositionTicks'] as int? ?? 0;
+                        final position =
+                            Duration(microseconds: ticks ~/ 10);
+                        final rawName =
+                            (chapter['Name'] as String?)?.trim();
+                        final name = rawName?.isNotEmpty == true
+                            ? rawName!
+                            : l10n.chapterNumber(i + 1);
+                        final imageTag = chapter['ImageTag'] as String?;
+                        final imageUrl =
+                            (imageTag == null || imageTag.isEmpty)
+                                ? null
+                                : imageApi.getChapterImageUrl(
+                                    item.id,
+                                    index: i,
+                                    maxWidth: maxImageWidth,
+                                    tag: imageTag,
+                                  );
+                        return Focus(
+                          focusNode: nodeFor(i),
+                          autofocus: i == 0,
+                          onKeyEvent: keyHandler(i),
+                          child: Builder(
+                            builder: (focusedContext) => NouveauMediaRailCard(
+                              imageUrl: imageUrl,
+                              title: name,
+                              subtitle: formatPlaybackDuration(position),
+                              placeholderLabel: name,
+                              width: cardWidth,
+                              artworkHeight: artworkHeight,
+                              isFocused: Focus.of(focusedContext).hasFocus,
+                              onTap: () => _playChapterAndClose(
+                                sheetContext,
+                                chapter,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    for (final node in focusNodes.values) {
+      node.dispose();
+    }
+    if (!mounted) return;
+    _suppressBackNavigation();
+  }
+
+  void _playChapterAndClose(
+    BuildContext sheetContext,
+    Map<String, dynamic> chapter,
+  ) {
+    Navigator.of(sheetContext).pop();
+    final ticks = chapter['StartPositionTicks'] as int? ?? 0;
+    _suppressSeekPrompts();
+    _seekDirect(Duration(microseconds: ticks ~/ 10));
   }
 
   bool _hasCastCrew(dynamic item) {
