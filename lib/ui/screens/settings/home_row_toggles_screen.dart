@@ -885,11 +885,18 @@ class _FocusableActionButton extends StatefulWidget {
   final Widget child;
   final bool isFilled;
 
+  /// 28.10, Sid ("plus logique de mettre le bouton enregistrer comme gros
+  /// bouton et tout sélectionner comme petit en dessous") - taller padding
+  /// and a bigger label, for the one action in the dialog that should read
+  /// as primary.
+  final bool big;
+
   const _FocusableActionButton({
     this.autofocus = false,
     this.onPressed,
     required this.child,
     this.isFilled = false,
+    this.big = false,
   });
 
   @override
@@ -927,7 +934,9 @@ class _FocusableActionButtonState extends State<_FocusableActionButton> {
           borderRadius: BorderRadius.circular(8),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 100),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: widget.big
+                ? const EdgeInsets.symmetric(horizontal: 20, vertical: 16)
+                : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
@@ -945,20 +954,27 @@ class _FocusableActionButtonState extends State<_FocusableActionButton> {
                   : null,
             ),
             child: DefaultTextStyle(
-              style: (theme.textTheme.labelLarge ?? const TextStyle()).copyWith(
-                color: _isFocused
-                    ? (widget.isFilled ? onPrimary : Colors.cyanAccent)
-                    : (widget.isFilled ? onPrimary : theme.colorScheme.onSurface),
-                fontWeight: FontWeight.bold,
-              ),
-              child: IconTheme(
-                data: IconThemeData(
+              style:
+                  (widget.big
+                          ? theme.textTheme.titleMedium
+                          : theme.textTheme.labelLarge) ??
+                      const TextStyle(),
+              child: DefaultTextStyle.merge(
+                style: TextStyle(
                   color: _isFocused
                       ? (widget.isFilled ? onPrimary : Colors.cyanAccent)
                       : (widget.isFilled ? onPrimary : theme.colorScheme.onSurface),
-                  size: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-                child: Center(child: widget.child),
+                child: IconTheme(
+                  data: IconThemeData(
+                    color: _isFocused
+                        ? (widget.isFilled ? onPrimary : Colors.cyanAccent)
+                        : (widget.isFilled ? onPrimary : theme.colorScheme.onSurface),
+                    size: widget.big ? 22 : 18,
+                  ),
+                  child: Center(child: widget.child),
+                ),
               ),
             ),
           ),
@@ -1219,30 +1235,6 @@ class _StudioSelectionDialogState extends State<StudioSelectionDialog> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  _FocusableActionButton(
-                                    autofocus: true,
-                                    onPressed: _toggleAll,
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          allSelected
-                                              ? Icons.deselect
-                                              : Icons.select_all,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          allSelected
-                                              ? l10n.deselectAllStudios
-                                              : l10n.selectAllStudios,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Divider(height: 1),
-                                  const SizedBox(height: 8),
                                   Text(
                                     l10n.filtersHeader.toUpperCase(),
                                     style: theme.textTheme.labelSmall?.copyWith(
@@ -1326,6 +1318,22 @@ class _StudioSelectionDialogState extends State<StudioSelectionDialog> {
                                     ),
                                   ),
                                   const Spacer(),
+                                  // 28.10, Sid ("plus logique de mettre le
+                                  // bouton enregistrer comme gros bouton et
+                                  // tout sélectionner comme petit en
+                                  // dessous") - Enregistrer promu en gros
+                                  // bouton principal, Tout sélectionner
+                                  // redescendu ici en petit bouton
+                                  // secondaire à côté d'Annuler.
+                                  _FocusableActionButton(
+                                    big: true,
+                                    isFilled: true,
+                                    onPressed: _loading
+                                        ? null
+                                        : () => Navigator.of(context).pop(_selectedIds.join(',')),
+                                    child: Text(l10n.save),
+                                  ),
+                                  const SizedBox(height: 10),
                                   Row(
                                     children: [
                                       Expanded(
@@ -1337,11 +1345,29 @@ class _StudioSelectionDialogState extends State<StudioSelectionDialog> {
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: _FocusableActionButton(
-                                          isFilled: true,
-                                          onPressed: _loading
-                                              ? null
-                                              : () => Navigator.of(context).pop(_selectedIds.join(',')),
-                                          child: Text(l10n.save),
+                                          autofocus: true,
+                                          onPressed: _toggleAll,
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                allSelected
+                                                    ? Icons.deselect
+                                                    : Icons.select_all,
+                                                size: 16,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Flexible(
+                                                child: Text(
+                                                  allSelected
+                                                      ? l10n.deselectAllStudios
+                                                      : l10n.selectAllStudios,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  maxLines: 1,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -1529,32 +1555,21 @@ class _LibrarySelectionDialogState extends State<LibrarySelectionDialog> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _FocusableActionButton(
-                            autofocus: true,
-                            onPressed: _toggleAll,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  allSelected
-                                      ? Icons.deselect
-                                      : Icons.select_all,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  allSelected ? l10n.deselectAllStudios : l10n.selectAllStudios,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                    // 28.10, Sid ("plus logique de mettre le bouton
+                    // enregistrer comme gros bouton et tout sélectionner
+                    // comme petit en dessous") - Enregistrer promu en gros
+                    // bouton principal, Tout sélectionner redescendu en
+                    // petit bouton secondaire à côté d'Annuler.
+                    _FocusableActionButton(
+                      big: true,
+                      isFilled: true,
+                      onPressed: _loading
+                          ? null
+                          : () =>
+                              Navigator.of(context).pop(_selectedIds.join(',')),
+                      child: Text(l10n.save),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(
@@ -1566,12 +1581,27 @@ class _LibrarySelectionDialogState extends State<LibrarySelectionDialog> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: _FocusableActionButton(
-                            isFilled: true,
-                            onPressed: _loading
-                                ? null
-                                : () =>
-                                    Navigator.of(context).pop(_selectedIds.join(',')),
-                            child: Text(l10n.save),
+                            autofocus: true,
+                            onPressed: _toggleAll,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  allSelected
+                                      ? Icons.deselect
+                                      : Icons.select_all,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    allSelected ? l10n.deselectAllStudios : l10n.selectAllStudios,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
