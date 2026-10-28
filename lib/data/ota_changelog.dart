@@ -21,7 +21,23 @@ class OtaChangelogEntry {
 /// byte-identical to the server build). The real version is 2.6.2, not
 /// 2.6.3 - keep that in mind if comparing against an installed app's
 /// displayed version.
+///
+/// 28.10, tag "2.6.4": a real release, not a patch - restart_app ships
+/// native Android code, which Shorebird's Dart-only patches can't add to
+/// an already-installed APK. Needs the one-time reinstall like 2.6.3 did;
+/// this becomes the new OTA base going forward. Verified this tag name
+/// actually matches `version:` in pubspec.yaml before pushing it, unlike
+/// last time.
 const otaChangelog = [
+  OtaChangelogEntry(
+    date: '28.10',
+    title:
+        'Patch OTA : bouton "Redémarrer maintenant" après téléchargement '
+        'd\'un patch - plus besoin de fermer/rouvrir l\'app à la main '
+        '(redémarrage natif du processus). Nécessite cette réinstallation '
+        'une fois (code natif ajouté), les patchs suivants redeviendront '
+        'normaux.',
+  ),
   OtaChangelogEntry(
     date: '28.10',
     title:

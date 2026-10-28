@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:restart_app/restart_app.dart';
 
 import '../../../data/ota_changelog.dart';
 import '../../../data/services/shorebird_update_service.dart';
@@ -27,6 +28,8 @@ class _OtaPatchScreenState extends State<OtaPatchScreen> {
   int? _currentPatch;
   bool _loadingPatch = true;
   bool _checking = false;
+  bool _restartNeeded = false;
+  bool _restarting = false;
 
   @override
   void initState() {
@@ -47,7 +50,12 @@ class _OtaPatchScreenState extends State<OtaPatchScreen> {
     setState(() => _checking = true);
     final result = await _service.checkAndDownload();
     if (!mounted) return;
-    setState(() => _checking = false);
+    final needsRestart = result == ShorebirdCheckResult.patchDownloaded ||
+        result == ShorebirdCheckResult.restartRequired;
+    setState(() {
+      _checking = false;
+      _restartNeeded = _restartNeeded || needsRestart;
+    });
 
     final l10n = AppLocalizations.of(context);
     final message = switch (result) {
@@ -66,6 +74,29 @@ class _OtaPatchScreenState extends State<OtaPatchScreen> {
     // readNextPatch() via currentPatchNumber() still reflects what's running
     // now - re-read anyway in case a restart happened between checks.
     await _loadCurrentPatch();
+  }
+
+  Future<void> _restartNow() async {
+    setState(() => _restarting = true);
+    final result = await Restart.restartApp(
+      mode: RestartMode.process,
+      forceKill: true,
+    );
+    if (!mounted) return;
+    if (!result.success) {
+      // A true process restart failing is rare but not impossible (OEM
+      // quirks, etc.) - surface it instead of silently doing nothing, Sid
+      // still has the "close and reopen by hand" fallback either way.
+      setState(() => _restarting = false);
+      final l10n = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(content: Text(result.message ?? l10n.otaPatchCheckFailed)),
+        );
+    }
+    // On success the process is being torn down right now - nothing left to
+    // update in this widget.
   }
 
   @override
@@ -107,6 +138,21 @@ class _OtaPatchScreenState extends State<OtaPatchScreen> {
                             : const Icon(Icons.system_update_alt),
                         label: Text(l10n.settingsCheckForOtaPatch),
                       ),
+                      if (_restartNeeded) ...[
+                        const SizedBox(height: 8),
+                        FilledButton.tonalIcon(
+                          onPressed: _restarting ? null : _restartNow,
+                          icon: _restarting
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.restart_alt),
+                          label: Text(l10n.otaPatchRestartNow),
+                        ),
+                      ],
                     ],
                   ),
                 ),

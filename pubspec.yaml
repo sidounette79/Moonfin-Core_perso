@@ -1,10 +1,10 @@
 name: moonfin
 description: "Moonfin - Jellyfin & Emby media client for mobile, tablet, and desktop"
 publish_to: 'none'
-version: 2.6.2+30000156
+version: 2.6.4+30000157
 
 moonfin:
-  android_tv_version: 2.6.1
+  android_tv_version: 2.6.2
   # 29.09: this used to track upstream Moonfin's own small counter
   # (2000012 -> 2000019), completely separate from the `version:` line
   # above's much larger one. Some earlier build installed on Sid's TV
@@ -14,7 +14,7 @@ moonfin:
   # 2000019 < 30000153 to Android. Now on the same large-number scheme
   # as `version:` above, permanently - always bump higher than that line
   # on every future TV release.
-  android_tv_build_number: 30000201
+  android_tv_build_number: 30000202
   beta: false
   beta_number: 1
 
@@ -119,6 +119,12 @@ dependencies:
   # nothing to do with this fork's Shorebird patches - needed to talk to
   # Shorebird itself to offer a real manual patch check/apply button.
   shorebird_code_push: ^2.0.7
+  # 28.10, Sid ("on a fait le bouton pour que je puisse la déclencher sans
+  # fermer 4x l'app?") - checkAndDownload() alone still needed a manual
+  # close/reopen for Shorebird to actually swap the patch in. True native
+  # process restart (RestartMode.process on Android) so "Redémarrer
+  # maintenant" does that in one tap.
+  restart_app: ^1.10.2
   uuid: ^4.5.3
   cupertino_icons: ^1.0.9
   # Flutter bundles the older Material Icons font, which has no crown or owl

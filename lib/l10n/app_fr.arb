@@ -6623,6 +6623,7 @@
     },
     "otaPatchDownloaded": "Patch téléchargé. Redémarre l'app pour l'appliquer.",
     "otaPatchRestartRequired": "Un patch est déjà téléchargé, redémarre l'app pour l'appliquer.",
+    "otaPatchRestartNow": "Redémarrer maintenant",
     "otaPatchCheckFailed": "Impossible de vérifier les patchs OTA pour le moment.",
     "otaPatchUnavailable": "Les patchs OTA ne sont pas disponibles sur cette installation.",
     "settingsPoweredByFlutter": "Propulsé par Flutter",

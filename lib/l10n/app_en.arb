@@ -9695,6 +9695,7 @@
   },
   "otaPatchDownloaded": "Patch downloaded. Restart the app to apply it.",
   "otaPatchRestartRequired": "A patch is already downloaded, restart the app to apply it.",
+  "otaPatchRestartNow": "Restart now",
   "otaPatchCheckFailed": "Could not check for OTA patches right now.",
   "otaPatchUnavailable": "OTA patches aren't available on this install.",
   "settingsPoweredByFlutter": "Powered by Flutter",
