@@ -4093,7 +4093,17 @@ class _ContentRowsState extends State<_ContentRows>
     const spacing = 12.0;
     final metadataScale = _desktopUiScaleFactor();
     final squarePosterSide = _squarePosterSide(posterSize);
-    final tileHeight = squarePosterSide + (56 * metadataScale);
+    // 28.10, Sid ("est ce que les vignettes peuvent être rectangulaires au
+    // lieu de carrée... et le nom de la bibliothèque écrit dessous et pas
+    // dedans, sur le même modèle que continuer à regarder") - squarePosterSide
+    // stays the tile's WIDTH (unchanged layout math/items-per-line), but the
+    // artwork itself is now a 16:9 thumb like every other row's cards,
+    // shorter than the square it replaces. The metadata budget below it was
+    // already reserved (56 * metadataScale) even when the label sat inside
+    // the square doing nothing with it - now MediaCard's own title actually
+    // uses that space.
+    final tileImageHeight = squarePosterSide * 9 / 16;
+    final tileHeight = tileImageHeight + (56 * metadataScale);
     final availableWidth =
         MediaQuery.sizeOf(context).width - (_kHomeRowLabelInset + 20.0);
     final perLine = _libraryGridItemsPerLine(availableWidth, squarePosterSide);
@@ -5357,16 +5367,19 @@ class _ContentRowsState extends State<_ContentRows>
             // choisir lesquels je veux voir, les autres via un bouton
             // voir plus") - même GridButtonCard, même nav D-pad que les
             // vraies tuiles (index = visibleItems.length, juste après la
-            // dernière tuile réelle).
+            // dernière tuile réelle). 28.10 : resté carré à la hauteur de
+            // l'image 16:9 des tuiles désormais rectangulaires (pas de
+            // titre dessous à aligner, un "+N" suffit dans le bouton).
             if (hasHidden)
-              SizedBox.square(
-                dimension: squarePosterSide,
+              SizedBox(
+                width: squarePosterSide,
+                height: squarePosterSide * 9 / 16,
                 child: GridButtonCard(
                   icon: Icons.add,
                   showIcon: true,
                   label: '$hiddenCount+',
                   width: squarePosterSide,
-                  height: squarePosterSide,
+                  height: squarePosterSide * 9 / 16,
                   focusColor: focusColor,
                   cardFocusExpansion: cardExpansion,
                   focusNode: nodes[visibleItems.length],
@@ -5388,53 +5401,32 @@ class _ContentRowsState extends State<_ContentRows>
     FocusNode? focusNode,
     KeyEventResult Function(FocusNode, KeyEvent)? onKeyEvent,
   }) {
-    final collectionType =
-        (item.rawData['CollectionType'] as String? ?? '').toLowerCase();
-    final icon = isGameLibrary(item.id, collectionType, item.name)
-        ? gameLibraryIcon
-        : iconForCollectionType(collectionType);
     _fetchLibraryBackdropIfNeeded(item);
     final backdropUrl = _libraryBackdropUrls[item.id];
-    final tileBlurSigma = GlassSettings.decorativeSigma(
-      widget.prefs
-          .get(UserPreferences.libraryTileBackgroundBlurAmount)
-          .toDouble(),
-    );
-    return SizedBox.square(
-      dimension: squarePosterSide,
-      child: GridButtonCard(
-        icon: icon,
-        showIcon: false,
-        label: item.name,
-        width: squarePosterSide,
-        height: squarePosterSide,
-        focusColor: focusColor,
-        cardFocusExpansion: cardExpansion,
-        focusNode: focusNode,
-        onKeyEvent: onKeyEvent,
-        background: backdropUrl == null
-            ? null
-            : tileBlurSigma <= 0
-            ? Image(
-                image: offlineAwareImageProvider(backdropUrl, maxWidth: 400),
-                fit: BoxFit.cover,
-              )
-            : ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(
-                  sigmaX: tileBlurSigma,
-                  sigmaY: tileBlurSigma,
-                ),
-                child: Image(
-                  image: offlineAwareImageProvider(backdropUrl, maxWidth: 400),
-                  fit: BoxFit.cover,
-                ),
-              ),
-        onTap: () => _navigateToLibrary(context, item),
-        onLongPress: () =>
-            showContextMenu(context, item, onChanged: () => setState(() {})),
-        onSecondaryTap: () =>
-            showContextMenu(context, item, onChanged: () => setState(() {})),
-      ),
+    // 28.10, Sid ("est ce que les vignettes peuvent être rectangulaires au
+    // lieu de carrée, de la même taille que les miniatures de continuer à
+    // regarder ? Et est ce que le nom de la bibliothèque peut être écrit
+    // dessous et pas dedans, sur le même modèle que continuer à regarder")
+    // - swapped the square GridButtonCard (icon/label overlaid on the
+    // artwork) for the same MediaCard every other row already uses, at the
+    // same 16:9 aspect ratio as a resume/thumb card, title below instead of
+    // on top of the image. MediaCard resolves/paints imageUrl itself (its
+    // own placeholder when null, same as any other media card without
+    // art), so the blurred-backdrop preference this used to honour via a
+    // custom background slot no longer applies here - MediaCard has no
+    // equivalent hook for it.
+    return MediaCard(
+      title: item.name,
+      imageUrl: backdropUrl,
+      width: squarePosterSide,
+      aspectRatio: 16 / 9,
+      focusColor: focusColor,
+      cardFocusExpansion: cardExpansion,
+      focusNode: focusNode,
+      onKeyEvent: onKeyEvent,
+      onTap: () => _navigateToLibrary(context, item),
+      onLongPress: () =>
+          showContextMenu(context, item, onChanged: () => setState(() {})),
     );
   }
 
