@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:server_core/server_core.dart';
 import 'package:moonfin_design/moonfin_design.dart';
@@ -827,7 +828,14 @@ class _HomeRowTogglesScreenState extends State<HomeRowTogglesScreen> {
 class _FocusableTile extends StatefulWidget {
   final Widget child;
 
-  const _FocusableTile({required this.child});
+  /// 28.10, Sid ("sur TV, ça coche pas la bibliothèque") - the outer
+  /// [Focus] here is its own tab stop (separate from CheckboxListTile's own
+  /// internal one), so D-pad select could land on it with nothing wired to
+  /// actually toggle the checkbox - worked fine on mobile only because
+  /// touch taps the checkbox directly, bypassing this wrapper entirely.
+  final VoidCallback? onActivate;
+
+  const _FocusableTile({required this.child, this.onActivate});
 
   @override
   State<_FocusableTile> createState() => _FocusableTileState();
@@ -843,6 +851,15 @@ class _FocusableTileState extends State<_FocusableTile> {
 
     return Focus(
       onFocusChange: (focused) => setState(() => _isFocused = focused),
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.select ||
+                event.logicalKey == LogicalKeyboardKey.enter)) {
+          widget.onActivate?.call();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 100),
         margin: const EdgeInsets.symmetric(vertical: 2),
@@ -891,6 +908,15 @@ class _FocusableActionButtonState extends State<_FocusableActionButton> {
     return Focus(
       autofocus: widget.autofocus,
       onFocusChange: (focused) => setState(() => _isFocused = focused),
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.select ||
+                event.logicalKey == LogicalKeyboardKey.enter)) {
+          widget.onPressed?.call();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
       child: Material(
         color: _isFocused
             ? (widget.isFilled ? primary : primary.withValues(alpha: 0.35))
@@ -1144,6 +1170,15 @@ class _StudioSelectionDialogState extends State<StudioSelectionDialog> {
                                         final name = studio['name'] as String;
                                         final isSelected = _selectedIds.contains(id);
                                         return _FocusableTile(
+                                          onActivate: () {
+                                            setState(() {
+                                              if (isSelected) {
+                                                _selectedIds.remove(id);
+                                              } else {
+                                                _selectedIds.add(id);
+                                              }
+                                            });
+                                          },
                                           child: CheckboxListTile(
                                             dense: true,
                                             visualDensity: VisualDensity.compact,
@@ -1218,6 +1253,8 @@ class _StudioSelectionDialogState extends State<StudioSelectionDialog> {
                                   ),
                                   const SizedBox(height: 4),
                                   _FocusableTile(
+                                    onActivate: () =>
+                                        setState(() => _includeTv = !_includeTv),
                                     child: CheckboxListTile(
                                       dense: true,
                                       visualDensity: VisualDensity.compact,
@@ -1231,6 +1268,9 @@ class _StudioSelectionDialogState extends State<StudioSelectionDialog> {
                                     ),
                                   ),
                                   _FocusableTile(
+                                    onActivate: () => setState(
+                                      () => _includeMovies = !_includeMovies,
+                                    ),
                                     child: CheckboxListTile(
                                       dense: true,
                                       visualDensity: VisualDensity.compact,
@@ -1254,6 +1294,9 @@ class _StudioSelectionDialogState extends State<StudioSelectionDialog> {
                                   ),
                                   const SizedBox(height: 4),
                                   _FocusableTile(
+                                    onActivate: () => setState(
+                                      () => _showSelected = !_showSelected,
+                                    ),
                                     child: CheckboxListTile(
                                       dense: true,
                                       visualDensity: VisualDensity.compact,
@@ -1267,6 +1310,9 @@ class _StudioSelectionDialogState extends State<StudioSelectionDialog> {
                                     ),
                                   ),
                                   _FocusableTile(
+                                    onActivate: () => setState(
+                                      () => _showUnselected = !_showUnselected,
+                                    ),
                                     child: CheckboxListTile(
                                       dense: true,
                                       visualDensity: VisualDensity.compact,
@@ -1443,6 +1489,15 @@ class _LibrarySelectionDialogState extends State<LibrarySelectionDialog> {
                           final lib = _allLibraries[index];
                           final isSelected = _selectedIds.contains(lib.id);
                           return _FocusableTile(
+                            onActivate: () {
+                              setState(() {
+                                if (isSelected) {
+                                  _selectedIds.remove(lib.id);
+                                } else {
+                                  _selectedIds.add(lib.id);
+                                }
+                              });
+                            },
                             child: CheckboxListTile(
                               dense: true,
                               visualDensity: VisualDensity.compact,
