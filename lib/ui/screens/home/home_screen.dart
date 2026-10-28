@@ -5333,8 +5333,16 @@ class _ContentRowsState extends State<_ContentRows>
       child: Padding(
         padding: const EdgeInsets.fromLTRB(_kHomeRowLabelInset, 5, 20, 5),
         child: Wrap(
-          spacing: 12.0,
-          runSpacing: 12.0,
+          // 28.10, Sid ("quand je clique sur + pour voir toutes mes
+          // bibliothèques, ça se marche dessus les zones") - GridButtonCard
+          // grandit de 5% au focus (AnimatedScale, cardFocusExpansion), un
+          // pur effet de peinture qui déborde quand même dans l'espacement
+          // du Wrap. Un espacement fixe de 12px suffisait pour les petites
+          // tuiles d'autres grilles mais pas pour celles-ci, nettement plus
+          // grandes (squarePosterSide) - calculé proportionnellement pour
+          // toujours absorber le débordement, quelle que soit la taille.
+          spacing: 12.0 + squarePosterSide * 0.06,
+          runSpacing: 12.0 + squarePosterSide * 0.06,
           children: [
             for (final (i, item) in visibleItems.indexed)
               _buildLibraryGridTile(
