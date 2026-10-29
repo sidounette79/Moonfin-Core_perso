@@ -5513,6 +5513,14 @@ class _ContentRowsState extends State<_ContentRows>
       cardFocusExpansion: cardExpansion,
       focusNode: focusNode,
       onKeyEvent: onKeyEvent,
+      // 29.10, Sid ("j'ai très souvent un fond noir, parfois j'ai une
+      // pochette en flou") - never wired here, on this row or the square
+      // GridButtonCard it replaced, so browsing "Mes bibliothèques" (now a
+      // big chunk of the home screen) never touched the shared ambient
+      // backdrop - it just sat on whatever the last row that DID wire this
+      // left it as, often nothing yet.
+      onFocus: () => widget.onItemSelected(item),
+      onHoverStart: () => widget.onItemSelected(item),
       onTap: () => _navigateToLibrary(context, item),
       onLongPress: () =>
           showContextMenu(context, item, onChanged: () => setState(() {})),
