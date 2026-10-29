@@ -55,6 +55,15 @@ class OtaChangelogEntry {
 /// last time.
 const otaChangelog = [
   OtaChangelogEntry(
+    date: '29.10',
+    title: 'Lecture : longue attente/blocage au lancement d\'un épisode en '
+        'EAC3 multicanal sur enceinte Bluetooth - la sonde de capacités '
+        'audio annonçait le passthrough EAC3/AC3/DTS/TrueHD disponible en '
+        'Bluetooth (jamais vrai en pratique), la vraie tentative échouait '
+        'et retentait plusieurs fois avant d\'abandonner en stéréo. '
+        'Nécessite une réinstallation (code natif Android).',
+  ),
+  OtaChangelogEntry(
     date: '28.10 22h40',
     patchNumber: 13,
     title: 'Bibliothèque : le bouton tous/vu/non-vu perdait le focus après '

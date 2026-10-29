@@ -156,6 +156,28 @@ object AudioCapabilities {
                     supportsDirectPlaybackLegacy(AudioFormat.ENCODING_DOLBY_TRUEHD)
         }
 
+        // 29.10, Sid report via diagnostics (Google TV Streamer, Bluetooth
+        // speaker): "audio probe: route=bluetooth ... passthrough ac3=true
+        // eac3=true" - AudioManager.getDirectPlaybackSupport/
+        // getDirectProfilesForAttributes (the Tiramisu+ branch above) answer
+        // from the device's general hardware capability, not the currently
+        // active route, so they kept reporting HDMI-class passthrough while
+        // actually routed to Bluetooth. Playback then tried a real 6-channel
+        // EAC3 AudioTrack over Bluetooth, which Android has no way to
+        // deliver (`UnsupportedOperationException: Cannot create
+        // AudioTrack`), retried several times (each one a multi-second
+        // stall - the reported freeze) before falling back to stereo
+        // downmix. Bluetooth never actually carries compressed multichannel
+        // passthrough through this API, matching how maxPcmChannels is
+        // already correctly capped to 2 for this same route below.
+        if (routeType == ROUTE_BLUETOOTH) {
+            canPassthroughAc3 = false
+            canPassthroughEac3 = false
+            canPassthroughDts = false
+            canPassthroughDtsHd = false
+            canPassthroughTrueHd = false
+        }
+
         val supportsAc3 = canPassthroughAc3 || canPassthroughEac3
         val supportsDts = canPassthroughDts || canPassthroughDtsHd
         val supportsTrueHd = canPassthroughTrueHd
