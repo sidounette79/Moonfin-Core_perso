@@ -56,6 +56,13 @@ class OtaChangelogEntry {
 const otaChangelog = [
   OtaChangelogEntry(
     date: '29.10',
+    title: 'Vignettes : une image qui échouait à charger (juste après la '
+        'lecture par exemple) restait noire définitivement - un seul '
+        'nouvel essai automatique après un court délai, avant de retomber '
+        'sur l\'icône de remplacement.',
+  ),
+  OtaChangelogEntry(
+    date: '29.10',
     title: 'Lecture : longue attente/blocage au lancement d\'un épisode en '
         'EAC3 multicanal sur enceinte Bluetooth - la sonde de capacités '
         'audio annonçait le passthrough EAC3/AC3/DTS/TrueHD disponible en '

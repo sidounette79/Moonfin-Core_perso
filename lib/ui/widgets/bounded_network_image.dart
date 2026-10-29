@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
@@ -16,7 +18,7 @@ export '../../util/image_fetch_priority.dart' show ImageFetchPriority;
 ///
 /// The sizing rules live in [ArtworkDecode]. This widget adds the
 /// [onLoadFinished] contract the game screens depend on.
-class BoundedNetworkImage extends StatelessWidget {
+class BoundedNetworkImage extends StatefulWidget {
   final String imageUrl;
   final BoxFit fit;
   final Alignment alignment;
@@ -106,14 +108,51 @@ class BoundedNetworkImage extends StatelessWidget {
   );
 
   @override
+  State<BoundedNetworkImage> createState() => _BoundedNetworkImageState();
+}
+
+class _BoundedNetworkImageState extends State<BoundedNetworkImage> {
+  // 29.10, Sid report ("écran noir, je vais sur une autre vignette ça
+  // restaure la miniature noire de celui qui était noir") - a transient
+  // failure right after returning from playback (server regenerating a
+  // thumbnail, a brief network hiccup) gets painted as a permanent error:
+  // Flutter's ImageCache caches a failed resolution under the same
+  // provider key as a success, so without a real client-side change
+  // nothing ever retries. Navigating to another tile happened to change
+  // this card's decode width (focus-scale), which produced a different
+  // key and so a fresh, unfailed attempt - same fix, done automatically
+  // instead of needing the workaround. One retry only, so a genuinely
+  // missing image still settles on the placeholder.
+  int _attempt = 0;
+  bool _retried = false;
+
+  void _handleError(String url) {
+    if (_retried || !mounted) return;
+    _retried = true;
+    unawaited(ArtworkDecode.evict(url));
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) setState(() => _attempt++);
+    });
+  }
+
+  @override
+  void didUpdateWidget(BoundedNetworkImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      _retried = false;
+      _attempt = 0;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Vibrance.wrap(
       ArtworkBound(
-        memCacheWidth: memCacheWidth,
-        scale: scale,
-        minWidth: minWidth,
-        maxWidth: maxWidth,
-        sourceAspectRatio: sourceAspectRatio,
+        memCacheWidth: widget.memCacheWidth,
+        scale: widget.scale,
+        minWidth: widget.minWidth,
+        maxWidth: widget.maxWidth,
+        sourceAspectRatio: widget.sourceAspectRatio,
         builder: _buildImage,
       ),
     );
@@ -124,21 +163,23 @@ class BoundedNetworkImage extends StatelessWidget {
     int? decodeWidth,
     int? decodeHeight,
   ) {
+    final imageUrl = widget.imageUrl;
     final local = isLocalImagePath(imageUrl);
-    final headers = local ? null : artworkFetchHeaders(imageUrl, priority);
+    final headers = local ? null : artworkFetchHeaders(imageUrl, widget.priority);
     final bounded = ArtworkDecode.provider(
       imageUrl,
       width: decodeWidth,
       height: decodeHeight,
       headers: headers,
-      cacheManager: cacheManager,
+      cacheManager: widget.cacheManager,
     );
     if (local) {
       return Image(
+        key: ValueKey('local#$_attempt#$imageUrl'),
         image: bounded,
-        fit: fit,
-        alignment: alignment,
-        frameBuilder: onLoadFinished == null
+        fit: widget.fit,
+        alignment: widget.alignment,
+        frameBuilder: widget.onLoadFinished == null
             ? null
             : (context, child, frame, wasSynchronouslyLoaded) {
                 if (frame != null || wasSynchronouslyLoaded) {
@@ -146,45 +187,44 @@ class BoundedNetworkImage extends StatelessWidget {
                 }
                 return child;
               },
-        errorBuilder: errorBuilder == null && onLoadFinished == null
-            ? null
-            : (context, error, stackTrace) {
-                _notifyLoadFinished();
-                return errorBuilder?.call(context, imageUrl, error) ??
-                    const SizedBox.shrink();
-              },
+        errorBuilder: (context, error, stackTrace) {
+          _notifyLoadFinished();
+          _handleError(imageUrl);
+          return widget.errorBuilder?.call(context, imageUrl, error) ??
+              const SizedBox.shrink();
+        },
       );
     }
     return CachedNetworkImage(
+      key: ValueKey('cached#$_attempt#$imageUrl'),
       imageUrl: imageUrl,
       httpHeaders: headers,
-      cacheManager: cacheManager,
-      fit: fit,
-      alignment: alignment,
-      fadeInDuration: fadeInDuration,
+      cacheManager: widget.cacheManager,
+      fit: widget.fit,
+      alignment: widget.alignment,
+      fadeInDuration: widget.fadeInDuration,
       memCacheWidth: decodeWidth,
       memCacheHeight: decodeHeight,
-      imageBuilder: onLoadFinished == null
+      imageBuilder: widget.onLoadFinished == null
           ? null
           : (context, _) {
               _notifyLoadFinished();
               // CachedNetworkImage hands this builder the unwrapped provider,
               // so memCacheWidth above never reaches it and the bound has to
               // be applied again or the decode runs at the full source size.
-              return Image(image: bounded, fit: fit, alignment: alignment);
+              return Image(image: bounded, fit: widget.fit, alignment: widget.alignment);
             },
-      errorWidget: errorBuilder == null && onLoadFinished == null
-          ? null
-          : (context, url, error) {
-              _notifyLoadFinished();
-              return errorBuilder?.call(context, url, error) ??
-                  const SizedBox.shrink();
-            },
+      errorWidget: (context, url, error) {
+        _notifyLoadFinished();
+        _handleError(imageUrl);
+        return widget.errorBuilder?.call(context, url, error) ??
+            const SizedBox.shrink();
+      },
     );
   }
 
   void _notifyLoadFinished() {
-    final callback = onLoadFinished;
+    final callback = widget.onLoadFinished;
     if (callback == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) => callback());
   }
