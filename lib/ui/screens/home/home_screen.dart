@@ -572,7 +572,7 @@ class _HomeShellState extends State<_HomeShell>
         // replie d'abord la grille "Voir plus" quand elle est dépliée.
         final contentRows = _contentRowsKey.currentState;
         if (contentRows != null && contentRows._showAllLibraryTiles) {
-          contentRows.setState(() => contentRows._showAllLibraryTiles = false);
+          contentRows._setShowAllLibraryTiles(false);
           return;
         }
         _showExitConfirmation(context);
@@ -818,6 +818,11 @@ class _ContentRowsState extends State<_ContentRows>
   // focus target per tile so _focusLibraryGridRow below has something to
   // request focus on.
   final Map<String, List<FocusNode>> _libraryGridFocusNodes = {};
+  // 29.10, Sid ("chevron sur TV, je sais pas comment l'atteindre avec la
+  // télécommande") - the chevron lives in the row's header, outside the
+  // Wrap grid's own D-pad traversal, so it was geometrically orphaned: UP
+  // from the top grid row escaped straight to the row above instead.
+  final Map<String, FocusNode> _libraryExpandToggleFocusNodes = {};
   final Map<String, ScrollController> _rowHorizontalControllers = {};
   final Map<String, double> _rowHorizontalOffsetsById = {};
   // 29.09, Sid: "j'en lance un et finalement je reviens en arrière, il
@@ -863,6 +868,25 @@ class _ContentRowsState extends State<_ContentRows>
   // UserPreferences.libraryTilesSelectedIds), pas sur si elle l'a laissée
   // dépliée la dernière fois.
   bool _showAllLibraryTiles = false;
+
+  // 29.10, Sid ("je clique ça superpose avec les zones en dessous... je
+  // reclique ça ferme mais ca cree des espaces entre les zones") - toggling
+  // this changes how tall the library tiles row actually renders (more or
+  // fewer lines), but _rowExtentsFor's cache key never included it, so the
+  // outer virtualized list kept reserving the PREVIOUS height - too short
+  // right after expanding (overlap with the row below), too tall right
+  // after collapsing (dead gap). It only looked "fixed" a tap later because
+  // something unrelated happened to bump _layoutPrefsVersion in between.
+  // Routes every place that sets the flag through here so the cache always
+  // invalidates with it.
+  void _setShowAllLibraryTiles(bool value) {
+    if (_showAllLibraryTiles == value) return;
+    setState(() {
+      _showAllLibraryTiles = value;
+      _layoutPrefsVersion++;
+    });
+  }
+
   final Map<int, double> _staticRowHeightCache = {};
   final ValueNotifier<int?> _activeFocusedRowNotifier = ValueNotifier(null);
   // Id of the row that last held focus. Unlike _activeFocusedRowIndex (which is
@@ -1494,6 +1518,9 @@ class _ContentRowsState extends State<_ContentRows>
       for (final node in nodes) {
         node.dispose();
       }
+    }
+    for (final node in _libraryExpandToggleFocusNodes.values) {
+      node.dispose();
     }
     HardwareKeyboard.instance.removeHandler(_handleGlobalHardwareKey);
     _rowPrefetchDebounce?.cancel();
@@ -5207,6 +5234,13 @@ class _ContentRowsState extends State<_ContentRows>
     return nodes;
   }
 
+  FocusNode _libraryExpandToggleNodeFor(String rowId) {
+    return _libraryExpandToggleFocusNodes.putIfAbsent(
+      rowId,
+      () => FocusNode(debugLabel: 'LibraryExpandToggle:$rowId'),
+    );
+  }
+
   /// Entry point for this row from outside (D-pad down from the row above,
   /// up from the row below, or the initial-focus/return-from-memory paths) -
   /// the libraryTiles counterpart to a [LockedFocusRowState]'s
@@ -5327,6 +5361,18 @@ class _ContentRowsState extends State<_ContentRows>
                       nodes[withinGrid].requestFocus();
                       return KeyEventResult.handled;
                     }
+                    // 29.10, Sid ("chevron sur TV, je sais pas comment
+                    // l'atteindre avec la télécommande") - top row of the
+                    // grid: land on the chevron first when it's showing,
+                    // instead of skipping straight past it to the row
+                    // above (its own UP handler escapes from there).
+                    if (hasHidden || _showAllLibraryTiles) {
+                      NavDebugLog.log(
+                        'libraryGrid[$rowIndex] tile=$i UP -> expand toggle',
+                      );
+                      _libraryExpandToggleNodeFor(row.id).requestFocus();
+                      return KeyEventResult.handled;
+                    }
                     NavDebugLog.log(
                       'libraryGrid[$rowIndex] tile=$i UP key received',
                     );
@@ -5372,9 +5418,15 @@ class _ContentRowsState extends State<_ContentRows>
       height: childHeight,
       trailing: (hasHidden || _showAllLibraryTiles)
           ? _LibraryExpandToggle(
+              focusNode: _libraryExpandToggleNodeFor(row.id),
               expanded: _showAllLibraryTiles,
               onToggle: () =>
-                  setState(() => _showAllLibraryTiles = !_showAllLibraryTiles),
+                  _setShowAllLibraryTiles(!_showAllLibraryTiles),
+              onEscapeUp: () => _onRowVerticalNavigation(
+                rowIndex: rowIndex,
+                rows: rows,
+                isUp: true,
+              ),
             )
           : null,
       child: Padding(
@@ -5421,7 +5473,7 @@ class _ContentRowsState extends State<_ContentRows>
                   cardFocusExpansion: cardExpansion,
                   focusNode: nodes[visibleItems.length],
                   onKeyEvent: buildKeyHandler(visibleItems.length),
-                  onTap: () => setState(() => _showAllLibraryTiles = true),
+                  onTap: () => _setShowAllLibraryTiles(true),
                 ),
               ),
           ],
@@ -7250,8 +7302,20 @@ class _ContentRowsState extends State<_ContentRows>
 class _LibraryExpandToggle extends StatefulWidget {
   final bool expanded;
   final VoidCallback onToggle;
+  final FocusNode? focusNode;
 
-  const _LibraryExpandToggle({required this.expanded, required this.onToggle});
+  /// 29.10, Sid ("chevron sur TV, je sais pas comment l'atteindre avec la
+  /// télécommande") - UP from here has nowhere built in to go (the chevron
+  /// sits outside the grid's own vertical-nav pipeline), so this escapes to
+  /// whatever the caller wants (the row above).
+  final VoidCallback? onEscapeUp;
+
+  const _LibraryExpandToggle({
+    required this.expanded,
+    required this.onToggle,
+    this.focusNode,
+    this.onEscapeUp,
+  });
 
   @override
   State<_LibraryExpandToggle> createState() => _LibraryExpandToggleState();
@@ -7264,12 +7328,19 @@ class _LibraryExpandToggleState extends State<_LibraryExpandToggle> {
   Widget build(BuildContext context) {
     final color = AppColorScheme.onSurface.withValues(alpha: _isFocused ? 1.0 : 0.7);
     return Focus(
+      focusNode: widget.focusNode,
       onFocusChange: (focused) => setState(() => _isFocused = focused),
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent &&
             (event.logicalKey == LogicalKeyboardKey.select ||
                 event.logicalKey == LogicalKeyboardKey.enter)) {
           widget.onToggle();
+          return KeyEventResult.handled;
+        }
+        if (event is KeyDownEvent &&
+            event.logicalKey.isUpKey &&
+            widget.onEscapeUp != null) {
+          widget.onEscapeUp!();
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
