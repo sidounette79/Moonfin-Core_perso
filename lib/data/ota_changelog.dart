@@ -56,6 +56,12 @@ class OtaChangelogEntry {
 const otaChangelog = [
   OtaChangelogEntry(
     date: '29.10',
+    title: 'Lecture : nouveau plafond de débit séparé pour les données '
+        'cellulaires (Réglages > Lecture vidéo) - celui réglé pour la '
+        'voiture ne pénalisait plus le WiFi/bureau par la même occasion.',
+  ),
+  OtaChangelogEntry(
+    date: '29.10',
     title: 'Accueil : les tuiles de "Mes bibliothèques" ne mettaient '
         'jamais à jour le fond d\'écran ambiant en focus/survol, '
         'contrairement aux autres rangées.',
