@@ -21,13 +21,22 @@ enum DetailButton {
   seerrRequest4k('seerrRequest4k'),
   shuffle('shuffle'),
   restart('restart', canHide: false),
+  // 30.10, Sid ("on a mis les boutons vu, tout vu sur [la fiche série] mais
+  // pas sur les fiches d'épisode/film") - le bouton existait déjà pour
+  // film/épisode (!isSeries, voir plus bas dans item_detail_screen.dart)
+  // mais sa position d'origine (après audio/sous-titres/version/cast/
+  // bande-annonce) le poussait quasi systématiquement dans le menu "..."
+  // sur mobile (voir _calculateMaxVisibleButtons - la rangée ne tient que
+  // 4-5 boutons sur un téléphone), donc invisible sans ouvrir ce menu.
+  // Remonté juste après Reprendre pour rester dans la rangée visible par
+  // défaut, comme sur la fiche série.
+  watched('watched'),
   audio('audio'),
   subtitles('subtitles'),
   version('version'),
   cast('cast'),
   trailer('trailer'),
   watchWithGroup('watchWithGroup'),
-  watched('watched'),
   // 09.10, Sid: "1 bouton pour l'épisode - un pour la série, au même
   // endroit" - distinct from `watched` (which toggles the whole item, so
   // for a Series recursively marks every episode via Emby). This one only
