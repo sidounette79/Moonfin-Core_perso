@@ -56,6 +56,13 @@ class OtaChangelogEntry {
 const otaChangelog = [
   OtaChangelogEntry(
     date: '29.10',
+    title: 'Accueil : grille "Mes bibliothèques" - chevauchement/espaces '
+        'vides au dépliage/repliage corrigés (cache de hauteur pas '
+        'resynchronisé), chevron désormais atteignable au D-pad TV depuis '
+        'la première ligne de la grille.',
+  ),
+  OtaChangelogEntry(
+    date: '29.10',
     title: 'Vignettes : une image qui échouait à charger (juste après la '
         'lecture par exemple) restait noire définitivement - un seul '
         'nouvel essai automatique après un court délai, avant de retomber '
