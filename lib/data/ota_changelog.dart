@@ -56,6 +56,12 @@ class OtaChangelogEntry {
 const otaChangelog = [
   OtaChangelogEntry(
     date: '29.10',
+    title: 'Accueil : les tuiles de "Mes bibliothèques" ne mettaient '
+        'jamais à jour le fond d\'écran ambiant en focus/survol, '
+        'contrairement aux autres rangées.',
+  ),
+  OtaChangelogEntry(
+    date: '29.10',
     title: 'Accueil : grille "Mes bibliothèques" - chevauchement/espaces '
         'vides au dépliage/repliage corrigés (cache de hauteur pas '
         'resynchronisé), chevron désormais atteignable au D-pad TV depuis '
