@@ -1393,6 +1393,11 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
       'bandwidth',
       'transcode',
     ]),
+    video.leaf(
+      'pref_cellular_max_bitrate',
+      l10n.maxCellularStreamingBitrate,
+      keywords: ['quality', 'bandwidth', 'transcode', 'cellular', 'mobile data'],
+    ),
     video.leaf('pref_max_video_resolution', l10n.maxResolution, keywords: [
       '4k',
       '1080p',

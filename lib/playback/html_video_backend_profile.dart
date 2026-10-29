@@ -9,7 +9,7 @@ Map<String, dynamic> buildHtmlVideoBackendDeviceProfile(
   UserPreferences prefs, {
   bool useProgressiveTranscode = false,
 }) {
-  final maxBitrate = int.tryParse(prefs.get(UserPreferences.maxBitrate));
+  final maxBitrate = int.tryParse(prefs.resolveMaxBitrate());
   final maxResolution = prefs.get(UserPreferences.maxVideoResolution);
   final audioFallbackCodec = prefs.resolveAudioFallbackCodec();
   final audioCapabilityProfile = prefs.detectedAudioCapabilities;

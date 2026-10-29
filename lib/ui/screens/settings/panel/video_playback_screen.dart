@@ -350,6 +350,31 @@ class _VideoPlaybackScreen extends StatelessWidget {
                   '1': '1 Mbps',
                 },
               ),
+              // 29.10, Sid ("il y a un équilibre à trouver entre saccade...
+              // et chargement long [...] quand je lance le même truc par
+              // Emby, ça démarre tout de suite alors que Moonfin attend")
+              // - the cap above had no WiFi/cellular distinction at all,
+              // unlike Emby's own app, so a value set low for the car
+              // throttled her everywhere. "Auto" here just keeps using the
+              // cap above - this only changes anything once set explicitly.
+              StringPickerPreferenceTile(
+                preference: UserPreferences.cellularMaxBitrate,
+                title: l10n.maxCellularStreamingBitrate,
+                description: l10n.settingsMaxCellularBitrateDescription,
+                icon: Icons.signal_cellular_alt,
+                options: {
+                  'auto': l10n.auto,
+                  '200': '200 Mbps',
+                  '120': '120 Mbps',
+                  '80': '80 Mbps',
+                  '40': '40 Mbps',
+                  '20': '20 Mbps',
+                  '10': '10 Mbps',
+                  '5': '5 Mbps',
+                  '2': '2 Mbps',
+                  '1': '1 Mbps',
+                },
+              ),
               EnumPreferenceTile<MaxVideoResolution>(
                 preference: UserPreferences.maxVideoResolution,
                 title: l10n.maxResolution,

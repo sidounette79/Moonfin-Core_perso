@@ -2790,6 +2790,10 @@
     "@maxStreamingBitrate": {
         "description": "Setting for max streaming bitrate"
     },
+    "maxCellularStreamingBitrate": "Débit maximal en streaming (données cellulaires)",
+    "@maxCellularStreamingBitrate": {
+        "description": "Setting for max streaming bitrate on a cellular-only connection"
+    },
     "maxResolution": "Résolution maximale",
     "@maxResolution": {
         "description": "Setting for max resolution"
@@ -6652,6 +6656,7 @@
     "settingsSkip": "Sauter",
     "settingsDoNothing": "Ne rien faire",
     "settingsMaxBitrateDescription": "Limitez le débit binaire du streaming. Le contenu au-dessus de ce seuil sera transcodé pour s'adapter.",
+    "settingsMaxCellularBitrateDescription": "Un plafond séparé utilisé uniquement sur une connexion cellulaire seule. \"Auto\" garde le plafond ci-dessus.",
     "settingsMaxResolutionDescription": "Limitez la résolution maximale que le joueur demandera. Le contenu à plus haute résolution sera transcodé vers le bas.",
     "settingsPlayerZoomDescription": "Comment la vidéo doit être mise à l'échelle pour s'adapter à l'écran.",
     "settingsPlaybackEngineAndroidTv": "Moteur de lecture (Android TV)",

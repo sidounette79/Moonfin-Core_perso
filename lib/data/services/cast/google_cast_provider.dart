@@ -35,9 +35,7 @@ class GoogleCastProvider implements CastProvider, CastTransportControls {
   // read. Unset leaves the profile on its own default.
   int? get _maxBitrateMbps {
     if (!GetIt.instance.isRegistered<UserPreferences>()) return null;
-    return int.tryParse(
-      GetIt.instance<UserPreferences>().get(UserPreferences.maxBitrate),
-    );
+    return int.tryParse(GetIt.instance<UserPreferences>().resolveMaxBitrate());
   }
 
   MediaStreamResolver _resolverForClient(MediaServerClient client) {

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:get_it/get_it.dart';
 import 'package:jellyfin_preference/jellyfin_preference.dart';
 import 'package:server_core/server_core.dart' hide ImageType;
 
@@ -10,6 +11,7 @@ import '../data/models/aggregated_item.dart';
 import '../data/models/series_track_preference.dart';
 import '../data/models/m3u_provider.dart';
 import '../data/models/xtream_models.dart';
+import '../data/services/connectivity_service.dart';
 import '../playback/audio_capability_profile.dart';
 import '../util/device_performance.dart';
 import '../util/idiom/app_ui_idiom.dart';
@@ -1797,6 +1799,32 @@ class UserPreferences extends ChangeNotifier {
     key: 'pref_max_bitrate',
     defaultValue: '120',
   );
+
+  /// 29.10, Sid ("il y a un équilibre à trouver entre saccade... et
+  /// chargement long [...] quand je lance le même truc par Emby, ça
+  /// démarre tout de suite alors que Moonfin attend") - maxBitrate above
+  /// had no network-aware distinction at all (unlike Emby's own app, which
+  /// keeps WiFi and cellular caps separate), so a cap set low for the car
+  /// throttled her at home/the office too. 'auto' means "use maxBitrate
+  /// unchanged" - an explicit value here only kicks in on a cellular-only
+  /// connection (see ConnectivityService.isCellularOnly), so existing
+  /// installs see no behavior change until this is set deliberately.
+  static final cellularMaxBitrate = Preference(
+    key: 'pref_cellular_max_bitrate',
+    defaultValue: 'auto',
+  );
+
+  /// The effective streaming bitrate cap for the current connection -
+  /// [cellularMaxBitrate] on a cellular-only connection when it's set to
+  /// something other than 'auto', [maxBitrate] otherwise. Every playback
+  /// backend should read this instead of [maxBitrate] directly.
+  String resolveMaxBitrate() {
+    final isCellularOnly = GetIt.instance.isRegistered<ConnectivityService>() &&
+        GetIt.instance<ConnectivityService>().isCellularOnly;
+    if (!isCellularOnly) return get(maxBitrate);
+    final cellular = get(cellularMaxBitrate);
+    return cellular == 'auto' ? get(maxBitrate) : cellular;
+  }
 
   static final maxVideoResolution = EnumPreference(
     key: 'pref_max_video_resolution',

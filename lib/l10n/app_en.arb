@@ -4290,6 +4290,10 @@
   "@maxStreamingBitrate": {
     "description": "Setting for max streaming bitrate"
   },
+  "maxCellularStreamingBitrate": "Max Streaming Bitrate (Cellular)",
+  "@maxCellularStreamingBitrate": {
+    "description": "Setting for max streaming bitrate on a cellular-only connection"
+  },
   "maxResolution": "Max Resolution",
   "@maxResolution": {
     "description": "Setting for max resolution"
@@ -9757,6 +9761,7 @@
   "settingsSkip": "Skip",
   "settingsDoNothing": "Do Nothing",
   "settingsMaxBitrateDescription": "Cap the streaming bitrate. Content above this threshold will be transcoded to fit.",
+  "settingsMaxCellularBitrateDescription": "A separate cap used only on a cellular-only connection. \"Auto\" keeps using the cap above.",
   "settingsMaxResolutionDescription": "Limit the maximum resolution the player will request. Higher-resolution content will be transcoded down.",
   "settingsPlayerZoomDescription": "How video should be scaled to fit the screen.",
   "settingsPlaybackEngineAndroidTv": "Playback Engine (Android TV)",

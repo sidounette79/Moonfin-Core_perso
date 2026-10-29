@@ -102,9 +102,7 @@ class _ExternalPlayerHostScreenState extends State<ExternalPlayerHostScreen> {
         final resolver = GetIt.instance<MediaStreamResolver>();
         final playService = GetIt.instance<PlayerService>();
 
-        final maxBitrateOption = int.tryParse(
-          _prefs.get(UserPreferences.maxBitrate),
-        );
+        final maxBitrateOption = int.tryParse(_prefs.resolveMaxBitrate());
         final maxResolution = _prefs.get(UserPreferences.maxVideoResolution);
         final profile = DeviceProfileBuilder.build(
           maxBitrateMbps: maxBitrateOption,

@@ -287,6 +287,7 @@ final List<SyncedField> syncedFields = <SyncedField>[
   SyncedField('loadingAnimationSize', UserPreferences.loadingAnimationSize, SyncCodec.enumName, enumValues: prefs.LoadingAnimationSize.values),
   SyncedField('loadingAnimationSpeed', UserPreferences.loadingAnimationSpeed, SyncCodec.enumName, enumValues: prefs.LoadingAnimationSpeed.values),
   SyncedField('maxBitrate', UserPreferences.maxBitrate, SyncCodec.text),
+  SyncedField('cellularMaxBitrate', UserPreferences.cellularMaxBitrate, SyncCodec.text),
   SyncedField('maxVideoResolution', UserPreferences.maxVideoResolution, SyncCodec.enumName, enumValues: prefs.MaxVideoResolution.values),
   SyncedField('mediaQueuingEnabled', UserPreferences.mediaQueuingEnabled, SyncCodec.boolean),
   SyncedField('mediaSegmentActions', UserPreferences.mediaSegmentActions, SyncCodec.text),
