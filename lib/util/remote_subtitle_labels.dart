@@ -3,6 +3,7 @@ import 'package:get_it/get_it.dart';
 
 import '../l10n/app_localizations.dart';
 import '../preference/user_preferences.dart';
+import 'language_matching.dart';
 
 /// The flags the provider sets on an upload - machine or AI translated,
 /// hearing impaired, forced, a hash match against this exact file.
@@ -142,13 +143,18 @@ String remoteSubtitleLanguage(
       .trim()
       .toLowerCase();
   if (preferred.isNotEmpty && preferred != 'auto' && preferred != 'none') {
-    return preferred;
+    // Le sélecteur manuel dans les réglages stocke le code terminologique
+    // (ex. "fra"), le serveur/le système peuvent stocker du bibliographique
+    // ("fre") - les providers (OpenSubtitles via Emby) attendent le
+    // bibliographique, d'où la même normalisation que pour le matching de
+    // piste interne (toIso3Language, cf. language_matching.dart).
+    return toIso3Language(preferred);
   }
 
   for (final stream in [...subtitleStreams, ...audioStreams]) {
     final language = (stream['Language'] as String?)?.trim();
     if (language != null && language.isNotEmpty) {
-      return language;
+      return toIso3Language(language);
     }
   }
 
