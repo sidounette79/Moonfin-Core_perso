@@ -2226,6 +2226,22 @@ class HomeViewModel extends ChangeNotifier {
           existingItemCount: existing.items.length,
           freshItemCount: sorted.length,
         )) {
+      // 30.10, Sid ("je le mets comme vu, mais dans carba TV il reste dans
+      // continuer à regarder") - keeping the paged row verbatim here (to
+      // not lose pages a light refresh can't re-fetch) also kept any item
+      // already patched to isPlayed by applyUserDataChanges/userDataSync
+      // (the toggle button's optimistic update) - it never actually left
+      // until a full reload. Still drop those specifically, which costs
+      // nothing from the paging this branch exists to protect.
+      final withoutWatched = existing.items
+          .where((item) => !item.isPlayed)
+          .toList();
+      if (withoutWatched.length != existing.items.length) {
+        final index = _rows.indexOf(existing);
+        _rows = List.of(_rows);
+        _rows[index] = existing.copyWith(items: withoutWatched);
+        notifyListeners();
+      }
       return;
     }
     // Each source contributed its first page, and the merged item count can't
