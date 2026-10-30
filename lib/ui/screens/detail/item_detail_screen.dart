@@ -48,6 +48,7 @@ import 'detail_episode_images.dart';
 import 'minimalist/minimalist_detail_content.dart';
 import 'nouveau/nouveau_detail_content.dart';
 import 'nouveau/hero/nouveau_action_buttons.dart';
+import 'nouveau/hero/nouveau_episode_preview_card.dart';
 import 'nouveau/hero/nouveau_resume_progress_bar.dart';
 import 'nouveau/hero/nouveau_track_info_bar.dart';
 import 'modern/modern_detail_content.dart';
@@ -7795,6 +7796,30 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           ? null
           : NouveauResumeProgressBar(resumeItem: resumeItem);
 
+      // 30.10, Sid ("j'ai bien le reprendre mais pas une miniature de
+      // l'épisode qui irait avec") - a real thumbnail for the episode
+      // Reprendre is about to launch, shown regardless of playback progress
+      // (unlike resumeBar above, which needs a real in-progress position).
+      // Series/Season only - a movie/episode page already shows its own
+      // poster as the backdrop.
+      Widget? episodePreview;
+      if (isTvShowForResume && resumeItem != null) {
+        final previewTag = resumeItem.primaryImageTag;
+        final previewImageUrl =
+            previewTag != null && !resumeItem.id.startsWith('tmdb:')
+            ? widget.viewModel.imageApi.getPrimaryImageUrl(
+                resumeItem.id,
+                maxHeight: 400,
+                tag: previewTag,
+              )
+            : null;
+        episodePreview = NouveauEpisodePreviewCard(
+          episode: resumeItem,
+          imageUrl: previewImageUrl,
+          selectedMediaSource: selectedSource,
+        );
+      }
+
       // 26.10, Sid ("Dans emby, je peux facilement changer les sous-titres
       // ou l'audio... lié au reprendre... le audio devient déroulant aussi
       // quand il existe") - texte simple quand il n'y a qu'une seule piste,
@@ -7895,6 +7920,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          ?episodePreview,
           ?trackInfoBar,
           rowContent,
           ?resumeBar,
