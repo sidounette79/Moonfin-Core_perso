@@ -41,6 +41,12 @@ class NouveauHero extends StatefulWidget {
   /// through, this widget has no opinion on it.
   final bool hideEpisodePreview;
 
+  /// 30.10, Sid ("le bouton supprimer... il manque aussi aux series") -
+  /// never wired through to DetailActionButtons for this theme before,
+  /// unlike Classic/Modern/Spotlight. Already permission-gated by the
+  /// caller (item.canDelete), never an unconditional delete-for-everyone.
+  final VoidCallback? onDelete;
+
   const NouveauHero({
     super.key,
     required this.item,
@@ -56,6 +62,7 @@ class NouveauHero extends StatefulWidget {
     this.onNavigateDown,
     this.previewEpisodeOverride,
     this.hideEpisodePreview = false,
+    this.onDelete,
   });
 
   @override
@@ -399,6 +406,7 @@ class NouveauHeroState extends State<NouveauHero> {
       upTarget: _overviewFocusable && !hideOverview ? _overviewFocusNode : null,
       previewEpisodeOverride: widget.previewEpisodeOverride,
       hideEpisodePreview: widget.hideEpisodePreview,
+      onDelete: widget.onDelete,
     );
 
     return Focus(

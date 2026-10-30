@@ -253,6 +253,27 @@ Future<bool> _showDeleteConfirmationDialog(
   return confirmed == true;
 }
 
+/// Top-level (not just _DetailContentState's) so the Nouveau theme can wire
+/// the same permission-respecting delete button as Classic/Modern/Spotlight
+/// instead of never offering one at all.
+Future<void> _confirmDeleteServerItem(
+  BuildContext context,
+  ItemDetailViewModel viewModel,
+  AggregatedItem item,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final isPlaylist = item.type == 'Playlist';
+  final confirmed = await _showDeleteConfirmationDialog(
+    context,
+    title: isPlaylist ? l10n.deletePlaylist : l10n.deleteItem,
+    message: isPlaylist ? l10n.deletePlaylistMessage : l10n.deleteItemMessage,
+  );
+  if (!confirmed) return;
+
+  appRouter.go(Destinations.home);
+  _deleteItemInBackground(viewModel, isPlaylist: isPlaylist);
+}
+
 class ItemDetailScreen extends StatefulWidget {
   final String itemId;
   final String? serverId;
@@ -816,6 +837,10 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
           actionsExpanded: _actionsExpanded,
           onActionsExpandedChanged: (val) =>
               setState(() => _actionsExpanded = val),
+          onDelete: _viewModel.item?.canDelete == true
+              ? () =>
+                    _confirmDeleteServerItem(context, _viewModel, _viewModel.item!)
+              : null,
         ),
 
         DetailScreenStyle.minimalist => MinimalistDetailContent(
@@ -2025,7 +2050,7 @@ class _DetailContentState extends State<_DetailContent> {
         downTarget: metadataFocusNode ?? movieDownTarget,
         autoPlay: widget.autoPlay,
         onDelete: item.canDelete
-            ? () => _confirmDeleteServerItem(context, item)
+            ? () => _confirmDeleteServerItem(context, viewModel, item)
             : null,
       ),
       if (_hasMetadata(item)) ...[
@@ -2602,7 +2627,7 @@ class _DetailContentState extends State<_DetailContent> {
         downTarget: metadataFocusNode ?? episodeDownTarget,
         autoPlay: widget.autoPlay,
         onDelete: item.canDelete
-            ? () => _confirmDeleteServerItem(context, item)
+            ? () => _confirmDeleteServerItem(context, viewModel, item)
             : null,
       ),
       if (_hasMetadata(item)) ...[
@@ -3557,7 +3582,7 @@ class _DetailContentState extends State<_DetailContent> {
             ? () => _confirmDeleteDownloadedAlbum(context, item.name)
             : null,
         onDeletePlaylist: canDeleteItem
-            ? () => _confirmDeleteServerItem(context, item)
+            ? () => _confirmDeleteServerItem(context, viewModel, item)
             : null,
       ),
       if (viewModel.tracks.isNotEmpty) ...[
@@ -3732,23 +3757,6 @@ class _DetailContentState extends State<_DetailContent> {
         ),
       ),
     );
-  }
-
-  Future<void> _confirmDeleteServerItem(
-    BuildContext context,
-    AggregatedItem item,
-  ) async {
-    final l10n = AppLocalizations.of(context);
-    final isPlaylist = item.type == 'Playlist';
-    final confirmed = await _showDeleteConfirmationDialog(
-      context,
-      title: isPlaylist ? l10n.deletePlaylist : l10n.deleteItem,
-      message: isPlaylist ? l10n.deletePlaylistMessage : l10n.deleteItemMessage,
-    );
-    if (!confirmed) return;
-
-    appRouter.go(Destinations.home);
-    _deleteItemInBackground(viewModel, isPlaylist: isPlaylist);
   }
 
   Future<void> _showRenamePlaylistDialog(

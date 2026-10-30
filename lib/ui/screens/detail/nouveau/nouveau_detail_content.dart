@@ -46,6 +46,10 @@ class NouveauDetailContent extends StatefulWidget {
   final bool actionsExpanded;
   final ValueChanged<bool> onActionsExpandedChanged;
 
+  /// See [NouveauHero.onDelete] - passed straight through, this widget has
+  /// no opinion on it.
+  final VoidCallback? onDelete;
+
   const NouveauDetailContent({
     super.key,
     required this.viewModel,
@@ -59,6 +63,7 @@ class NouveauDetailContent extends StatefulWidget {
     this.onPlayFromChapter,
     required this.actionsExpanded,
     required this.onActionsExpandedChanged,
+    this.onDelete,
   });
 
   @override
@@ -993,6 +998,7 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
             prefs: widget.prefs,
             previewEpisodeOverride: _previewEpisode,
             hideEpisodePreview: splitPreviewItem != null,
+            onDelete: widget.onDelete,
           );
 
     final hero = RepaintBoundary(
