@@ -80,6 +80,16 @@ object Media3Bridge {
     @Volatile
     private var downmixToStereo = false
 
+    // 30.10, Sid ("il faut que les modes auto fassent vraiment du auto") -
+    // Dart's own already Bluetooth-aware audio capability probe
+    // (AudioCapabilities.kt, corrected 29.10), forwarded here so AUTO mode
+    // can veto a bitstream attempt wider than the actual route instead of
+    // trusting Media3's own in-process platform probe, which still reports
+    // stale HDMI-class passthrough over Bluetooth. -1 means "not yet
+    // detected", never treated as a real channel cap.
+    @Volatile
+    private var maxPcmChannels = -1
+
     @Volatile
     private var activeView: Media3VideoView? = null
 
@@ -275,6 +285,8 @@ object Media3Bridge {
 
     fun downmixToStereoEnabled(): Boolean = downmixToStereo
 
+    fun maxPcmChannels(): Int = maxPcmChannels
+
     fun setSessionTunnelingDisabledEnabled(value: Boolean) {
         sessionTunnelingDisabled = value
     }
@@ -341,6 +353,7 @@ object Media3Bridge {
             (args?.get("downmixToStereo") as? Boolean)?.let {
                 downmixToStereo = it
             }
+            maxPcmChannels = (args?.get("maxPcmChannels") as? Number)?.toInt() ?: -1
 
             val view = activeView
             if (view != null) {

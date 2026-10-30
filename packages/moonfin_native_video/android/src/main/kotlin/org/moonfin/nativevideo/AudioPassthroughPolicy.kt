@@ -13,24 +13,40 @@ enum class PassthroughMode { DISABLED, AUTO, MANUAL }
  * The user's bitstreaming policy for compressed surround audio. The policy only
  * ever narrows what the sink's own capability probe allows, so enabling a codec
  * here never forces bitstreaming onto a route that can't carry it.
+ *
+ * 30.10, Sid ("il faut que les modes auto fassent vraiment du auto") -
+ * [maxKnownPcmChannels] is Dart's own already route-aware channel cap
+ * (AudioCapabilities.kt already corrects it for Bluetooth, see its 29.10
+ * comment), forwarded here because Media3's own in-process platform probe
+ * does not: AUTO used to defer to that probe outright and still attempted
+ * a 6-channel AudioTrack over a 2-channel Bluetooth sink, failing and
+ * recovering only after a visible stutter. Null means no reliable cap is
+ * known yet, so AUTO behaves exactly as before (platform probe decides).
  */
 data class AudioPassthroughPolicy(
     val mode: PassthroughMode,
     val allowedCodecs: Set<String>,
+    val maxKnownPcmChannels: Int? = null,
 ) {
-    fun allowsBitstream(mimeType: String?): Boolean {
+    fun allowsBitstream(mimeType: String?, channelCount: Int = 0): Boolean {
         val codec = codecKeyForMime(mimeType) ?: return true
+        val exceedsKnownRoute =
+            maxKnownPcmChannels != null && channelCount > maxKnownPcmChannels
         return when (mode) {
-            PassthroughMode.AUTO -> true
+            PassthroughMode.AUTO -> !exceedsKnownRoute
             PassthroughMode.DISABLED -> false
-            PassthroughMode.MANUAL -> codec in allowedCodecs
+            PassthroughMode.MANUAL -> codec in allowedCodecs && !exceedsKnownRoute
         }
     }
 
     companion object {
         val KNOWN_CODECS = setOf("ac3", "eac3", "dts", "dtshd", "truehd")
 
-        fun fromWire(mode: String, codecs: Set<String>): AudioPassthroughPolicy =
+        fun fromWire(
+            mode: String,
+            codecs: Set<String>,
+            maxKnownPcmChannels: Int? = null,
+        ): AudioPassthroughPolicy =
             AudioPassthroughPolicy(
                 mode = when (mode) {
                     "disabled" -> PassthroughMode.DISABLED
@@ -38,6 +54,7 @@ data class AudioPassthroughPolicy(
                     else -> PassthroughMode.AUTO
                 },
                 allowedCodecs = codecs,
+                maxKnownPcmChannels = maxKnownPcmChannels,
             )
 
         /**
@@ -74,19 +91,19 @@ class PassthroughPolicyAudioSink(
     private val policy: AudioPassthroughPolicy,
 ) : ForwardingAudioSink(delegate) {
     override fun supportsFormat(format: Format): Boolean {
-        if (!policy.allowsBitstream(format.sampleMimeType)) return false
+        if (!policy.allowsBitstream(format.sampleMimeType, format.channelCount)) return false
         return super.supportsFormat(format)
     }
 
     override fun getFormatSupport(format: Format): Int {
-        if (!policy.allowsBitstream(format.sampleMimeType)) {
+        if (!policy.allowsBitstream(format.sampleMimeType, format.channelCount)) {
             return AudioSink.SINK_FORMAT_UNSUPPORTED
         }
         return super.getFormatSupport(format)
     }
 
     override fun getFormatOffloadSupport(format: Format): AudioOffloadSupport {
-        if (!policy.allowsBitstream(format.sampleMimeType)) {
+        if (!policy.allowsBitstream(format.sampleMimeType, format.channelCount)) {
             return AudioOffloadSupport.DEFAULT_UNSUPPORTED
         }
         return super.getFormatOffloadSupport(format)

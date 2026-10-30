@@ -65,6 +65,25 @@ class Media3PlayerBackend extends PlayerBackend {
           ? AudioPassthroughOutput.iecPacker.wireName
           : AudioPassthroughOutput.platform.wireName,
       'downmixToStereo': prefs.get(UserPreferences.downmixToStereo),
+      // 30.10, Sid ("il faut que les modes auto dans les réglages audio
+      // fassent vraiment du auto") - in AUTO mode the native side used to
+      // let Media3's own platform capability probe decide bitstream
+      // eligibility outright, trusting it to be authoritative. That probe
+      // reports stale HDMI-class passthrough capabilities over Bluetooth
+      // (same underlying Android bug already worked around for the
+      // server-facing capability snapshot, see AudioCapabilities.kt's
+      // 29.10 comment) - it was never applied to Media3's own in-process
+      // probe, so AUTO still attempted a 6-channel AudioTrack over a
+      // 2-channel Bluetooth sink, failed, and recovered only after a
+      // ~2-3s AudioTrack-retry stutter. Forwarding our own already
+      // Bluetooth-aware detection lets native veto a bitstream attempt
+      // whose channel count exceeds it, in AUTO too - null when not yet
+      // detected (0 would wrongly veto everything before first probe).
+      'maxPcmChannels':
+          PlatformDetection.hasAudioCapabilities &&
+              PlatformDetection.maxPcmChannelsAudio > 0
+          ? PlatformDetection.maxPcmChannelsAudio
+          : null,
     };
   }
 

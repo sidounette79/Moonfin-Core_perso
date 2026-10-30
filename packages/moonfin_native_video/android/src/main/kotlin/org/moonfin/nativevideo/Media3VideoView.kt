@@ -260,12 +260,16 @@ private class MoonfinRenderersFactory(
             flap = RouteFlapHold(),
             onRecoveryNeeded = onPassthroughRecoveryNeeded,
         )
-        // Auto skips the policy veto so the platform's own format probe
-        // stays authoritative. The recovery wrapper forwards every probe
-        // call untouched, so it rides along in every mode.
-        if (passthroughPolicy.mode == PassthroughMode.AUTO) {
-            return recovering
-        }
+        // 30.10, Sid ("il faut que les modes auto fassent vraiment du
+        // auto") - AUTO used to skip this wrapper entirely so the
+        // platform's own format probe stayed sole authority, including
+        // over Bluetooth where that probe is known stale (see
+        // AudioPassthroughPolicy's maxKnownPcmChannels doc). Now always
+        // wrapped: in AUTO with no reliable channel cap detected yet,
+        // allowsBitstream still returns true unconditionally, so the
+        // platform probe stays authoritative exactly as before - the only
+        // behavior change is the new, narrow veto when our own detection
+        // already knows the route can't carry this format's channel count.
         return PassthroughPolicyAudioSink(recovering, passthroughPolicy)
     }
 
@@ -1790,6 +1794,7 @@ class Media3VideoView(
         val passthroughPolicy = AudioPassthroughPolicy.fromWire(
             passthroughMode,
             passthroughCodecs,
+            Media3Bridge.maxPcmChannels().takeIf { it > 0 },
         )
         iecOutputProvider = if (passthroughOutput == "iec" && Build.VERSION.SDK_INT >= 24) {
             Iec61937AudioOutputProvider(context)

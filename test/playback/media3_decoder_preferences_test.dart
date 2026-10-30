@@ -102,8 +102,31 @@ void main() {
           'passthroughCodecs',
           'passthroughOutput',
           'downmixToStereo',
+          'maxPcmChannels',
         }),
       );
+    });
+
+    test('maxPcmChannels is null before any detection', () async {
+      final prefs = await _prefs();
+
+      final payload = Media3PlayerBackend.audioDecoderPreferencesPayload(
+        prefs,
+      );
+
+      expect(payload['maxPcmChannels'], isNull);
+    });
+
+    test('maxPcmChannels forwards a real detected value', () async {
+      final prefs = await _prefs();
+      PlatformDetection.setAudioCapabilities({'maxPcmChannels': 2});
+      addTearDown(() => PlatformDetection.setAudioCapabilities(null));
+
+      final payload = Media3PlayerBackend.audioDecoderPreferencesPayload(
+        prefs,
+      );
+
+      expect(payload['maxPcmChannels'], 2);
     });
 
     test('passthroughOutput defaults to platform', () async {
