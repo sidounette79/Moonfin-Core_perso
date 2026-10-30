@@ -1284,9 +1284,9 @@
     "@downloadSubtitlesLabel": {
         "description": "Label for the download subtitles option"
     },
-    "searchOpenSubtitlesPlugin": "Rechercher avec le plugin OpenSubtitles",
+    "searchOpenSubtitlesPlugin": "Rechercher des sous-titres en ligne",
     "@searchOpenSubtitlesPlugin": {
-        "description": "Subtitle for the download subtitles option"
+        "description": "Subtitle for the download subtitles option. 30.10, Sid (\"pourtant j'ai Addic7ed aussi dans emby\") - the client calls Emby's generic /RemoteSearch/Subtitles endpoint, which queries every provider plugin active on the server (Addic7ed included, not just OpenSubtitles) - the old label named one specific plugin by name, misleadingly implying only it was ever used."
     },
     "downloadSubtitles": "Télécharger des sous-titres",
     "@downloadSubtitles": {

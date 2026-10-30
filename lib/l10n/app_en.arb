@@ -1972,9 +1972,9 @@
   "@downloadSubtitlesLabel": {
     "description": "Label for the download subtitles option"
   },
-  "searchOpenSubtitlesPlugin": "Search using the OpenSubtitles plugin",
+  "searchOpenSubtitlesPlugin": "Search for subtitles online",
   "@searchOpenSubtitlesPlugin": {
-    "description": "Subtitle for the download subtitles option"
+    "description": "Subtitle for the download subtitles option. Queries every subtitle provider plugin active on the server (Emby's generic /RemoteSearch/Subtitles endpoint), not just one named plugin."
   },
   "downloadSubtitles": "Download Subtitles",
   "searchingSubtitles": "Searching for subtitles\u2026",
