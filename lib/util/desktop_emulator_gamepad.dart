@@ -57,10 +57,9 @@ class DesktopEmulatorGamepad {
 
   DesktopEmulatorGamepad({
     required this.onButton,
-    Stream<NormalizedGamepadEvent>? events,
+    this._events,
     ConnectedPads? listGamepads,
-  }) : _events = events,
-       _listGamepads = listGamepads ?? _connectedPads;
+  }) : _listGamepads = listGamepads ?? _connectedPads;
 
   /// Called with an EmulatorJS button name, whether it went down, and the pad
   /// it came from in the shape the bridge registers.

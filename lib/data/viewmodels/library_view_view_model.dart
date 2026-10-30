@@ -31,10 +31,9 @@ class LibraryViewViewModel extends ChangeNotifier {
 
   LibraryViewViewModel({
     required this.libraryId,
-    required RowDataSource dataSource,
-    required MediaServerClient client,
-  })  : _dataSource = dataSource,
-        _client = client;
+    required this._dataSource,
+    required this._client,
+  });
 
   void setFocusedItem(AggregatedItem? item) {
     _focusedItem = item;

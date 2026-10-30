@@ -15,12 +15,11 @@ enum GameSystemBrowseError { unsupported, loadFailed }
 /// widget does not mix rendering with data orchestration.
 class GameSystemBrowseViewModel extends ChangeNotifier {
   GameSystemBrowseViewModel({
-    required GamesApi? gamesApi,
+    required this._gamesApi,
     required this.libraryId,
     required this.systemId,
     String? systemName,
-  }) : _gamesApi = gamesApi,
-       _providedSystemName = systemName?.trim();
+  }) : _providedSystemName = systemName?.trim();
 
   static const searchDebounceDuration = Duration(milliseconds: 150);
   // Descriptions should feel immediate while still ignoring a pointer merely

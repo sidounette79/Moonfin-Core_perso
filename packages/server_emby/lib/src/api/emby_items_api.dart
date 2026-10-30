@@ -190,7 +190,7 @@ class EmbyItemsApi implements ItemsApi {
     final response = await _dio.get(
       '/Users/$userId/Items/$itemId',
       queryParameters: {
-        if (mediaSourceId != null) 'mediaSourceId': mediaSourceId,
+        'mediaSourceId': ?mediaSourceId,
         'Fields': ?_knownFields(fields),
       },
     );
@@ -389,8 +389,7 @@ class EmbyItemsApi implements ItemsApi {
         'ParentId': ?parentId,
         if (includeItemTypes != null)
           'IncludeItemTypes': includeItemTypes.join(','),
-        if (mediaTypes != null)
-          'MediaTypes': mediaTypes,
+        'MediaTypes': ?mediaTypes,
         'StartIndex': ?startIndex,
         'Limit': ?limit,
         'Fields': ?_knownFields(fields),
@@ -414,13 +413,13 @@ class EmbyItemsApi implements ItemsApi {
     final response = await _dio.get(
       '/Users/$userId/Items/Latest',
       queryParameters: {
-        if (parentId != null) 'ParentId': parentId,
+        'ParentId': ?parentId,
         if (includeItemTypes != null)
           'IncludeItemTypes': includeItemTypes.join(','),
-        if (limit != null) 'Limit': limit,
+        'Limit': ?limit,
         'Fields': ?_knownFields(fields),
-        if (enableImageTypes != null) 'EnableImageTypes': enableImageTypes,
-        if (imageTypeLimit != null) 'ImageTypeLimit': imageTypeLimit,
+        'EnableImageTypes': ?enableImageTypes,
+        'ImageTypeLimit': ?imageTypeLimit,
       },
     );
 
@@ -446,14 +445,14 @@ class EmbyItemsApi implements ItemsApi {
     final response = await _dio.get(
       '/Items',
       queryParameters: {
-        if (parentId != null) 'ParentId': parentId,
+        'ParentId': ?parentId,
         if (recursive) 'Recursive': true,
         if (includeItemTypes != null)
           'IncludeItemTypes': includeItemTypes.join(','),
-        if (limit != null) 'Limit': limit,
+        'Limit': ?limit,
         'Fields': ?_knownFields(fields),
-        if (enableImageTypes != null) 'EnableImageTypes': enableImageTypes,
-        if (imageTypeLimit != null) 'ImageTypeLimit': imageTypeLimit,
+        'EnableImageTypes': ?enableImageTypes,
+        'ImageTypeLimit': ?imageTypeLimit,
         'SortBy' : 'PremiereDate',
         'SortOrder' : 'Descending',
         'MaxPremiereDate': DateTime.now().toUtc().toIso8601String(),
@@ -649,8 +648,8 @@ class EmbyItemsApi implements ItemsApi {
     final queryParameters = <String, dynamic>{
       'name': name,
       'Name': name,
-      if (ids != null) 'ids': ids,
-      if (ids != null) 'Ids': ids,
+      'ids': ?ids,
+      'Ids': ?ids,
     };
 
     Response<dynamic> response;

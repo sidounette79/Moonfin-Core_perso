@@ -17,8 +17,8 @@ class LocalAwarePlayerService implements PlayerService {
   LocalAwarePlayerService(
     this._inner,
     this._offlineRepo, {
-    required bool Function() canReachServer,
-  }) : _canReachServer = canReachServer;
+    required this._canReachServer,
+  });
 
   Future<void> _recordLocal(dynamic mediaItem, int positionTicks) async {
     try {

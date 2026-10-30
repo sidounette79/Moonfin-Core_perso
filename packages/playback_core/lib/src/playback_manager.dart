@@ -766,11 +766,10 @@ class PlaybackManager implements AudioOwnable {
         'audioProfile': (audioStream['Profile'] ?? '').toString(),
         if (audioStream['Channels'] is int) 'audioChannels': audioStream['Channels'],
       },
-      if (audioContainerIndex != null) 'audioStreamIndex': audioContainerIndex,
-      if (audioTrackOrdinal != null) 'audioTrackOrdinal': audioTrackOrdinal,
-      if (audioStreamLang != null) 'preferredAudioLanguage': audioStreamLang,
-      if (subtitleStreamLang != null)
-        'preferredTextLanguage': subtitleStreamLang,
+      'audioStreamIndex': ?audioContainerIndex,
+      'audioTrackOrdinal': ?audioTrackOrdinal,
+      'preferredAudioLanguage': ?audioStreamLang,
+      'preferredTextLanguage': ?subtitleStreamLang,
       if (videoStream != null && videoStream['DvProfile'] is int)
         'videoDvProfile': videoStream['DvProfile'],
       if (videoStream != null && videoStream['DvBlSignalCompatibilityId'] is int)
@@ -778,7 +777,7 @@ class PlaybackManager implements AudioOwnable {
       if (videoStream != null &&
           (videoStream['Codec']?.toString().isNotEmpty ?? false))
         'videoCodec': videoStream['Codec'].toString().toLowerCase(),
-      if (videoFrameRate != null) 'videoFrameRate': videoFrameRate,
+      'videoFrameRate': ?videoFrameRate,
       if (videoStream != null && videoStream['Width'] is int)
         'videoWidth': videoStream['Width'],
       if (videoStream != null && videoStream['Height'] is int)
@@ -3601,7 +3600,7 @@ class PlaybackManager implements AudioOwnable {
         // stop report is skipped for audiobooks and can fail transiently.
         try {
           await Future.wait([
-            if (stopReport != null) stopReport,
+            ?stopReport,
             if (_service != null) _service!.stopTranscoding(resolution),
           ]).timeout(const Duration(seconds: 3));
         } catch (_) {}

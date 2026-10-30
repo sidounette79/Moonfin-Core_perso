@@ -88,16 +88,12 @@ abstract class AppleTvPromptCommands {
 /// two players behave identically. The native side only renders.
 class AppleTvPlaybackPromptController {
   AppleTvPlaybackPromptController({
-    required UserPreferences prefs,
-    required AppleTvPromptCommands commands,
-    required AppleTvQueueSnapshot Function() queueSnapshot,
-    required MediaSegmentService? Function() segmentService,
+    required this._prefs,
+    required this._commands,
+    required this._queueSnapshot,
+    required this._segmentService,
     DateTime Function()? now,
-  }) : _prefs = prefs,
-       _commands = commands,
-       _queueSnapshot = queueSnapshot,
-       _segmentService = segmentService,
-       _now = now ?? DateTime.now;
+  }) : _now = now ?? DateTime.now;
 
   static const _seekPromptSuppressionDuration = Duration(milliseconds: 1200);
 

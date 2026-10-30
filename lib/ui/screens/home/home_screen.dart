@@ -6359,7 +6359,7 @@ class _ContentRowsState extends State<_ContentRows>
                     ),
                   ),
                 ],
-                if (trailing != null) trailing,
+                ?trailing,
               ],
             ),
           ),

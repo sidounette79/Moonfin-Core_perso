@@ -20,7 +20,7 @@ AggregatedItem _episode({
     'Id': 'ep-1',
     'Name': name,
     'Type': 'Episode',
-    if (number != null) 'IndexNumber': number,
+    'IndexNumber': ?number,
     'UserData': {'Played': played},
   },
 );

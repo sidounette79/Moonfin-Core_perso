@@ -3207,6 +3207,9 @@ class AppLocalizationsCa extends AppLocalizations {
   String get maxStreamingBitrate => 'Taxa de bits de transmissió màxima';
 
   @override
+  String get maxCellularStreamingBitrate => 'Max Streaming Bitrate (Cellular)';
+
+  @override
   String get maxResolution => 'Resolució màxima';
 
   @override
@@ -10179,6 +10182,42 @@ class AppLocalizationsCa extends AppLocalizations {
       'Comproveu l\'últim llançament de Moonfin';
 
   @override
+  String get settingsCheckForOtaPatch => 'OTA Patch (Shorebird)';
+
+  @override
+  String settingsCheckForOtaPatchSubtitleWithPatch(int number) {
+    return 'Current patch: #$number. Tap to check.';
+  }
+
+  @override
+  String get settingsCheckForOtaPatchSubtitleNoPatch =>
+      'Check whether a patch is available';
+
+  @override
+  String otaPatchUpToDate(int number) {
+    return 'Patch up to date (#$number).';
+  }
+
+  @override
+  String get otaPatchDownloaded =>
+      'Patch downloaded. Restart the app to apply it.';
+
+  @override
+  String get otaPatchRestartRequired =>
+      'A patch is already downloaded, restart the app to apply it.';
+
+  @override
+  String get otaPatchRestartNow => 'Restart now';
+
+  @override
+  String get otaPatchCheckFailed =>
+      'Could not check for OTA patches right now.';
+
+  @override
+  String get otaPatchUnavailable =>
+      'OTA patches aren\'t available on this install.';
+
+  @override
   String get settingsPoweredByFlutter => 'Desenvolupat per Flutter';
 
   @override
@@ -10273,6 +10312,10 @@ class AppLocalizationsCa extends AppLocalizations {
   @override
   String get settingsMaxBitrateDescription =>
       'Limiteu la taxa de bits de transmissió. El contingut per sobre d\'aquest llindar es transcodificarà per adaptar-se.';
+
+  @override
+  String get settingsMaxCellularBitrateDescription =>
+      'A separate cap used only on a cellular-only connection. \"Auto\" keeps using the cap above.';
 
   @override
   String get settingsMaxResolutionDescription =>

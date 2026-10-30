@@ -17,10 +17,9 @@ class LocalFirstMediaStreamResolver extends MediaStreamResolver {
   final OfflineStreamResolver _offline;
 
   LocalFirstMediaStreamResolver({
-    required MediaStreamResolver inner,
-    required OfflineStreamResolver offline,
-  }) : _inner = inner,
-       _offline = offline;
+    required this._inner,
+    required this._offline,
+  });
 
   @override
   Future<StreamResolutionResult> resolve(

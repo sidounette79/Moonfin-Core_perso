@@ -128,8 +128,7 @@ abstract class MpvLetterboxHost {
 
 /// Desktop libmpv [LetterboxCropper]. The only shipping implementation.
 class MpvLetterboxCropper extends LetterboxCropper {
-  MpvLetterboxCropper(this._host, {required bool supported})
-    : _supported = supported;
+  MpvLetterboxCropper(this._host, {required this._supported});
 
   final MpvLetterboxHost _host;
   final bool _supported;

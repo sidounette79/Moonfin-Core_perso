@@ -46,10 +46,9 @@ class SearchViewModel extends ChangeNotifier {
   SearchViewModel(
     this._searchRepository,
     this._client, {
-    SeerrRepository? seerrRepository,
+    this._seerrRepository,
     String? scopedParentId,
-  }) : _seerrRepository = seerrRepository,
-       _scopedParentId =
+  }) : _scopedParentId =
            (scopedParentId != null && scopedParentId.isNotEmpty)
                ? scopedParentId
                : null;

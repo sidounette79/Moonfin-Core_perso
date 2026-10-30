@@ -3099,6 +3099,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get maxStreamingBitrate => '最大串流码率';
 
   @override
+  String get maxCellularStreamingBitrate => 'Max Streaming Bitrate (Cellular)';
+
+  @override
   String get maxResolution => '最大分辨率';
 
   @override
@@ -9669,6 +9672,42 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsCheckForUpdatesSubtitle => '检查最新的 Moonfin 版本';
 
   @override
+  String get settingsCheckForOtaPatch => 'OTA Patch (Shorebird)';
+
+  @override
+  String settingsCheckForOtaPatchSubtitleWithPatch(int number) {
+    return 'Current patch: #$number. Tap to check.';
+  }
+
+  @override
+  String get settingsCheckForOtaPatchSubtitleNoPatch =>
+      'Check whether a patch is available';
+
+  @override
+  String otaPatchUpToDate(int number) {
+    return 'Patch up to date (#$number).';
+  }
+
+  @override
+  String get otaPatchDownloaded =>
+      'Patch downloaded. Restart the app to apply it.';
+
+  @override
+  String get otaPatchRestartRequired =>
+      'A patch is already downloaded, restart the app to apply it.';
+
+  @override
+  String get otaPatchRestartNow => 'Restart now';
+
+  @override
+  String get otaPatchCheckFailed =>
+      'Could not check for OTA patches right now.';
+
+  @override
+  String get otaPatchUnavailable =>
+      'OTA patches aren\'t available on this install.';
+
+  @override
   String get settingsPoweredByFlutter => '由 Flutter 提供支持';
 
   @override
@@ -9752,6 +9791,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsMaxBitrateDescription => '限制串流码率。高于此阈值的内容将进行转码以适应。';
+
+  @override
+  String get settingsMaxCellularBitrateDescription =>
+      'A separate cap used only on a cellular-only connection. \"Auto\" keeps using the cap above.';
 
   @override
   String get settingsMaxResolutionDescription =>

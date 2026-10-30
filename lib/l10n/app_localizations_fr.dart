@@ -1554,8 +1554,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get downloadSubtitlesLabel => 'Télécharger des sous-titres…';
 
   @override
-  String get searchOpenSubtitlesPlugin =>
-      'Rechercher avec le plugin OpenSubtitles';
+  String get searchOpenSubtitlesPlugin => 'Rechercher des sous-titres en ligne';
 
   @override
   String get downloadSubtitles => 'Télécharger des sous-titres';
@@ -3199,6 +3198,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get maxStreamingBitrate => 'Débit maximal en streaming';
+
+  @override
+  String get maxCellularStreamingBitrate =>
+      'Débit maximal en streaming (données cellulaires)';
 
   @override
   String get maxResolution => 'Résolution maximale';
@@ -10143,6 +10146,42 @@ class AppLocalizationsFr extends AppLocalizations {
       'Recherchez la dernière version de Moonfin';
 
   @override
+  String get settingsCheckForOtaPatch => 'Patch OTA (Shorebird)';
+
+  @override
+  String settingsCheckForOtaPatchSubtitleWithPatch(int number) {
+    return 'Patch actuel : n° $number. Appuyez pour vérifier.';
+  }
+
+  @override
+  String get settingsCheckForOtaPatchSubtitleNoPatch =>
+      'Vérifier s\'il y a un patch disponible';
+
+  @override
+  String otaPatchUpToDate(int number) {
+    return 'Patch à jour (n° $number).';
+  }
+
+  @override
+  String get otaPatchDownloaded =>
+      'Patch téléchargé. Redémarre l\'app pour l\'appliquer.';
+
+  @override
+  String get otaPatchRestartRequired =>
+      'Un patch est déjà téléchargé, redémarre l\'app pour l\'appliquer.';
+
+  @override
+  String get otaPatchRestartNow => 'Redémarrer maintenant';
+
+  @override
+  String get otaPatchCheckFailed =>
+      'Impossible de vérifier les patchs OTA pour le moment.';
+
+  @override
+  String get otaPatchUnavailable =>
+      'Les patchs OTA ne sont pas disponibles sur cette installation.';
+
+  @override
   String get settingsPoweredByFlutter => 'Propulsé par Flutter';
 
   @override
@@ -10237,6 +10276,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get settingsMaxBitrateDescription =>
       'Limitez le débit binaire du streaming. Le contenu au-dessus de ce seuil sera transcodé pour s\'adapter.';
+
+  @override
+  String get settingsMaxCellularBitrateDescription =>
+      'Un plafond séparé utilisé uniquement sur une connexion cellulaire seule. \"Auto\" garde le plafond ci-dessus.';
 
   @override
   String get settingsMaxResolutionDescription =>

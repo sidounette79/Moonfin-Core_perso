@@ -14,7 +14,7 @@ AggregatedItem _item(String id, {String? rating}) => AggregatedItem(
     'Id': id,
     'Name': id,
     'Type': 'Movie',
-    if (rating != null) 'OfficialRating': rating,
+    'OfficialRating': ?rating,
   },
 );
 

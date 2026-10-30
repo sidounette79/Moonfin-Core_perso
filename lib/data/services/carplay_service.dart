@@ -23,10 +23,9 @@ class CarPlayService {
   Map<String, Object>? _lastPushedModes;
 
   CarPlayService({
-    required MediaBrowseService browse,
-    required PlaybackManager manager,
-  })  : _browse = browse,
-        _manager = manager;
+    required this._browse,
+    required this._manager,
+  });
 
   void start() {
     _channel.setMethodCallHandler(_handleCall);

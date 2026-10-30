@@ -8,7 +8,7 @@ class AudioCapabilityProfile {
     required this.canDecodeEac3,
     required this.canDecodeDts,
     required this.canDecodeDtsHd,
-    required bool canDecodeTrueHd,
+    required this._canDecodeTrueHd,
     required this.canDecodeFlac,
     required this.canPassthroughAc3,
     required this.canPassthroughEac3,
@@ -21,7 +21,7 @@ class AudioCapabilityProfile {
     required this.maxPcmChannels,
     required this.activeRouteType,
     required this.routeSupportsHdAudio,
-  }) : _canDecodeTrueHd = canDecodeTrueHd;
+  });
 
   const AudioCapabilityProfile.optimistic()
     : canDecodeAc3 = true,

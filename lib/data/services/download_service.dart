@@ -1142,8 +1142,9 @@ class DownloadService extends ChangeNotifier implements AutoDownloadDownloader {
     }
 
     if (detectedExt == null || detectedExt == currentExt) return null;
-    if (!BookReaderService.supportedExtensions.contains(detectedExt))
+    if (!BookReaderService.supportedExtensions.contains(detectedExt)) {
       return null;
+    }
 
     final newPath = currentPath.contains('.')
         ? currentPath.replaceAll(RegExp(r'\.[^.]+$'), '.$detectedExt')
@@ -3042,8 +3043,9 @@ class DownloadService extends ChangeNotifier implements AutoDownloadDownloader {
           final defaultDir = Directory(
             '${downloadsDir.path}/Other/${_sanitizePath(item.name)}',
           );
-          if (await defaultDir.exists())
+          if (await defaultDir.exists()) {
             await defaultDir.delete(recursive: true);
+          }
           await _deleteItemImages(item.id, imageDir);
           await _offlineRepo.deleteItem(item.id);
           return true;

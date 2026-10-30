@@ -29,8 +29,7 @@ class FolderBrowseViewModel extends ChangeNotifier {
   static const _imageTypes = 'Primary,Backdrop,Thumb,Banner';
   static const _imageTypeLimit = 1;
 
-  FolderBrowseViewModel(this._client, {String? serverId})
-    : _serverId = serverId;
+  FolderBrowseViewModel(this._client, {this._serverId});
 
   ImageApi get imageApi => _client.imageApi;
 

@@ -925,8 +925,7 @@ class PlayerRouteObserver extends NavigatorObserver {
 /// Hidden game screens never clear the blocker themselves, so popping or
 /// disposing a lower screen cannot reopen artwork work under gameplay/dialogs.
 class RetroArtworkRouteObserver extends NavigatorObserver {
-  RetroArtworkRouteObserver({RetroArtworkActivityGate? activityGate})
-    : _activityGate = activityGate;
+  RetroArtworkRouteObserver({this._activityGate});
 
   static final instance = RetroArtworkRouteObserver();
 

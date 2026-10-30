@@ -9,9 +9,8 @@ class EmbyConnectService {
   final DeviceInfo _deviceInfo;
   final Dio _dio;
 
-  EmbyConnectService({required DeviceInfo deviceInfo})
-    : _deviceInfo = deviceInfo,
-      _dio = Dio(
+  EmbyConnectService({required this._deviceInfo})
+    : _dio = Dio(
         BaseOptions(
           baseUrl: _connectBaseUrl,
           connectTimeout: const Duration(seconds: 15),

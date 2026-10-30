@@ -310,16 +310,12 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   HomeViewModel({
-    required RowDataSource dataSource,
-    required UserPreferences prefs,
+    required this._dataSource,
+    required this._prefs,
     required MediaServerClient client,
-    required MediaBarViewModel mediaBarViewModel,
-    required MultiServerRepository multiServerRepo,
-  }) : _dataSource = dataSource,
-       _prefs = prefs,
-       _client = client,
-       _mediaBarViewModel = mediaBarViewModel,
-       _multiServerRepo = multiServerRepo,
+    required this._mediaBarViewModel,
+    required this._multiServerRepo,
+  }) : _client = client,
        _ownerUserId = client.userId ?? '';
 
   /// Whether a section whose load threw keeps what is already on screen.

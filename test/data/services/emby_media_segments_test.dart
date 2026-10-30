@@ -42,7 +42,7 @@ EmbyItemsApi _api(_ItemAdapter adapter) {
 Map<String, dynamic> _chapter(Object? marker, int ticks) => {
   'Name': 'Chapter',
   'StartPositionTicks': ticks,
-  if (marker != null) 'MarkerType': marker,
+  'MarkerType': ?marker,
 };
 
 void main() {

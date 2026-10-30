@@ -402,7 +402,7 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
       
       String escapeCsv(String val) {
         if (val.contains(',') || val.contains('"') || val.contains('\n')) {
-          return '"' + val.replaceAll('"', '""') + '"';
+          return '"${val.replaceAll('"', '""')}"';
         }
         return val;
       }

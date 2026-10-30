@@ -3166,6 +3166,9 @@ class AppLocalizationsSi extends AppLocalizations {
   String get maxStreamingBitrate => 'උපරිම Streaming Bitrate';
 
   @override
+  String get maxCellularStreamingBitrate => 'Max Streaming Bitrate (Cellular)';
+
+  @override
   String get maxResolution => 'උපරිම විභේදනය';
 
   @override
@@ -10009,6 +10012,42 @@ class AppLocalizationsSi extends AppLocalizations {
       'නවතම Moonfin නිකුතුව සඳහා පරීක්ෂා කරන්න';
 
   @override
+  String get settingsCheckForOtaPatch => 'OTA Patch (Shorebird)';
+
+  @override
+  String settingsCheckForOtaPatchSubtitleWithPatch(int number) {
+    return 'Current patch: #$number. Tap to check.';
+  }
+
+  @override
+  String get settingsCheckForOtaPatchSubtitleNoPatch =>
+      'Check whether a patch is available';
+
+  @override
+  String otaPatchUpToDate(int number) {
+    return 'Patch up to date (#$number).';
+  }
+
+  @override
+  String get otaPatchDownloaded =>
+      'Patch downloaded. Restart the app to apply it.';
+
+  @override
+  String get otaPatchRestartRequired =>
+      'A patch is already downloaded, restart the app to apply it.';
+
+  @override
+  String get otaPatchRestartNow => 'Restart now';
+
+  @override
+  String get otaPatchCheckFailed =>
+      'Could not check for OTA patches right now.';
+
+  @override
+  String get otaPatchUnavailable =>
+      'OTA patches aren\'t available on this install.';
+
+  @override
   String get settingsPoweredByFlutter => 'Flutter මගින් බල ගැන්වේ';
 
   @override
@@ -10101,6 +10140,10 @@ class AppLocalizationsSi extends AppLocalizations {
   @override
   String get settingsMaxBitrateDescription =>
       'ප්‍රවාහ බිටු අනුපාතය සීමා කරන්න. මෙම සීමාවට ඉහළින් ඇති අන්තර්ගතය ගැළපෙන පරිදි පරිවර්තනය කරනු ලැබේ.';
+
+  @override
+  String get settingsMaxCellularBitrateDescription =>
+      'A separate cap used only on a cellular-only connection. \"Auto\" keeps using the cap above.';
 
   @override
   String get settingsMaxResolutionDescription =>

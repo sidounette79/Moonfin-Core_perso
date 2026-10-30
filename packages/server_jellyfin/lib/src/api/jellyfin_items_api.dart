@@ -172,7 +172,7 @@ class JellyfinItemsApi implements ItemsApi {
       '/Users/$userId/Items/$itemId',
       queryParameters: {
         'Fields': fields ?? kDetailItemFields,
-        if (mediaSourceId != null) 'mediaSourceId': mediaSourceId,
+        'mediaSourceId': ?mediaSourceId,
       },
     );
     return response.data as Map<String, dynamic>;
@@ -252,8 +252,7 @@ class JellyfinItemsApi implements ItemsApi {
         'ParentId': ?parentId,
         if (includeItemTypes != null)
           'IncludeItemTypes': includeItemTypes.join(','),
-        if (mediaTypes != null)
-          'MediaTypes': mediaTypes,
+        'MediaTypes': ?mediaTypes,
         'StartIndex': ?startIndex,
         'Limit': ?limit,
         'Fields': ?fields,
@@ -486,8 +485,8 @@ class JellyfinItemsApi implements ItemsApi {
     final queryParameters = <String, dynamic>{
       'name': name,
       'Name': name,
-      if (ids != null) 'ids': ids,
-      if (ids != null) 'Ids': ids,
+      'ids': ?ids,
+      'Ids': ?ids,
     };
 
     Response<dynamic> response;

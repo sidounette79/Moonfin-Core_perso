@@ -21,8 +21,8 @@ AggregatedItem _episode({String? rating, String? seriesId = 'series-1'}) =>
         'Id': 'ep-1',
         'Name': 'An episode',
         'Type': 'Episode',
-        if (rating != null) 'OfficialRating': rating,
-        if (seriesId != null) 'SeriesId': seriesId,
+        'OfficialRating': ?rating,
+        'SeriesId': ?seriesId,
       },
     );
 

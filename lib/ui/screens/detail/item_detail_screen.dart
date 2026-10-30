@@ -1517,8 +1517,7 @@ class _DetailContentState extends State<_DetailContent> {
                   _buildStaticPersonProfilePanel(context, item),
                   Expanded(
                     child: CustomScrollView(
-                      controller: _scrollController,
-                      cacheExtent: 4000,
+                      scrollCacheExtent: ScrollCacheExtent.pixels(4000), controller: _scrollController,
                       slivers: [
                         SliverPadding(
                           padding: EdgeInsets.fromLTRB(
@@ -1540,8 +1539,7 @@ class _DetailContentState extends State<_DetailContent> {
               )
             else
               CustomScrollView(
-                controller: _scrollController,
-                cacheExtent: 4000,
+                scrollCacheExtent: ScrollCacheExtent.pixels(4000), controller: _scrollController,
                 slivers: [
                   if (item.type != 'Person' &&
                       item.type != 'MusicArtist' &&
@@ -4455,7 +4453,7 @@ class DetailPosterImage extends StatelessWidget {
   final AggregatedItem item;
   final ImageApi imageApi;
 
-  const DetailPosterImage({required this.item, required this.imageApi});
+  const DetailPosterImage({super.key, required this.item, required this.imageApi});
 
   @override
   Widget build(BuildContext context) {
@@ -4631,7 +4629,7 @@ class DetailMetadataRow extends StatelessWidget {
   /// Trailing badges from elsewhere, laid out with the technical chips.
   final List<Widget> extraBadges;
 
-  const DetailMetadataRow({
+  const DetailMetadataRow({super.key, 
     required this.item,
     this.selectedMediaSource,
     this.upcomingEpisode,
@@ -13094,7 +13092,7 @@ class DetailCastRow extends StatelessWidget {
   final KeyEventResult Function(int index, KeyEvent event)? onItemKeyEvent;
   final VoidCallback? onNavigateUp;
 
-  const DetailCastRow({
+  const DetailCastRow({super.key, 
     required this.people,
     required this.imageApi,
     this.serverId,
@@ -13325,7 +13323,7 @@ class DetailSimilarRow extends StatelessWidget {
   final double? customCardWidth;
   final double? customHeight;
 
-  const DetailSimilarRow({
+  const DetailSimilarRow({super.key, 
     required this.items,
     required this.imageApi,
     required this.prefs,
@@ -13425,7 +13423,7 @@ class DetailFeaturesRow extends StatelessWidget {
   final KeyEventResult Function(int index, KeyEvent event)? onItemKeyEvent;
   final void Function(AggregatedItem item)? onItemLongPress;
 
-  const DetailFeaturesRow({
+  const DetailFeaturesRow({super.key, 
     required this.items,
     required this.imageApi,
     required this.prefs,
@@ -13504,7 +13502,7 @@ class DetailChaptersRow extends StatelessWidget {
   final FocusNode? firstItemFocusNode;
   final KeyEventResult Function(int index, KeyEvent event)? onItemKeyEvent;
 
-  const DetailChaptersRow({
+  const DetailChaptersRow({super.key, 
     required this.item,
     required this.imageApi,
     required this.onPlayFromChapter,
@@ -13999,7 +13997,7 @@ class DetailMetadataSection extends StatefulWidget {
   final FocusNode? downTarget;
   final KeyEventResult Function(FocusNode? target)? onRequestFocus;
 
-  const DetailMetadataSection({
+  const DetailMetadataSection({super.key, 
     required this.viewModel,
     this.firstItemFocusNode,
     this.upTarget,
@@ -14485,7 +14483,7 @@ class DetailSeasonsRow extends StatelessWidget {
   /// it is not in the library.
   final void Function(int seasonNumber)? onSeasonTap;
 
-  const DetailSeasonsRow({
+  const DetailSeasonsRow({super.key, 
     required this.seasons,
     required this.imageApi,
     required this.prefs,
@@ -14969,7 +14967,7 @@ class DetailNextUpCard extends StatefulWidget {
   /// [DetailEpisodeCard.contextSeasonId].
   final String? contextSeasonId;
 
-  const DetailNextUpCard({
+  const DetailNextUpCard({super.key, 
     required this.episode,
     required this.imageApi,
     this.focusNode,
@@ -15195,7 +15193,7 @@ class DetailEpisodeCard extends StatefulWidget {
 
   final bool isActive;
 
-  const DetailEpisodeCard({
+  const DetailEpisodeCard({super.key, 
     required this.episode,
     required this.imageApi,
     this.onChanged,
@@ -15487,7 +15485,7 @@ class PersonHeader extends StatelessWidget {
   final AggregatedItem item;
   final ImageApi imageApi;
 
-  const PersonHeader({required this.item, required this.imageApi});
+  const PersonHeader({super.key, required this.item, required this.imageApi});
 
   @override
   Widget build(BuildContext context) {
@@ -15578,7 +15576,7 @@ class PersonHeader extends StatelessWidget {
 class PersonDates extends StatelessWidget {
   final AggregatedItem item;
 
-  const PersonDates({required this.item});
+  const PersonDates({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {
@@ -15638,7 +15636,7 @@ class PersonDates extends StatelessWidget {
 class PersonDatesVertical extends StatelessWidget {
   final AggregatedItem item;
 
-  const PersonDatesVertical({required this.item});
+  const PersonDatesVertical({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {
@@ -15719,7 +15717,7 @@ class ExpandableBiography extends StatefulWidget {
 
   static DateTime? lastCollapseTime;
 
-  const ExpandableBiography({
+  const ExpandableBiography({super.key, 
     required this.text,
     this.toggleFocusNode,
     this.upTarget,
@@ -16039,7 +16037,7 @@ class FilmographyRow extends StatelessWidget {
   final KeyEventResult Function(int index, KeyEvent event)? onItemKeyEvent;
   final void Function(AggregatedItem item)? onItemLongPress;
 
-  const FilmographyRow({
+  const FilmographyRow({super.key, 
     required this.items,
     required this.imageApi,
     required this.prefs,
@@ -16152,7 +16150,7 @@ class SeerrAppearancesRow extends StatelessWidget {
   final FocusNode? firstFocusNode;
   final KeyEventResult Function(int index, KeyEvent event)? onItemKeyEvent;
 
-  const SeerrAppearancesRow({
+  const SeerrAppearancesRow({super.key, 
     required this.items,
     required this.prefs,
     this.scrollController,
@@ -16239,7 +16237,7 @@ class SeerrCrewCreditsRow extends StatelessWidget {
   final FocusNode? firstFocusNode;
   final KeyEventResult Function(int index, KeyEvent event)? onItemKeyEvent;
 
-  const SeerrCrewCreditsRow({
+  const SeerrCrewCreditsRow({super.key, 
     required this.items,
     required this.prefs,
     this.scrollController,
@@ -16818,7 +16816,7 @@ class DetailTrackList extends StatelessWidget {
   final bool showAlbum;
   final ImageApi? imageApi;
 
-  const DetailTrackList({
+  const DetailTrackList({super.key, 
     required this.tracks,
     required this.getFocusNode,
     this.onFirstTrackUp,
@@ -17294,7 +17292,7 @@ class _TrackTileState extends State<TrackTile> with FocusStateMixin {
                     ),
                   ),
                 ),
-                if (thumbnailWidget != null) thumbnailWidget,
+                ?thumbnailWidget,
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

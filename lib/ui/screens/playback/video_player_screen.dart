@@ -7498,8 +7498,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           : Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (appearanceRow != null) appearanceRow,
-                if (delayFooter != null) delayFooter,
+                ?appearanceRow,
+                ?delayFooter,
               ],
             );
       final result = await TrackSelectorDialog.show(

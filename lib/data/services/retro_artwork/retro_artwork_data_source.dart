@@ -221,18 +221,14 @@ abstract interface class RetroArtworkDataSource {
 /// transport source for a ready descriptor, never for pending or missing art.
 class ManifestArtworkAdapter implements RetroArtworkDataSource {
   ManifestArtworkAdapter({
-    required GamesApi gamesApi,
-    required String serverIdentity,
-    required RetroArtworkActivityGate activityGate,
-    required RetroArtworkTransport transport,
-    required bool supportsPriorityHints,
+    required this._gamesApi,
+    required this._serverIdentity,
+    required this._activityGate,
+    required this._transport,
+    required this._supportsPriorityHints,
     this.priorityDebounce = const Duration(milliseconds: 180),
     this.imageRetryBackoff = const Duration(milliseconds: 750),
-  }) : _gamesApi = gamesApi,
-       _serverIdentity = serverIdentity,
-       _activityGate = activityGate,
-       _transport = transport,
-       _supportsPriorityHints = supportsPriorityHints {
+  }) {
     _activityGate.addListener(_onActivityChanged);
   }
 
@@ -722,7 +718,7 @@ class ManifestArtworkAdapter implements RetroArtworkDataSource {
 /// Per-screen 404 knowledge is permanent; transient errors become eligible for
 /// one retry only when the route re-enters or the app resumes.
 class LegacyArtworkAdapter implements RetroArtworkDataSource {
-  LegacyArtworkAdapter({required GamesApi gamesApi}) : _gamesApi = gamesApi;
+  LegacyArtworkAdapter({required this._gamesApi});
 
   final GamesApi _gamesApi;
   final Set<String> _missing = <String>{};

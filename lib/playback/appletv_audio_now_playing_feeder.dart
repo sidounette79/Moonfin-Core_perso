@@ -19,12 +19,10 @@ import 'appletv_backend.dart';
 /// track or play state changes.
 class AppleTvAudioNowPlayingFeeder {
   AppleTvAudioNowPlayingFeeder({
-    required PlaybackManager manager,
-    required MediaServerClientFactory clientFactory,
-    required AppleTvBackend backend,
-  })  : _manager = manager,
-        _clientFactory = clientFactory,
-        _backend = backend;
+    required this._manager,
+    required this._clientFactory,
+    required this._backend,
+  });
 
   final PlaybackManager _manager;
   final MediaServerClientFactory _clientFactory;

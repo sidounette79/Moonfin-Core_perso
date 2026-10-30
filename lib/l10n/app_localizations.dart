@@ -2740,10 +2740,10 @@ abstract class AppLocalizations {
   /// **'Download subtitles...'**
   String get downloadSubtitlesLabel;
 
-  /// Subtitle for the download subtitles option
+  /// Subtitle for the download subtitles option. Queries every subtitle provider plugin active on the server (Emby's generic /RemoteSearch/Subtitles endpoint), not just one named plugin.
   ///
   /// In en, this message translates to:
-  /// **'Search using the OpenSubtitles plugin'**
+  /// **'Search for subtitles online'**
   String get searchOpenSubtitlesPlugin;
 
   /// Dialog title for downloading remote subtitles
@@ -5505,6 +5505,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Max Streaming Bitrate'**
   String get maxStreamingBitrate;
+
+  /// Setting for max streaming bitrate on a cellular-only connection
+  ///
+  /// In en, this message translates to:
+  /// **'Max Streaming Bitrate (Cellular)'**
+  String get maxCellularStreamingBitrate;
 
   /// Setting for max resolution
   ///
@@ -17698,6 +17704,60 @@ abstract class AppLocalizations {
   /// **'Check for the latest Moonfin release'**
   String get settingsCheckForUpdatesSubtitle;
 
+  /// No description provided for @settingsCheckForOtaPatch.
+  ///
+  /// In en, this message translates to:
+  /// **'OTA Patch (Shorebird)'**
+  String get settingsCheckForOtaPatch;
+
+  /// No description provided for @settingsCheckForOtaPatchSubtitleWithPatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Current patch: #{number}. Tap to check.'**
+  String settingsCheckForOtaPatchSubtitleWithPatch(int number);
+
+  /// No description provided for @settingsCheckForOtaPatchSubtitleNoPatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Check whether a patch is available'**
+  String get settingsCheckForOtaPatchSubtitleNoPatch;
+
+  /// No description provided for @otaPatchUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Patch up to date (#{number}).'**
+  String otaPatchUpToDate(int number);
+
+  /// No description provided for @otaPatchDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Patch downloaded. Restart the app to apply it.'**
+  String get otaPatchDownloaded;
+
+  /// No description provided for @otaPatchRestartRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'A patch is already downloaded, restart the app to apply it.'**
+  String get otaPatchRestartRequired;
+
+  /// No description provided for @otaPatchRestartNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart now'**
+  String get otaPatchRestartNow;
+
+  /// No description provided for @otaPatchCheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not check for OTA patches right now.'**
+  String get otaPatchCheckFailed;
+
+  /// No description provided for @otaPatchUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'OTA patches aren\'t available on this install.'**
+  String get otaPatchUnavailable;
+
   /// No description provided for @settingsPoweredByFlutter.
   ///
   /// In en, this message translates to:
@@ -17847,6 +17907,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cap the streaming bitrate. Content above this threshold will be transcoded to fit.'**
   String get settingsMaxBitrateDescription;
+
+  /// No description provided for @settingsMaxCellularBitrateDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'A separate cap used only on a cellular-only connection. \"Auto\" keeps using the cap above.'**
+  String get settingsMaxCellularBitrateDescription;
 
   /// No description provided for @settingsMaxResolutionDescription.
   ///

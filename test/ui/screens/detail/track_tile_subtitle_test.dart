@@ -22,7 +22,7 @@ AggregatedItem _track({
     'MediaType': 'Audio',
     'IndexNumber': 1,
     if (artist != null) 'Artists': [artist],
-    if (year != null) 'ProductionYear': year,
+    'ProductionYear': ?year,
     if (runtimeSeconds != null) 'RunTimeTicks': runtimeSeconds * 10000000,
   },
 );

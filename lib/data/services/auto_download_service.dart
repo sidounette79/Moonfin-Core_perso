@@ -111,9 +111,9 @@ typedef _SeriesOutcome = ({
 /// arrives while a check runs shares that check's result.
 class AutoDownloadService extends ChangeNotifier {
   AutoDownloadService({
-    required OfflineRepository repository,
+    required this._repository,
     required this.downloader,
-    required UserPreferences prefs,
+    required this._prefs,
     required this.serverId,
     required this.userId,
     this.socketEvents,
@@ -122,9 +122,7 @@ class AutoDownloadService extends ChangeNotifier {
     this.onStorageFull,
     DateTime Function()? now,
     this.socketDebounce = const Duration(seconds: 30),
-  }) : _repository = repository,
-       _prefs = prefs,
-       _now = now ?? DateTime.now {
+  }) : _now = now ?? DateTime.now {
     _lastRun = AutoDownloadRunSummary.fromJson(
       _prefs.get(UserPreferences.autoDownloadLastRun),
     );

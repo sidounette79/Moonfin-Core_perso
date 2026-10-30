@@ -223,8 +223,8 @@ abstract class _ReconnectingWebSocketClient implements ServerWebSocketClient {
 }
 
 class JellyfinWebSocketClient extends _ReconnectingWebSocketClient {
-  JellyfinWebSocketClient(MediaServerClient client, {Duration? connectTimeout})
-    : super(client, 'Jellyfin', connectTimeout: connectTimeout);
+  JellyfinWebSocketClient(MediaServerClient client, {super.connectTimeout})
+    : super(client, 'Jellyfin');
 
   static const _keepAliveIntervalSeconds = 30;
 
@@ -256,8 +256,8 @@ class JellyfinWebSocketClient extends _ReconnectingWebSocketClient {
 }
 
 class EmbyWebSocketClient extends _ReconnectingWebSocketClient {
-  EmbyWebSocketClient(MediaServerClient client, {Duration? connectTimeout})
-    : super(client, 'Emby', connectTimeout: connectTimeout);
+  EmbyWebSocketClient(MediaServerClient client, {super.connectTimeout})
+    : super(client, 'Emby');
 
   @override
   Uri? buildUri() {

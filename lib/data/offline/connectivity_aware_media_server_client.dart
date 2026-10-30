@@ -42,13 +42,12 @@ class ConnectivityAwareMediaServerClient implements MediaServerClient {
 
   ConnectivityAwareMediaServerClient(
     this._online, {
-    required bool Function() useOffline,
+    required this._useOffline,
     required OfflineCatalog catalog,
     required StoragePathService storagePath,
     required PendingRatingStore pendingRatings,
     required OfflineRepository offlineRepo,
-  }) : _useOffline = useOffline,
-       _offlineItems = OfflineItemsApi(catalog, storagePath),
+  }) : _offlineItems = OfflineItemsApi(catalog, storagePath),
        _offlineImages = OfflineImageApi(catalog, _online.imageApi),
        _offlineViews = OfflineUserViewsApi(catalog),
        _offlineUserLibrary = OfflineUserLibraryApi(

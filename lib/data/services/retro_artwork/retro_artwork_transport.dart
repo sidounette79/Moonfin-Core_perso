@@ -275,13 +275,11 @@ class RetroArtworkTransport {
   static const int defaultMaxConcurrentTransfers = 10;
 
   RetroArtworkTransport({
-    required RetroArtworkHttpClient httpClient,
-    required RetroArtworkByteCache cache,
-    required RetroArtworkActivityGate activityGate,
+    required this._httpClient,
+    required this._cache,
+    required this._activityGate,
     this.maxConcurrentTransfers = defaultMaxConcurrentTransfers,
-  }) : _httpClient = httpClient,
-       _cache = cache,
-       _activityGate = activityGate {
+  }) {
     if (maxConcurrentTransfers < minConcurrentTransfers ||
         maxConcurrentTransfers > maximumConcurrentTransfers) {
       throw ArgumentError.value(

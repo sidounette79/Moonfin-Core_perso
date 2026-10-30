@@ -610,7 +610,7 @@ class _TmdbListsScreen extends StatefulWidget {
 }
 
 class _TmdbListsScreenState extends State<_TmdbListsScreen> {
-  bool _isFetching = false;
+  final bool _isFetching = false;
   final _scope = FocusScopeNode(debugLabel: 'TmdbListsScope');
   final _firstFocusNode = FocusNode(debugLabel: 'tmdb_popular_movies');
 
@@ -2028,7 +2028,7 @@ class _AddEditCustomRowDialogState extends State<_AddEditCustomRowDialog> {
                            focusColor: AppColorScheme.accent.withValues(alpha: 0.25),
                          ),
                          child: DropdownButtonFormField<String>(
-                           value: _source,
+                           initialValue: _source,
                            focusNode: _sourceFocusNode,
                            dropdownColor: Colors.grey[900],
                            style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -2095,7 +2095,7 @@ class _AddEditCustomRowDialogState extends State<_AddEditCustomRowDialog> {
                                focusColor: AppColorScheme.accent.withValues(alpha: 0.25),
                              ),
                              child: DropdownButtonFormField<String>(
-                               value: _type,
+                               initialValue: _type,
                                focusNode: _typeFocusNode,
                                dropdownColor: Colors.grey[900],
                                style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -2234,7 +2234,7 @@ class _AddEditCustomRowDialogState extends State<_AddEditCustomRowDialog> {
                            focusColor: AppColorScheme.accent.withValues(alpha: 0.25),
                          ),
                          child: DropdownButtonFormField<String>(
-                           value: _sortBy,
+                           initialValue: _sortBy,
                            focusNode: _sortByFocusNode,
                            dropdownColor: Colors.grey[900],
                            style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -2308,7 +2308,7 @@ class _AddEditCustomRowDialogState extends State<_AddEditCustomRowDialog> {
                              focusColor: AppColorScheme.accent.withValues(alpha: 0.25),
                            ),
                            child: DropdownButtonFormField<String>(
-                             value: _sortOrder,
+                             initialValue: _sortOrder,
                              focusNode: _sortOrderFocusNode,
                              dropdownColor: Colors.grey[900],
                              style: const TextStyle(color: Colors.white, fontSize: 14),

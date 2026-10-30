@@ -62,10 +62,9 @@ class OfflineUserLibraryApi implements UserLibraryApi {
 
   OfflineUserLibraryApi(
     this._catalog, {
-    required PendingRatingStore pendingRatings,
-    required OfflineRepository offlineRepo,
-  }) : _pendingRatings = pendingRatings,
-       _offlineRepo = offlineRepo;
+    required this._pendingRatings,
+    required this._offlineRepo,
+  });
 
   // Both server types take a numeric value once the queue replays, so the
   // rating dialog keeps the style the viewer chose while offline.

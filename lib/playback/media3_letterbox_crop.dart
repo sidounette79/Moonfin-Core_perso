@@ -103,11 +103,11 @@ abstract class Media3LetterboxHost {
 class Media3LetterboxCropper extends LetterboxCropper {
   Media3LetterboxCropper(
     this._host, {
-    required bool supported,
+    required this._supported,
     this.autoDelay = Media3LetterboxCrop.autoDelay,
     this.sampleCount = Media3LetterboxCrop.sampleCount,
     this.sampleGap = Media3LetterboxCrop.sampleGap,
-  }) : _supported = supported;
+  });
 
   final Media3LetterboxHost _host;
   final bool _supported;

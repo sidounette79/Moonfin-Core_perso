@@ -69,9 +69,8 @@ class ConnectivityService extends ChangeNotifier {
 
   ConnectivityService({
     @visibleForTesting Connectivity? connectivity,
-    @visibleForTesting Duration retryBase = const Duration(seconds: 5),
-  }) : _connectivity = connectivity ?? Connectivity(),
-       _retryBase = retryBase {
+    @visibleForTesting this._retryBase = const Duration(seconds: 5),
+  }) : _connectivity = connectivity ?? Connectivity() {
     configureServerDio(_pingDio);
     _pingDio.interceptors.add(redirectInterceptor(_pingDio));
   }

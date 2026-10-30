@@ -16,8 +16,8 @@ AggregatedItem _library(String id, {String? tmdbId, String? premiere, int? year}
         'Name': id,
         'Type': 'Movie',
         if (tmdbId != null) 'ProviderIds': {'Tmdb': tmdbId},
-        if (premiere != null) 'PremiereDate': premiere,
-        if (year != null) 'ProductionYear': year,
+        'PremiereDate': ?premiere,
+        'ProductionYear': ?year,
       },
     );
 

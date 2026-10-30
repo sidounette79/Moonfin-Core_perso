@@ -98,12 +98,10 @@ class FavoritesViewModel extends ChangeNotifier {
       _rowTotalCounts[type] ?? (_rowItems[type]?.length ?? 0);
 
   FavoritesViewModel({
-    required MediaServerClient client,
-    required UserPreferences prefs,
-    required MdbListRepository mdbListRepository,
-  }) : _client = client,
-       _prefs = prefs,
-       _mdbListRepository = mdbListRepository {
+    required this._client,
+    required this._prefs,
+    required this._mdbListRepository,
+  }) {
     _sortBy = _prefs.get(UserPreferences.librarySortBy(_prefKey));
     _sortDirection = _prefs.get(UserPreferences.librarySortDirection(_prefKey));
     _imageType = _prefs.get(UserPreferences.libraryImageType(_prefKey));

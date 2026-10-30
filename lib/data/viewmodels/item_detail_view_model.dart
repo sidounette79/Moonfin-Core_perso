@@ -567,17 +567,13 @@ class ItemDetailViewModel extends ChangeNotifier {
 
   ItemDetailViewModel({
     required this.itemId,
-    String? serverId,
+    this._serverId,
     this.contextSeasonId,
-    required MediaServerClient client,
-    required ItemMutationRepository mutations,
-    required MdbListRepository mdbListRepository,
-    required TmdbRepository tmdbRepository,
-  }) : _serverId = serverId,
-       _client = client,
-       _mutations = mutations,
-       _mdbListRepository = mdbListRepository,
-       _tmdbRepository = tmdbRepository {
+    required this._client,
+    required this._mutations,
+    required this._mdbListRepository,
+    required this._tmdbRepository,
+  }) {
     userDataSync.addListener(_onUserDataChanged);
   }
 
@@ -720,7 +716,7 @@ class ItemDetailViewModel extends ChangeNotifier {
       },
       'PosterPath': s.posterPath,
       'BackdropPath': s.backdropPath,
-      if (year != null) 'ProductionYear': year,
+      'ProductionYear': ?year,
       'PremiereDate': s.releaseDate ?? s.firstAirDate,
       'CommunityRating': s.voteAverage,
       'Genres': [for (final g in s.genres) g.name],
@@ -1621,7 +1617,7 @@ class ItemDetailViewModel extends ChangeNotifier {
     final collection = await repo.getCollectionDetails(collectionId);
     final memberTmdbIds = <String>{
       for (final member in members)
-        if (member.tmdbId case final id?) id,
+        ?member.tmdbId,
     };
     final movieCount = members.where((m) => m.type == 'Movie').length;
     final overlap = collection.parts
