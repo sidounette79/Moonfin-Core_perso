@@ -12,7 +12,11 @@ import 'media_kit_player_backend.dart';
 (double?, double?)? delayLimitsFor(PlayerBackend? backend, {required bool audio}) {
   if (backend is MediaKitPlayerBackend) return (null, null);
   if (backend is Media3PlayerBackend) {
-    return audio ? (-2.0, 2.0) : (-5.0, 5.0);
+    // 30.10, Sid ("là j'ai un maximum de 5000ms c'est pas assez, il faut au
+    // moins pouvoir avoir 5 minutes") - was ±5s for subtitles, some of her
+    // files apparently drift far more than that. Audio delay left
+    // unchanged (not what she asked about).
+    return audio ? (-2.0, 2.0) : (-300.0, 300.0);
   }
   if (backend is AetherBackend) return audio ? null : (null, null);
   return null;
