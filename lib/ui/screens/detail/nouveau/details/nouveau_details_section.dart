@@ -1973,7 +1973,12 @@ class NouveauDetailsSectionState extends State<NouveauDetailsSection> {
 
             Flexible(
               child: Text(
-                l10n.directPlay,
+                // 30.10, Sid ("j'ai très souvent un point rouge alors que
+                // c'est écrit lecture directe") - ce texte disait toujours
+                // "Lecture directe" quel que soit canDirectPlay, seul le
+                // point changeait de couleur - vrai bug, pas juste une
+                // impression.
+                canDirectPlay ? l10n.directPlay : l10n.transcoding,
                 style: textTheme.labelSmall?.copyWith(
                   color: foreground.withValues(
                     alpha: canDirectPlay ? 0.58 : 0.68,
