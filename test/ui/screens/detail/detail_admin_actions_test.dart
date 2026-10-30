@@ -17,28 +17,15 @@ Set<DetailAdminAction> actions({
 );
 
 void main() {
+  // 30.10, Sid ("le rouge il supprime je crois alors que il y a deja un
+  // bouton poubelle. Ça fait doublon") - delete moved out of this dialog
+  // entirely onto its own dedicated trash-can button
+  // (DetailButton.deleteServer), so it's no longer part of the set
+  // detailAdminActions() returns - these groups used to cover that path,
+  // kept here only as the "nothing admin-items-api-related on Emby" case.
   group('on Emby', () {
-    test('an admin gets delete and nothing that needs the admin items api', () {
-      expect(actions(serverType: ServerType.emby), {DetailAdminAction.delete});
-    });
-
-    test('an item the server refuses to delete offers nothing', () {
-      expect(
-        actions(serverType: ServerType.emby, canDelete: false),
-        isEmpty,
-      );
-    });
-  });
-
-  group('delete', () {
-    test('follows the server verdict rather than the admin flag', () {
-      for (final server in ServerType.values) {
-        expect(
-          actions(serverType: server, isAdministrator: false),
-          {DetailAdminAction.delete},
-          reason: server.name,
-        );
-      }
+    test('nothing - Emby does not support the admin items api', () {
+      expect(actions(serverType: ServerType.emby), isEmpty);
     });
   });
 
@@ -60,8 +47,8 @@ void main() {
       );
     });
 
-    test('a non admin without delete rights sees nothing', () {
-      expect(actions(isAdministrator: false, canDelete: false), isEmpty);
+    test('a non admin sees nothing', () {
+      expect(actions(isAdministrator: false), isEmpty);
     });
   });
 }
