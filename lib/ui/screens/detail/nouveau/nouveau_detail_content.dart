@@ -1011,7 +1011,7 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
                       onPlay: () => _actionButtonsKey.currentState?.playItem(
                         context,
                         splitPreviewItem!,
-                        resume: watchStateOf(splitPreviewItem!).hasProgress,
+                        resume: watchStateOf(splitPreviewItem).hasProgress,
                       ),
                     ),
                   ),
