@@ -1860,6 +1860,8 @@ class _AddEditCustomRowDialogState extends State<_AddEditCustomRowDialog> {
         throw Exception('No results returned.');
       }
     } catch (e) {
+      if (!context.mounted) return;
+
       final customService = GetIt.instance<CustomExternalListsService>();
       final url = customService.constructSourceUrl(_source, _type, params);
       setState(() => _isValidating = false);

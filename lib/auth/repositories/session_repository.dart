@@ -111,7 +111,7 @@ class SessionRepository {
   StreamSubscription<void>? _socketConnectionSubscription;
   double _lastUnmutedVolume = 100;
   bool _remoteMuted = false;
-  bool _hasCheckedWriteAccess = false;
+  bool hasCheckedWriteAccess = false;
 
   static const Duration _socketIdleGrace = Duration(seconds: 60);
   Timer? _socketIdleTimer;
@@ -164,8 +164,6 @@ class SessionRepository {
   SessionState get state => _state;
   Stream<SessionState> get stateStream => _stateController.stream;
 
-  bool get hasCheckedWriteAccess => _hasCheckedWriteAccess;
-  set hasCheckedWriteAccess(bool value) => _hasCheckedWriteAccess = value;
 
   Future<bool> restoreSession() async {
     _setState(SessionState.restoring);
@@ -566,7 +564,7 @@ class SessionRepository {
 
     _activeServerId = null;
     _activeUserId = null;
-    _hasCheckedWriteAccess = false;
+    hasCheckedWriteAccess = false;
     _userRepository.setCurrentUser(null);
     _refreshCarBrowseTree(signedIn: false);
     _setState(SessionState.ready);

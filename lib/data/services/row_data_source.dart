@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:server_core/server_core.dart';
 import 'package:dio/dio.dart';
@@ -3063,7 +3064,7 @@ class RowDataSource {
             }
           }
         } catch (e) {
-          print('[RowDataSource] Failed to resolve TMDB ID for online recommendations: $e');
+          debugPrint('[RowDataSource] Failed to resolve TMDB ID for online recommendations: $e');
         }
       }
 
@@ -3174,7 +3175,7 @@ class RowDataSource {
                 }).take(limit).toList();
               }
             } catch (e) {
-              print('[RowDataSource] Direct TMDB recommendation query failed: $e');
+              debugPrint('[RowDataSource] Direct TMDB recommendation query failed: $e');
             }
           }
         }

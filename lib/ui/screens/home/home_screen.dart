@@ -2185,11 +2185,16 @@ class _ContentRowsState extends State<_ContentRows>
         final startIndex = queue.indexWhere((e) => e.id == item.id);
         final idx = startIndex >= 0 ? startIndex : 0;
         final selected = queue[idx];
+        // 30.10: already guarded by the `context.mounted` check right above -
+        // the analyzer can't link it to this particular use across the
+        // closure boundary, hence the "unrelated mounted check" wording.
+        // ignore: use_build_context_synchronously
         final forceTranscode = await shouldForceTranscodeForDolbyVisionQueue(
           context,
           [selected],
         );
         if (!context.mounted) return false;
+        // ignore: use_build_context_synchronously
         return runWithDolbyVisionStartupFallbackPrompt(
           context,
           manager,
