@@ -158,7 +158,15 @@ enum DetailButton {
     DetailButton.cast => Icons.cast,
     DetailButton.trailer => Icons.movie_outlined,
     DetailButton.watchWithGroup => Icons.groups_rounded,
-    DetailButton.watched => Icons.check_circle_outline,
+    // 30.10, Sid ("celui qui est tout en bas, c'est celui dans le cercle
+    // qui est un doublon... il doit être remplacé par le vu simple",
+    // "Partout") - cette icône générique n'est vue que dans l'écran de
+    // réglages (la fiche détail elle-même a son propre iconBuilder
+    // item.type-aware, déjà passé à la coche fixe pour Movie/Episode, voir
+    // item_detail_screen.dart) ; gardait l'ancien cercle à bascule ici,
+    // donnant l'impression d'un bouton différent de son rendu réel.
+    // Alignée sur la même coche fixe que episodeWatched juste en dessous.
+    DetailButton.watched => Icons.check,
     // 26.10, Sid ("marquer un episode un vu simple comme dans emby, marquer
     // une saison un double vu") - icône FIXE par bouton (plus de bascule
     // simple/rempli selon l'état), seule la couleur change avec isActive -
