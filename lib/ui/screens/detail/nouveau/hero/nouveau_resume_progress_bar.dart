@@ -11,6 +11,14 @@ import '../../../../../l10n/app_localizations.dart';
 /// de 2px déjà peint sur le bouton "Reprendre" lui-même (voir
 /// _NouveauPrimaryButton), ceci est un bloc à part entière, juste en
 /// dessous de la rangée de boutons, même position qu'Emby.
+///
+/// 30.10, Sid ("Ça fait doublon, mais surtout le premier est tronqué") -
+/// une fois ce widget déplacé juste sous NouveauEpisodePreviewCard (voir
+/// item_detail_screen.dart), qui affiche déjà le S/E et le titre de
+/// l'épisode dans sa propre vignette, son propre titre "S1 E2 - Nom" ici
+/// devenait un doublon redondant - retiré, seules la barre et le temps
+/// restant subsistent. Seul appelant (item_detail_screen.dart), donc
+/// aucun autre contexte ne dépend de ce titre.
 class NouveauResumeProgressBar extends StatelessWidget {
   /// L'item dont la progression est affichée - l'épisode en cours pour une
   /// série (voir viewModel.nextUp côté appelant), l'item lui-même pour un
@@ -48,30 +56,12 @@ class NouveauResumeProgressBar extends StatelessWidget {
       remainingLabel = l10n.timeRemaining('${remainingMinutes.clamp(1, 999)}m');
     }
 
-    final season = resumeItem.parentIndexNumber;
-    final episode = resumeItem.indexNumber;
-    final heading = season != null && episode != null
-        ? '${l10n.seasonEpisodeLabel(season, episode)} - ${resumeItem.name}'
-        : resumeItem.name;
-
     return Padding(
       padding: const EdgeInsets.only(top: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            heading,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.1,
-            ),
-          ),
-          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(

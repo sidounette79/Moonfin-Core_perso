@@ -3,16 +3,22 @@ import 'package:flutter/material.dart';
 import '../../../../../data/models/aggregated_item.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../../../widgets/offline_aware_image.dart';
-import '../../item_detail_screen.dart' show technicalDetailsFor;
 
 /// 30.10, Sid ("j'ai bien le reprendre mais pas une miniature de l'épisode
-/// qui irait avec") - a real thumbnail + title + overview + technical
-/// badges for the episode "Reprendre" is about to launch, shown above the
-/// Audio/Sous-titres bar and the action buttons. Unlike
-/// [NouveauResumeProgressBar] (same folder), which only renders once
-/// there's a real in-progress playback position, this always shows for any
-/// resolvable next-up/resume episode - that's the actual gap she flagged:
-/// a never-started episode had no visual at all before this.
+/// qui irait avec") - a real thumbnail + title + overview for the episode
+/// "Reprendre" is about to launch, shown above the Audio/Sous-titres bar
+/// and the action buttons. Unlike [NouveauResumeProgressBar] (same
+/// folder), which only renders once there's a real in-progress playback
+/// position, this always shows for any resolvable next-up/resume episode -
+/// that's the actual gap she flagged: a never-started episode had no
+/// visual at all before this.
+///
+/// 30.10, Sid again ("ça fait doublon... c'est le format vidéo") - no
+/// technical badges (resolution/codec/size) here on purpose, even though
+/// an earlier version of this card had them: NouveauTrackInfoBar's own
+/// "Vidéo" field right below already covers that, and she wants it to
+/// stay there specifically ("j'en ai besoin sous la barre") rather than
+/// repeated here too.
 ///
 /// 30.10, Sid ("est-ce que quand cliquant sur la miniature, ça peut lancer
 /// la lecture ?") - the thumbnail itself is tappable and plays [episode]
@@ -23,14 +29,12 @@ import '../../item_detail_screen.dart' show technicalDetailsFor;
 class NouveauEpisodePreviewCard extends StatelessWidget {
   final AggregatedItem episode;
   final String? imageUrl;
-  final Map<String, dynamic>? selectedMediaSource;
   final VoidCallback? onPlay;
 
   const NouveauEpisodePreviewCard({
     super.key,
     required this.episode,
     required this.imageUrl,
-    this.selectedMediaSource,
     this.onPlay,
   });
 
@@ -56,8 +60,6 @@ class NouveauEpisodePreviewCard extends StatelessWidget {
         : null;
     final runtimeLabel = _runtimeLabel();
     final overview = episode.overview?.trim();
-    final tech = technicalDetailsFor(episode, selectedMediaSource);
-    final hasTechBadges = tech.badges.isNotEmpty || tech.formattedSize != null;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -136,17 +138,6 @@ class NouveauEpisodePreviewCard extends StatelessWidget {
               ),
             ),
           ],
-          if (hasTechBadges) ...[
-            const SizedBox(height: 9),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final badge in tech.badges) _techPill(badge),
-                if (tech.formattedSize != null) _techPill(tech.formattedSize!),
-              ],
-            ),
-          ],
         ],
       ),
     );
@@ -166,24 +157,6 @@ class NouveauEpisodePreviewCard extends StatelessWidget {
           fontSize: 11,
           fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
           letterSpacing: bold ? 0.04 : 0,
-        ),
-      ),
-    );
-  }
-
-  Widget _techPill(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.6),
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
         ),
       ),
     );
