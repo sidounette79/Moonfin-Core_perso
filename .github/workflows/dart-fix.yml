@@ -13,6 +13,15 @@ name: Dart fix (manual)
 
 on:
   workflow_dispatch:
+  # Temporary: workflow_dispatch isn't reachable via the API until this file
+  # has run at least once from a push (GitHub only lists/dispatches
+  # workflow_dispatch workflows once they've executed, since the inputs are
+  # otherwise unknown). Removed again once the one-time cleanup run has
+  # happened - see the commit right after this one.
+  push:
+    branches: [carba-tv-changes]
+    paths:
+      - '.github/workflows/dart-fix.yml'
 
 permissions:
   contents: write
