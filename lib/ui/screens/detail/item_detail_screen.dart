@@ -9,6 +9,7 @@ import '../../../data/repositories/anime_marker_repository.dart';
 import '../../widgets/identify_dialog.dart';
 import '../../widgets/media_badge.dart';
 import 'detail_admin_actions.dart';
+import 'detail_delete_action.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -37,8 +38,6 @@ import '../../../data/viewmodels/item_detail_view_model.dart';
 import '../../../data/viewmodels/seerr_media_detail_view_model.dart';
 import '../../../data/services/plugin_sync_service.dart';
 import '../../navigation/route_lifecycle_observer.dart';
-import '../../navigation/home_refresh_bus.dart';
-import '../../navigation/app_router.dart';
 import '../../navigation/playback_launcher.dart';
 import 'detail_buttons.dart';
 import '../../../data/models/upcoming_episode_info.dart';
@@ -148,9 +147,6 @@ void _animateScrollToTop(ScrollPosition position) {
   );
 }
 
-const _destructiveRed = Color(0xFFD32F2F);
-const _destructiveRedDim = Color(0xFFB71C1C);
-
 /// Types a personal rating can attach to. The servers store user data per
 /// item, so a series, season and episode each carry their own rating with no
 /// propagation between them. People, photos and playlists stay out.
@@ -168,111 +164,6 @@ const _ratableItemTypes = {
   'Book',
   'BoxSet',
 };
-
-String _deleteFailureMessage(
-  AppLocalizations l10n,
-  DeleteItemFailure failure, {
-  required bool isPlaylist,
-}) {
-  // Lacking the Jellyfin delete permission is the usual reason this fails, so
-  // it gets its own string.
-  if (failure.statusCode == 401 || failure.statusCode == 403) {
-    return l10n.requestErrorPermission;
-  }
-  final detail = failure.detail;
-  if (detail == null || detail.isEmpty) {
-    return isPlaylist ? l10n.failedToDeletePlaylist : l10n.failedToDeleteItem;
-  }
-  return l10n.failedToDeleteItemWithError(detail);
-}
-
-/// Runs the delete once the caller has navigated away, so the result comes
-/// back through the root navigator rather than the disposed detail screen.
-void _deleteItemInBackground(
-  ItemDetailViewModel viewModel, {
-  required bool isPlaylist,
-}) {
-  unawaited(
-    viewModel.deleteItem().then((failure) {
-      // Ask for the refresh before looking for a context, otherwise a missing
-      // navigator would also skip the refresh.
-      if (failure == null) {
-        homeRefreshBus.requestNowOrAfterNavigation();
-      }
-
-      final activeContext =
-          appRouter.routerDelegate.navigatorKey.currentContext;
-      if (activeContext == null || !activeContext.mounted) return;
-      final l10n = AppLocalizations.of(activeContext);
-
-      ScaffoldMessenger.of(activeContext).showSnackBar(
-        failure == null
-            ? SnackBar(content: Text(l10n.itemDeleted))
-            : SnackBar(
-                content: Text(
-                  _deleteFailureMessage(l10n, failure, isPlaylist: isPlaylist),
-                ),
-                backgroundColor: _destructiveRed,
-              ),
-      );
-    }),
-  );
-}
-
-Future<bool> _showDeleteConfirmationDialog(
-  BuildContext context, {
-  required String title,
-  required String message,
-}) async {
-  final confirmed = await showFocusRestoringDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog.adaptive(
-      backgroundColor: const Color(0xFF171717),
-      title: Text(title, style: const TextStyle(color: Colors.white)),
-      content: Text(message, style: const TextStyle(color: Colors.white70)),
-      actions: [
-        adaptiveDialogAction(
-          onPressed: () => Navigator.pop(ctx, false),
-          focusRingColor: AppColorScheme.accent,
-          child: Text(AppLocalizations.of(ctx).cancel),
-        ),
-        adaptiveDialogAction(
-          onPressed: () => Navigator.pop(ctx, true),
-          isDestructive: true,
-          backgroundColor: _destructiveRedDim,
-          focusedBackgroundColor: _destructiveRed,
-          child: Text(
-            AppLocalizations.of(ctx).delete,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  return confirmed == true;
-}
-
-/// Top-level (not just _DetailContentState's) so the Nouveau theme can wire
-/// the same permission-respecting delete button as Classic/Modern/Spotlight
-/// instead of never offering one at all.
-Future<void> _confirmDeleteServerItem(
-  BuildContext context,
-  ItemDetailViewModel viewModel,
-  AggregatedItem item,
-) async {
-  final l10n = AppLocalizations.of(context);
-  final isPlaylist = item.type == 'Playlist';
-  final confirmed = await _showDeleteConfirmationDialog(
-    context,
-    title: isPlaylist ? l10n.deletePlaylist : l10n.deleteItem,
-    message: isPlaylist ? l10n.deletePlaylistMessage : l10n.deleteItemMessage,
-  );
-  if (!confirmed) return;
-
-  appRouter.go(Destinations.home);
-  _deleteItemInBackground(viewModel, isPlaylist: isPlaylist);
-}
 
 class ItemDetailScreen extends StatefulWidget {
   final String itemId;
@@ -837,9 +728,17 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
           actionsExpanded: _actionsExpanded,
           onActionsExpandedChanged: (val) =>
               setState(() => _actionsExpanded = val),
+          // 30.10, Sid ("le bouton supprimer... il manque aussi aux series")
+          // - the Nouveau theme never had this wired at all, unlike
+          // Classic/Modern/Spotlight; confirmDeleteServerItem is the shared
+          // helper Modern already uses (detail_delete_action.dart), gated
+          // by the same real per-item Emby permission.
           onDelete: _viewModel.item?.canDelete == true
-              ? () =>
-                    _confirmDeleteServerItem(context, _viewModel, _viewModel.item!)
+              ? () => confirmDeleteServerItem(
+                  context,
+                  _viewModel,
+                  _viewModel.item!,
+                )
               : null,
         ),
 
@@ -2050,7 +1949,7 @@ class _DetailContentState extends State<_DetailContent> {
         downTarget: metadataFocusNode ?? movieDownTarget,
         autoPlay: widget.autoPlay,
         onDelete: item.canDelete
-            ? () => _confirmDeleteServerItem(context, viewModel, item)
+            ? () => confirmDeleteServerItem(context, viewModel, item)
             : null,
       ),
       if (_hasMetadata(item)) ...[
@@ -2627,7 +2526,7 @@ class _DetailContentState extends State<_DetailContent> {
         downTarget: metadataFocusNode ?? episodeDownTarget,
         autoPlay: widget.autoPlay,
         onDelete: item.canDelete
-            ? () => _confirmDeleteServerItem(context, viewModel, item)
+            ? () => confirmDeleteServerItem(context, viewModel, item)
             : null,
       ),
       if (_hasMetadata(item)) ...[
@@ -3582,7 +3481,7 @@ class _DetailContentState extends State<_DetailContent> {
             ? () => _confirmDeleteDownloadedAlbum(context, item.name)
             : null,
         onDeletePlaylist: canDeleteItem
-            ? () => _confirmDeleteServerItem(context, viewModel, item)
+            ? () => confirmDeleteServerItem(context, viewModel, item)
             : null,
       ),
       if (viewModel.tracks.isNotEmpty) ...[

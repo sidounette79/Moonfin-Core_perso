@@ -58,7 +58,7 @@ enum DetailButton {
   // 27.09, Sid: "le bouton supprimer c'était sur la page d'un film ou d'un
   // épisode" - distinct from deleteFiles (removes a downloaded offline
   // copy): this deletes the item from the server itself, same action the
-  // album/playlist page already had via _confirmDeleteServerItem.
+  // album/playlist page already had via confirmDeleteServerItem.
   deleteServer('deleteServer'),
   goToSeries('goToSeries'),
   seerrWatchlist('seerrWatchlist'),
