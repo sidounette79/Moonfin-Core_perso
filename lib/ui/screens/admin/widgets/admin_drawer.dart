@@ -92,7 +92,10 @@ class _AdminDrawerState extends State<AdminDrawer> {
         buildDefaultDragHandles: false,
         padding: EdgeInsets.only(bottom: bottomPadding),
         itemCount: _entries.length,
-        onReorder: _onReorder,
+        // 30.10: onReorderItem's newIndex semantics differ from onReorder's
+        // (adjusted for the removed item at oldIndex) - not migrating blind
+        // without local testing, see analysis_options.yaml's own guidance.
+        onReorder: _onReorder, // ignore: deprecated_member_use
         itemBuilder: (context, index) {
           final entry = _entries[index];
           final previousSection = index > 0 ? _entries[index - 1].section : null;

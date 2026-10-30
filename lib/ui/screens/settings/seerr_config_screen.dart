@@ -798,7 +798,11 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
             physics: const NeverScrollableScrollPhysics(),
             buildDefaultDragHandles: false,
             itemCount: _rows.length,
-            onReorder: (oldIndex, newIndex) {
+            // 30.10: onReorderItem's newIndex semantics differ from
+            // onReorder's (adjusted for the removed item at oldIndex) - not
+            // migrating blind without local testing, see analysis_options.
+            // yaml's own guidance.
+            onReorder: (oldIndex, newIndex) { // ignore: deprecated_member_use
               if (newIndex > oldIndex) newIndex--;
               _moveSeerrRowTo(oldIndex, newIndex);
             },

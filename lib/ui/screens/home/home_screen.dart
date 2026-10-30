@@ -2188,15 +2188,13 @@ class _ContentRowsState extends State<_ContentRows>
         // 30.10: already guarded by the `context.mounted` check right above -
         // the analyzer can't link it to this particular use across the
         // closure boundary, hence the "unrelated mounted check" wording.
-        // ignore: use_build_context_synchronously
         final forceTranscode = await shouldForceTranscodeForDolbyVisionQueue(
-          context,
+          context, // ignore: use_build_context_synchronously
           [selected],
         );
         if (!context.mounted) return false;
-        // ignore: use_build_context_synchronously
         return runWithDolbyVisionStartupFallbackPrompt(
-          context,
+          context, // ignore: use_build_context_synchronously
           manager,
           () => runPlaybackStart(
             launchSession,

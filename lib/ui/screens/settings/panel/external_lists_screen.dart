@@ -1866,12 +1866,12 @@ class _AddEditCustomRowDialogState extends State<_AddEditCustomRowDialog> {
       final url = customService.constructSourceUrl(_source, _type, params);
       setState(() => _isValidating = false);
 
-      final errorString = describeError(e, AppLocalizations.of(context))
+      final errorString = describeError(e, AppLocalizations.of(context)) // ignore: use_build_context_synchronously
           .replaceAll('Constructed URL: $url. ', '')
           .replaceAll('Constructed URL: $url', '');
 
       showFocusRestoringDialog(
-        context: context,
+        context: context, // ignore: use_build_context_synchronously
         builder: (ctx) => withCleanSettingsTypography(
           ctx,
           AlertDialog(

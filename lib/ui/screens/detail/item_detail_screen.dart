@@ -1521,7 +1521,8 @@ class _DetailContentState extends State<_DetailContent> {
                       // exist on Flutter 3.47.2 - dart fix's deprecation
                       // migration assumed a newer SDK and broke the build;
                       // `cacheExtent` is the real working API on this SDK.
-                      cacheExtent: 4000, controller: _scrollController,
+                      cacheExtent: 4000, // ignore: deprecated_member_use
+                      controller: _scrollController,
                       slivers: [
                         SliverPadding(
                           padding: EdgeInsets.fromLTRB(
@@ -1543,7 +1544,8 @@ class _DetailContentState extends State<_DetailContent> {
               )
             else
               CustomScrollView(
-                cacheExtent: 4000, controller: _scrollController,
+                cacheExtent: 4000, // ignore: deprecated_member_use
+                controller: _scrollController,
                 slivers: [
                   if (item.type != 'Person' &&
                       item.type != 'MusicArtist' &&
@@ -16846,7 +16848,10 @@ class DetailTrackList extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         buildDefaultDragHandles: false,
         itemCount: tracks.length,
-        onReorder: onReorder!,
+        // 30.10: onReorderItem's newIndex semantics differ from onReorder's
+        // (adjusted for the removed item at oldIndex) - not migrating blind
+        // without local testing, see analysis_options.yaml's own guidance.
+        onReorder: onReorder!, // ignore: deprecated_member_use
         itemBuilder: (context, index) {
           final track = tracks[index];
           final keyId = track.rawData['PlaylistItemId']?.toString() ?? track.id;

@@ -2435,7 +2435,8 @@ class _HomeSectionsScreenState extends State<HomeSectionsScreen>
     final visibleIndices = _visibleSectionIndices();
     final items = [for (final i in visibleIndices) _sections[i]];
     return CustomScrollView(
-      cacheExtent: 3000.0, slivers: [
+      cacheExtent: 3000.0, // ignore: deprecated_member_use
+      slivers: [
         if (widget.showGeneralOptions)
           SliverToBoxAdapter(child: _buildHeader(l10n)),
         ReorderableAnimatedListImpl<HomeSectionConfig>(

@@ -2026,7 +2026,10 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
     return ReorderableListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.spaceLg),
       itemCount: items.length - start,
-      onReorder: (oldRow, newRow) {
+      // 30.10: onReorderItem's newIndex semantics differ from onReorder's
+      // (adjusted for the removed item at oldIndex) - not migrating blind
+      // without local testing, see analysis_options.yaml's own guidance.
+      onReorder: (oldRow, newRow) { // ignore: deprecated_member_use
         setState(() => _queue.reorder(start + oldRow, start + newRow));
       },
       itemBuilder: (context, row) => buildTile(start + row),

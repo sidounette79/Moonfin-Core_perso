@@ -78,10 +78,15 @@ class VoiceSearchController extends ChangeNotifier {
 
     try {
       await _speechToText.listen(
-        localeId: localeCode,
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 3),
+        // 30.10: listenFor/pauseFor moved into SpeechListenOptions below
+        // (confirmed safe, the class was already in use here) - not doing
+        // the same for localeId without confirming SpeechListenOptions
+        // actually exposes it on the pinned speech_to_text version, after
+        // the ScrollCacheExtent lesson from dart fix's own migration guess.
+        localeId: localeCode, // ignore: deprecated_member_use
         listenOptions: stt.SpeechListenOptions(
+          listenFor: const Duration(seconds: 30),
+          pauseFor: const Duration(seconds: 3),
           partialResults: true,
           cancelOnError: true,
           listenMode: stt.ListenMode.dictation,

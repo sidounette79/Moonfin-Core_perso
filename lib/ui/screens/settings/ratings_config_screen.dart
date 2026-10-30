@@ -260,7 +260,10 @@ class _RatingsConfigScreenState extends State<RatingsConfigScreen> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: _items.length,
-          onReorder: (oldIndex, newIndex) {
+          // 30.10: onReorderItem's newIndex semantics differ from onReorder's
+          // (adjusted for the removed item at oldIndex) - not migrating blind
+          // without local testing, see analysis_options.yaml's own guidance.
+          onReorder: (oldIndex, newIndex) { // ignore: deprecated_member_use
             if (newIndex > oldIndex) newIndex--;
             _moveItemTo(oldIndex, newIndex);
           },
