@@ -141,7 +141,12 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
     return size.height > size.width && size.width < 600;
   }
 
-  bool _shouldShowChapters(AggregatedItem item) => item.chapters.isNotEmpty;
+  // 30.10, Sid ("la partie des chapitres sur la page de détail du film ne
+  // sert à rien, elle est plus utile sur la barre du lecteur") - pour un
+  // film uniquement; elle n'a rien dit contre la garder pour une série/un
+  // épisode, donc inchangé pour ces deux-là.
+  bool _shouldShowChapters(AggregatedItem item) =>
+      item.type != 'Movie' && item.chapters.isNotEmpty;
 
   List<GlobalKey> _focusableVerticalSections() {
     final sections = <GlobalKey>[];
