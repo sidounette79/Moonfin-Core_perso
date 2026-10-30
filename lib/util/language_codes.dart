@@ -409,6 +409,39 @@ const Map<String, String> kIso6391To6392 = {
   'zu': 'zul',
 };
 
+/// 30.10, Sid ("j'ai les sous-titres qui s'affichent en anglais" alors que
+/// l'audio est en français, confirmé via l'API Emby) - 18 langues ont deux
+/// codes ISO 639-2 valides : "terminologique" (T, ex. "fra") et
+/// "bibliographique" (B, ex. "fre"). [kIso6391To6392] ci-dessus - et donc
+/// toute préférence stockée pour ces langues - utilise le code T, mais les
+/// vrais fichiers média (confirmé en direct sur un épisode réel) et le
+/// serveur Emby/Jellyfin utilisent le code B. Résultat : la correspondance
+/// de langue échouait silencieusement pour le français (et potentiellement
+/// l'allemand, le néerlandais, le chinois, etc.) - [toIso3Language] dans
+/// language_matching.dart canonicalise vers le code B via cette table avant
+/// toute comparaison, sans toucher aux valeurs déjà stockées en préférence
+/// (qui restent en code T, seule la comparaison change).
+const Map<String, String> kIso6392TerminologicalToBibliographic = {
+  'bod': 'tib',
+  'cym': 'wel',
+  'deu': 'ger',
+  'ell': 'gre',
+  'eus': 'baq',
+  'fas': 'per',
+  'fra': 'fre',
+  'hye': 'arm',
+  'isl': 'ice',
+  'kat': 'geo',
+  'mkd': 'mac',
+  'mri': 'mao',
+  'msa': 'may',
+  'nld': 'dut',
+  'ron': 'rum',
+  'slk': 'slo',
+  'sqi': 'alb',
+  'zho': 'chi',
+};
+
 /// ISO 639-2 code to display name for every language the app itself is
 /// translated into, in [kIso6392Languages] order. The audio and subtitle
 /// language pickers all offer this list, each behind its own "none" or
