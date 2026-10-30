@@ -7838,7 +7838,26 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         viewModel.selectedSubtitleIndex,
       );
 
-      final trackInfoBar = (videoLabel == null && audioStreams.isEmpty && subtitleStreams.isEmpty)
+      // 30.10, Sid ("on rajoutera un bouton pour télécharger les sous-titres,
+      // ça reste utile, Bazarr et Emby ne le font pas toujours") - sans ça,
+      // la puce Sous-titres disparaissait entièrement quand l'épisode n'a
+      // aucune piste locale (subtitleStreams vide), empêchant d'atteindre le
+      // téléchargement distant depuis cette page - même défaut que celui déjà
+      // corrigé dans le lecteur (_canDownloadRemoteSubtitles côté
+      // video_player_screen.dart). _openSubtitleSelector ouvre toujours le
+      // même TrackSelectorDialog, qui ajoute déjà l'option "Télécharger des
+      // sous-titres" quand _canDownloadRemoteSubtitles(streamSourceItem) est
+      // vrai (voir _showSubtitleSelector plus bas) - rien à dupliquer ici,
+      // juste rendre la puce atteignable dans ce cas.
+      final canDownloadRemoteSubtitles = _canDownloadRemoteSubtitles(
+        streamSourceItem,
+      );
+
+      final trackInfoBar =
+          (videoLabel == null &&
+              audioStreams.isEmpty &&
+              subtitleStreams.isEmpty &&
+              !canDownloadRemoteSubtitles)
           ? null
           : NouveauTrackInfoBar(
               videoLabel: videoLabel ?? '',
@@ -7852,8 +7871,10 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
               subtitleTitle: l10n.subtitles,
               subtitleLabel: currentSubtitleIdx != null && currentSubtitleIdx >= 0
                   ? trackLabel(subtitleStreams[currentSubtitleIdx])
-                  : (subtitleStreams.isNotEmpty ? l10n.none : null),
-              onSubtitleTap: subtitleStreams.isNotEmpty
+                  : (subtitleStreams.isNotEmpty || canDownloadRemoteSubtitles
+                        ? l10n.none
+                        : null),
+              onSubtitleTap: subtitleStreams.isNotEmpty || canDownloadRemoteSubtitles
                   ? () => _openSubtitleSelector(context, streamSourceItem)
                   : null,
               audioFocusNode: _audioTrackInfoFocusNode,

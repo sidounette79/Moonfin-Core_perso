@@ -7,6 +7,7 @@ import '../../../../../preference/preference_constants.dart';
 import '../../../../../preference/user_preferences.dart';
 import '../../../../../util/focus/dpad_keys.dart';
 import '../../../../../util/platform_detection.dart';
+import '../../../../widgets/focus/focusable_wrapper.dart';
 import '../../../../widgets/navigation_layout.dart';
 import '../shared/nouveau_spacing.dart';
 import 'nouveau_people_card.dart';
@@ -54,6 +55,13 @@ class NouveauPeopleSectionState extends State<NouveauPeopleSection> {
 
   final Map<int, FocusNode> _focusNodes = {};
 
+  // 30.10, Sid ("distribution, on garde comme c'est maintenant mais à
+  // dérouler comme tu as mis") - repliée par défaut, comme la maquette ;
+  // le contenu (grille) reste identique, seule sa visibilité change.
+  bool _expanded = false;
+
+  final FocusNode _headerFocusNode = FocusNode(debugLabel: 'people:header');
+
   FocusNode _nodeFor(int index) =>
       _focusNodes.putIfAbsent(index, () => FocusNode(debugLabel: 'people:$index'));
 
@@ -62,6 +70,7 @@ class NouveauPeopleSectionState extends State<NouveauPeopleSection> {
     for (final node in _focusNodes.values) {
       node.dispose();
     }
+    _headerFocusNode.dispose();
     super.dispose();
   }
 
@@ -84,6 +93,20 @@ class NouveauPeopleSectionState extends State<NouveauPeopleSection> {
   bool focusTop() {
     if (!canFocusTop) {
       return false;
+    }
+    _headerFocusNode.requestFocus();
+    return true;
+  }
+
+  void _toggleExpanded() {
+    setState(() {
+      _expanded = !_expanded;
+    });
+  }
+
+  bool _focusFirstPersonOrPassThrough() {
+    if (!_expanded) {
+      return widget.onNavigateDown?.call() ?? false;
     }
     _nodeFor(0).requestFocus();
     return true;
@@ -232,26 +255,48 @@ class NouveauPeopleSectionState extends State<NouveauPeopleSection> {
 
         final layout = _layoutFor(context, availableWidth);
 
+        final titleStyle = layout.compact
+            ? textTheme.titleLarge?.copyWith(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                height: 1.1,
+              )
+            : textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700);
+
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: layout.compact
-                  ? textTheme.titleLarge?.copyWith(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      height: 1.1,
-                    )
-                  : textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            FocusableWrapper(
+              focusNode: _headerFocusNode,
+              onSelect: _toggleExpanded,
+              onNavigateUp: widget.onNavigateUp,
+              onNavigateDown: _focusFirstPersonOrPassThrough,
+              borderRadius: 10,
+              disableScale: true,
+              child: GestureDetector(
+                onTap: _toggleExpanded,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title, style: titleStyle),
+                    const SizedBox(width: 8),
+                    Icon(
+                      _expanded ? Icons.expand_less : Icons.expand_more,
+                      color: titleStyle?.color ?? Colors.white,
+                    ),
+                  ],
+                ),
+              ),
             ),
-            SizedBox(
-              height: layout.compact
-                  ? NouveauSpacing.mobileTitleToContent
-                  : NouveauSpacing.titleToContent,
-            ),
-            _buildGrid(context, people, layout),
+            if (_expanded) ...[
+              SizedBox(
+                height: layout.compact
+                    ? NouveauSpacing.mobileTitleToContent
+                    : NouveauSpacing.titleToContent,
+              ),
+              _buildGrid(context, people, layout),
+            ],
           ],
         );
       },
@@ -292,9 +337,8 @@ class NouveauPeopleSectionState extends State<NouveauPeopleSection> {
             _nodeFor(above).requestFocus();
             return KeyEventResult.handled;
           }
-          return (widget.onNavigateUp?.call() ?? false)
-              ? KeyEventResult.handled
-              : KeyEventResult.ignored;
+          _headerFocusNode.requestFocus();
+          return KeyEventResult.handled;
         }
         if (event.logicalKey.isDownKey) {
           final below = i + layout.itemsPerLine;
