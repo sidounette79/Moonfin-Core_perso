@@ -1599,6 +1599,18 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: '',
   );
 
+  /// 30.10, Sid ("comme dans Meelo, le choix de wallpaper perso... quand
+  /// j'ai le fond tout noir") - local device file path to a user-picked
+  /// image, shown by FullscreenBackdropSwitcher only as a fallback when a
+  /// screen has no real backdrop of its own ("il se fait recouvrir quand
+  /// y a une vraie affiche" - confirmed that's the wanted behavior, not an
+  /// always-on replacement). Local-only like Meelo's own version, never
+  /// synced to the server. Empty string means "no custom wallpaper set".
+  static final customWallpaperPath = Preference(
+    key: 'pref_custom_wallpaper_path',
+    defaultValue: '',
+  );
+
   static final showClock = Preference(
     key: 'pref_show_clock',
     defaultValue: true,

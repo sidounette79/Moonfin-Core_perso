@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../preference/user_preferences.dart';
+import '../../../util/custom_wallpaper.dart';
 import '../../theme/app_theme_controller.dart';
 import '../../widgets/settings/clean_settings_typography.dart';
 import 'settings_app_bar.dart';
@@ -87,6 +90,18 @@ class _AppearanceThemeScreenState extends State<AppearanceThemeScreen> {
                     ),
                     if (i != themes.length - 1) const SizedBox(height: 16),
                   ],
+                  _SectionHeader(l10n.customWallpaperTitle),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.customWallpaperSubtitle,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.74,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const _CustomWallpaperCard(),
                 ],
               ),
             );
@@ -259,6 +274,118 @@ class _ThemePreviewCardState extends State<_ThemePreviewCard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 30.10, Sid ("comme dans meelo, le choix de wallpaper perso... pour
+/// remplacer quand j'ai le fond tout noir") - picks, previews and clears
+/// the device-only fallback wallpaper (see CustomWallpaper and
+/// FullscreenBackdropSwitcher's own fallback layer).
+class _CustomWallpaperCard extends StatefulWidget {
+  const _CustomWallpaperCard();
+
+  @override
+  State<_CustomWallpaperCard> createState() => _CustomWallpaperCardState();
+}
+
+class _CustomWallpaperCardState extends State<_CustomWallpaperCard> {
+  bool _busy = false;
+
+  Future<void> _pick() async {
+    setState(() => _busy = true);
+    try {
+      await CustomWallpaper.pickAndStore();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _remove() async {
+    setState(() => _busy = true);
+    try {
+      await CustomWallpaper.clear();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final path = CustomWallpaper.currentPath();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: AppRadius.circular(18),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: AppRadius.circular(12),
+            child: SizedBox(
+              width: 72,
+              height: 44,
+              child: path != null
+                  ? Image.file(
+                      File(path),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const ColoredBox(
+                        color: Colors.black26,
+                      ),
+                    )
+                  : DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.08,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.image_outlined,
+                        size: 20,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.4,
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: _busy
+                ? const Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton(
+                        onPressed: _pick,
+                        child: Text(
+                          path != null
+                              ? l10n.customWallpaperChange
+                              : l10n.customWallpaperChoose,
+                        ),
+                      ),
+                      if (path != null)
+                        TextButton(
+                          onPressed: _remove,
+                          child: Text(l10n.customWallpaperRemove),
+                        ),
+                    ],
+                  ),
+          ),
+        ],
       ),
     );
   }

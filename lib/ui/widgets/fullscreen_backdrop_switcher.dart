@@ -1,5 +1,11 @@
+import 'dart:io';
+
 import 'offline_aware_image.dart';
 import 'package:flutter/widgets.dart';
+import 'package:get_it/get_it.dart';
+
+import '../../preference/user_preferences.dart';
+import '../../util/custom_wallpaper.dart';
 
 class FullscreenBackdropSwitcher extends StatefulWidget {
   final String? imageUrl;
@@ -134,11 +140,44 @@ class _FullscreenBackdropSwitcherState extends State<FullscreenBackdropSwitcher>
         );
   }
 
+  // 30.10, Sid ("comme dans meelo, le choix de wallpaper perso... pour
+  // remplacer quand j'ai le fond tout noir" / "il se fait recouvrir quand y
+  // a une vraie affiche?") - behind both real-backdrop layers, shown only
+  // when neither has anything (covered the instant a real one arrives or
+  // starts fading in). ListenableBuilder so picking/clearing a wallpaper in
+  // settings reflects immediately on whatever screen is already open.
+  Widget _buildWallpaperFallback() {
+    if (_currentUrl != null || _incomingUrl != null) {
+      return const SizedBox.shrink();
+    }
+    // Defensive: this widget is shared across many screens, some of which
+    // could in principle build before preferences are registered.
+    if (!GetIt.instance.isRegistered<UserPreferences>()) {
+      return const SizedBox.shrink();
+    }
+    return ListenableBuilder(
+      listenable: GetIt.instance<UserPreferences>(),
+      builder: (context, _) {
+        final path = CustomWallpaper.currentPath();
+        if (path == null) {
+          return const SizedBox.shrink();
+        }
+        return Image.file(
+          File(path),
+          fit: BoxFit.cover,
+          alignment: widget.alignment,
+          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
       fit: StackFit.expand,
       children: [
+        _buildWallpaperFallback(),
         if (_currentUrl != null)
           KeyedSubtree(
             key: ValueKey(_currentUrl),

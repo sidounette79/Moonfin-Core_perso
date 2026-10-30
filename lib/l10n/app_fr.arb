@@ -7948,6 +7948,26 @@
     "@customThemeTitle": {
         "description": "Title for the custom theme settings section"
     },
+    "customWallpaperTitle": "Fond d'écran personnalisé",
+    "@customWallpaperTitle": {
+        "description": "Title for the custom wallpaper settings section"
+    },
+    "customWallpaperSubtitle": "Affiché uniquement quand un écran n'a pas sa propre image de fond.",
+    "@customWallpaperSubtitle": {
+        "description": "Description under the custom wallpaper settings section"
+    },
+    "customWallpaperChoose": "Choisir une image",
+    "@customWallpaperChoose": {
+        "description": "Button to pick a custom wallpaper image"
+    },
+    "customWallpaperChange": "Changer",
+    "@customWallpaperChange": {
+        "description": "Button to replace the current custom wallpaper image"
+    },
+    "customWallpaperRemove": "Supprimer",
+    "@customWallpaperRemove": {
+        "description": "Button to remove the current custom wallpaper image"
+    },
     "theme8BitHero": "8-bit Hero",
     "@theme8BitHero": {
         "description": "Display name for the 8-bit Hero theme"

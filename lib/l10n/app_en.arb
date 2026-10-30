@@ -595,6 +595,26 @@
   "@customThemeSubtitle": {
     "description": "Description under custom themes section"
   },
+  "customWallpaperTitle": "Custom Wallpaper",
+  "@customWallpaperTitle": {
+    "description": "Title for the custom wallpaper settings section"
+  },
+  "customWallpaperSubtitle": "Shown only when a screen has no real backdrop image of its own.",
+  "@customWallpaperSubtitle": {
+    "description": "Description under the custom wallpaper settings section"
+  },
+  "customWallpaperChoose": "Choose an image",
+  "@customWallpaperChoose": {
+    "description": "Button to pick a custom wallpaper image"
+  },
+  "customWallpaperChange": "Change",
+  "@customWallpaperChange": {
+    "description": "Button to replace the current custom wallpaper image"
+  },
+  "customWallpaperRemove": "Remove",
+  "@customWallpaperRemove": {
+    "description": "Button to remove the current custom wallpaper image"
+  },
   "keyboardPreferSystemIme": "Prefer system keyboard",
   "@keyboardPreferSystemIme": {
     "description": "Settings label for preferring the native system keyboard instead of the custom TV keyboard"
