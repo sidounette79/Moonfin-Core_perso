@@ -1626,6 +1626,23 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
             onTvDown();
             return KeyEventResult.handled;
           }
+          // 30.10, Sid ("une fois le filtre mis sur celles que je veux
+          // garder, ça part toujours en diagonale quand je clique sur en
+          // bas") - with no explicit handler here, Flutter's own default
+          // directional traversal picks the geometrically nearest focus
+          // target, which jumps diagonally the moment a filtered/ragged
+          // grid's row below has no card in the exact same column. Same
+          // index math as the ragged-row right-key handling just below -
+          // request the specific card directly below by its real index
+          // instead of trusting the geometric heuristic.
+          if (PlatformDetection.isTV &&
+              event.isActionable &&
+              event.logicalKey.isDownKey &&
+              onTvDown == null &&
+              positionInSection + crossAxisCount < sectionCount) {
+            getGridItemFocusNode(index + crossAxisCount).requestFocus();
+            return KeyEventResult.handled;
+          }
           if (PlatformDetection.isTV &&
               event.isActionable &&
               event.logicalKey.isBackKey &&
