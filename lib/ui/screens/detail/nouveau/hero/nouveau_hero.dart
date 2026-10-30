@@ -33,6 +33,10 @@ class NouveauHero extends StatefulWidget {
   final GlobalKey<DetailActionButtonsState> actionButtonsKey;
   final bool Function()? onNavigateDown;
 
+  /// See [DetailActionButtons.previewEpisodeOverride] - passed straight
+  /// through, this widget has no opinion on it.
+  final AggregatedItem? previewEpisodeOverride;
+
   const NouveauHero({
     super.key,
     required this.item,
@@ -46,6 +50,7 @@ class NouveauHero extends StatefulWidget {
     required this.onActionsExpandedChanged,
     required this.actionButtonsKey,
     this.onNavigateDown,
+    this.previewEpisodeOverride,
   });
 
   @override
@@ -387,6 +392,7 @@ class NouveauHeroState extends State<NouveauHero> {
       actionsExpanded: widget.actionsExpanded,
       onActionsExpandedChanged: widget.onActionsExpandedChanged,
       upTarget: _overviewFocusable && !hideOverview ? _overviewFocusNode : null,
+      previewEpisodeOverride: widget.previewEpisodeOverride,
     );
 
     return Focus(

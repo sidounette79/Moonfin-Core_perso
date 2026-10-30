@@ -111,6 +111,15 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
 
   bool _personHeroParentFocusInProgress = false;
 
+  /// 30.10, Sid (maquette "cliquer un épisode dans la grille, ça remonte
+  /// dans la miniature du haut") - the episode currently focused in
+  /// NouveauEpisodesSection's rail (TV D-pad only), shown by
+  /// NouveauEpisodePreviewCard above the action buttons in place of the
+  /// real next-up/resume episode. Null means "use the real one" - see
+  /// DetailActionButtons.previewEpisodeOverride for why this never
+  /// touches what Play actually does.
+  AggregatedItem? _previewEpisode;
+
   ItemDetailViewModel get _vm => widget.viewModel;
 
   bool _usePortraitLayout(BuildContext context) {
@@ -873,6 +882,8 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
       _seerrLoadedForItemId = null;
       _seerrLoadingForItemId = null;
 
+      _previewEpisode = null;
+
       _outerRevealRequest++;
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -954,6 +965,7 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
               onActionsExpandedChanged: widget.onActionsExpandedChanged,
               onNavigateDown: () => _moveDown(_heroKey),
               prefs: widget.prefs,
+              previewEpisodeOverride: _previewEpisode,
             ),
     );
 
@@ -1094,6 +1106,10 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
           prefs: widget.prefs,
           actionButtonsKey: _actionButtonsKey,
           onBackdropItemFocused: widget.onBackdropItemFocused,
+          onEpisodeFocused: (episode) {
+            if (identical(_previewEpisode, episode)) return;
+            setState(() => _previewEpisode = episode);
+          },
           onNavigateUp: () => _moveUp(_episodesSectionKey),
           onNavigateDown: () => _moveDown(_episodesSectionKey),
         ),

@@ -31,6 +31,15 @@ class NouveauEpisodesSection extends StatefulWidget {
   final bool Function()? onNavigateUp;
   final bool Function()? onNavigateDown;
 
+  /// 30.10, Sid (maquette "cliquer un épisode dans la grille, ça remonte
+  /// dans la miniature du haut") - fires on every focus-index change in the
+  /// episode rail (TV D-pad traversal), so the preview card above the
+  /// action buttons can show whichever episode is currently highlighted.
+  /// Never fires from a tap (tapping plays directly, see onTap below) -
+  /// mobile has no "browse without playing" gesture here and this doesn't
+  /// add one.
+  final ValueChanged<AggregatedItem>? onEpisodeFocused;
+
   const NouveauEpisodesSection({
     super.key,
     required this.viewModel,
@@ -39,6 +48,7 @@ class NouveauEpisodesSection extends StatefulWidget {
     this.onBackdropItemFocused,
     this.onNavigateUp,
     this.onNavigateDown,
+    this.onEpisodeFocused,
   });
 
   @override
@@ -575,6 +585,8 @@ class NouveauEpisodesSectionState extends State<NouveauEpisodesSection> {
 
   void _handleEpisodeIndexChanged(int index, AggregatedItem episode) {
     _pendingSeasonEpisodeIndex = null;
+
+    widget.onEpisodeFocused?.call(episode);
 
     if (!_isSeries) {
       return;

@@ -4918,6 +4918,15 @@ class DetailActionButtons extends StatefulWidget {
   /// permissions actually allow it.
   final VoidCallback? onDelete;
 
+  /// 30.10, Sid (maquette "cliquer un épisode dans la grille, ça remonte
+  /// dans la miniature du haut") - when set (Nouveau, Series/Season, TV
+  /// D-pad focus moving across the episode rail), overrides which episode
+  /// NouveauEpisodePreviewCard/NouveauTrackInfoBar/NouveauResumeProgressBar
+  /// describe, in place of viewModel.nextUp. Null keeps the existing
+  /// next-up/resume behavior unchanged - this never affects Play itself,
+  /// only what the preview above the buttons shows.
+  final AggregatedItem? previewEpisodeOverride;
+
   const DetailActionButtons({
     super.key,
     required this.viewModel,
@@ -4942,6 +4951,7 @@ class DetailActionButtons extends StatefulWidget {
     this.actionsExpanded,
     this.onActionsExpandedChanged,
     this.onDelete,
+    this.previewEpisodeOverride,
   });
 
   @override
@@ -7802,21 +7812,32 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       // (unlike resumeBar above, which needs a real in-progress position).
       // Series/Season only - a movie/episode page already shows its own
       // poster as the backdrop.
+      // 30.10, Sid (maquette "cliquer un épisode dans la grille, ça remonte
+      // dans la miniature du haut") - previewEpisodeOverride (D-pad focus
+      // dans le rail d'épisodes plus bas sur la page, voir
+      // NouveauEpisodesSection.onEpisodeFocused) ne change QUE ce qui
+      // s'affiche ici. resumeItem/streamSourceItem/trackInfoBar/rowContent
+      // restent sur le vrai épisode "Reprendre" - survoler un autre
+      // épisode dans la grille ne doit jamais changer ce que "Lire" lance.
+      final previewItem = widget.previewEpisodeOverride ?? resumeItem;
       Widget? episodePreview;
-      if (isTvShowForResume && resumeItem != null) {
-        final previewTag = resumeItem.primaryImageTag;
+      if (isTvShowForResume && previewItem != null) {
+        final previewTag = previewItem.primaryImageTag;
         final previewImageUrl =
-            previewTag != null && !resumeItem.id.startsWith('tmdb:')
+            previewTag != null && !previewItem.id.startsWith('tmdb:')
             ? widget.viewModel.imageApi.getPrimaryImageUrl(
-                resumeItem.id,
+                previewItem.id,
                 maxHeight: 400,
                 tag: previewTag,
               )
             : null;
         episodePreview = NouveauEpisodePreviewCard(
-          episode: resumeItem,
+          episode: previewItem,
           imageUrl: previewImageUrl,
-          selectedMediaSource: selectedSource,
+          selectedMediaSource: selectedMediaSourceForItem(
+            previewItem,
+            widget.selectedMediaSourceId,
+          ),
         );
       }
 
