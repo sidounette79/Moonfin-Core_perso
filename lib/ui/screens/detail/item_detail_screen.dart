@@ -7865,10 +7865,6 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         episodePreview = NouveauEpisodePreviewCard(
           episode: previewItem,
           imageUrl: previewImageUrl,
-          selectedMediaSource: selectedMediaSourceForItem(
-            previewItem,
-            widget.selectedMediaSourceId,
-          ),
           onPlay: () => playItem(
             context,
             previewItem,
