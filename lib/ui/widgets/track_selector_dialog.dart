@@ -180,19 +180,85 @@ class TrackSelectorDialog {
       // The footer rides along as the last row rather than sitting under the
       // list, so a long track list keeps the full height and the footer is
       // something you scroll down to instead of something in the way.
-      builder: (dialogCtx) => ListView.builder(
-        shrinkWrap: true,
-        itemCount: options.length + (footer == null ? 0 : 1),
-        itemBuilder: (_, i) => i == options.length
-            ? footer!
-            : _TrackRow(
-                option: options[i],
-                isSelected: selectedIndex == i,
-                autofocus:
-                    selectedIndex == i || (selectedIndex == null && i == 0),
-                onTap: () => Navigator.pop(dialogCtx, i),
-              ),
+      builder: (dialogCtx) => _TrackOptionsList(
+        options: options,
+        selectedIndex: selectedIndex,
+        footer: footer,
       ),
+    );
+  }
+}
+
+// 30.10, Sid ("quand j'ouvre la fenêtre des sous titres, le selectionner
+// est toujours en bas de la fenêtre et pas en haut"): the list had no
+// ScrollController at all - a long track list (several subtitle sources,
+// or the "télécharger" option tacked on at the end) opened scrolled to
+// the top regardless of where the actually-selected track sat, so a
+// track selected further down than the visible area never showed as
+// highlighted until she scrolled to find it herself. Scrolls once, right
+// after the first frame, to the selected row - never again afterwards, so
+// a user scroll during the dialog's lifetime isn't fought.
+class _TrackOptionsList extends StatefulWidget {
+  final List<TrackOption> options;
+  final int? selectedIndex;
+  final Widget? footer;
+
+  const _TrackOptionsList({
+    required this.options,
+    required this.selectedIndex,
+    required this.footer,
+  });
+
+  @override
+  State<_TrackOptionsList> createState() => _TrackOptionsListState();
+}
+
+class _TrackOptionsListState extends State<_TrackOptionsList> {
+  final ScrollController _controller = ScrollController();
+  final GlobalKey _selectedKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final selectedContext = _selectedKey.currentContext;
+      if (selectedContext != null) {
+        Scrollable.ensureVisible(
+          selectedContext,
+          alignment: 0.3,
+          duration: const Duration(milliseconds: 1),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final itemCount = widget.options.length + (widget.footer == null ? 0 : 1);
+    return ListView.builder(
+      controller: _controller,
+      shrinkWrap: true,
+      itemCount: itemCount,
+      itemBuilder: (_, i) {
+        if (i == widget.options.length) return widget.footer!;
+        final isSelected = widget.selectedIndex == i;
+        return KeyedSubtree(
+          key: isSelected ? _selectedKey : null,
+          child: _TrackRow(
+            option: widget.options[i],
+            isSelected: isSelected,
+            autofocus:
+                isSelected || (widget.selectedIndex == null && i == 0),
+            onTap: () => Navigator.pop(context, i),
+          ),
+        );
+      },
     );
   }
 }
