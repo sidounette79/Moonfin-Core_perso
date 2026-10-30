@@ -787,6 +787,18 @@ class Media3VideoView(
     private var passthroughMode = Media3Bridge.passthroughMode()
     private var passthroughCodecs = Media3Bridge.passthroughCodecs()
     private var passthroughOutput = Media3Bridge.passthroughOutput()
+    // 30.10, Sid ("ça saccade toujours. Je t'ai envoyé les logs" - still
+    // broken on the very first playback of a fresh app launch): real bug
+    // in the 30.10 fix itself. Media3Bridge.maxPcmChannels() is only read
+    // once, inside createPlayer() - but the player that's alive at the
+    // very first setSource() of a session was built before
+    // setDecoderPreferences ever ran (route detection hadn't reported in
+    // yet), so maxKnownPcmChannels was baked in as null for that player's
+    // whole lifetime. Every other passthrough-affecting field above has
+    // its own "did it change" tracking that flips decoderPreferenceDirty
+    // and forces a rebuild - this one never did, so the rebuild-on-dirty
+    // path in setSource() never fired for it.
+    private var knownMaxPcmChannels = Media3Bridge.maxPcmChannels()
     // Present only while the IEC output mode is active. The provider is
     // chosen at buildAudioSink time, so changes ride the rebuild-on-dirty
     // path like the other passthrough preferences.
@@ -1794,7 +1806,7 @@ class Media3VideoView(
         val passthroughPolicy = AudioPassthroughPolicy.fromWire(
             passthroughMode,
             passthroughCodecs,
-            Media3Bridge.maxPcmChannels().takeIf { it > 0 },
+            knownMaxPcmChannels.takeIf { it > 0 },
         )
         iecOutputProvider = if (passthroughOutput == "iec" && Build.VERSION.SDK_INT >= 24) {
             Iec61937AudioOutputProvider(context)
@@ -2976,6 +2988,19 @@ class Media3VideoView(
         if (args.containsKey("passthroughOutput") && passthroughOutput != nextPassthroughOutput) {
             passthroughOutput = nextPassthroughOutput
             decoderPreferenceDirty = true
+        }
+        // Same rebuild-on-dirty path: consumed once by createPlayer() via
+        // the AudioPassthroughPolicy it builds, so a change here (most
+        // importantly the very first real value landing after route
+        // detection finishes, see knownMaxPcmChannels' own comment) has to
+        // force a rebuild too, or a player built before it arrived keeps
+        // vetoing nothing for its whole lifetime.
+        if (args.containsKey("maxPcmChannels")) {
+            val nextMaxPcmChannels = Media3Bridge.maxPcmChannels()
+            if (knownMaxPcmChannels != nextMaxPcmChannels) {
+                knownMaxPcmChannels = nextMaxPcmChannels
+                decoderPreferenceDirty = true
+            }
         }
 
         // Downmix applies live: the mixing matrices take effect at the sink's
