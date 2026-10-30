@@ -79,6 +79,13 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
   final GlobalKey<NouveauHeroState> _heroKey =
       GlobalKey<NouveauHeroState>();
 
+  // 30.10, Sid ("on ne peut pas accéder à la miniature") - the split-hero
+  // episode preview card's own D-pad stop, reachable from the hero's last
+  // action button (onArrowRightAtEnd below).
+  final FocusNode _splitPreviewFocusNode = FocusNode(
+    debugLabel: 'nouveauSplitPreview',
+  );
+
   final GlobalKey<NouveauEpisodesSectionState> _episodesSectionKey =
       GlobalKey<NouveauEpisodesSectionState>();
 
@@ -921,6 +928,7 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
 
     _vm.removeListener(_onViewModelChanged);
     _scrollController.dispose();
+    _splitPreviewFocusNode.dispose();
 
     super.dispose();
   }
@@ -1004,6 +1012,9 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
             previewEpisodeOverride: _previewEpisode,
             hideEpisodePreview: splitPreviewItem != null,
             onDelete: widget.onDelete,
+            onArrowRightAtEnd: splitPreviewItem != null
+                ? () => _splitPreviewFocusNode.requestFocus()
+                : null,
           );
 
     final hero = RepaintBoundary(
@@ -1012,6 +1023,13 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
           : Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 30.10, Sid ("on ne peut pas accéder à la miniature qui
+                // est à gauche... ça fait pas super joli, on met la partie
+                // série à gauche et la miniature sur la droite") - reversed
+                // from the original layout (thumbnail left / series info
+                // right, confirmed earlier the same night) now that she's
+                // seen it live on a real TV.
+                Expanded(child: nouveauHeroWidget),
                 SizedBox(
                   width: (size.width * 0.26).clamp(360.0, 460.0),
                   child: Padding(
@@ -1024,10 +1042,14 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
                         splitPreviewItem!,
                         resume: watchStateOf(splitPreviewItem).hasProgress,
                       ),
+                      focusNode: _splitPreviewFocusNode,
+                      onArrowLeft: () =>
+                          _heroKey.currentState?.focusBottom(),
+                      onArrowDown: () =>
+                          _episodesSectionKey.currentState?.focusTop(),
                     ),
                   ),
                 ),
-                Expanded(child: nouveauHeroWidget),
               ],
             ),
     );

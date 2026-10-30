@@ -47,6 +47,12 @@ class NouveauHero extends StatefulWidget {
   /// caller (item.canDelete), never an unconditional delete-for-everyone.
   final VoidCallback? onDelete;
 
+  /// 30.10, Sid ("on ne peut pas accéder à la miniature") - D-pad Right off
+  /// the last action button, when the caller put something focusable to our
+  /// right (the split-hero episode preview card). Passed straight through
+  /// to DetailActionButtons.
+  final VoidCallback? onArrowRightAtEnd;
+
   const NouveauHero({
     super.key,
     required this.item,
@@ -63,6 +69,7 @@ class NouveauHero extends StatefulWidget {
     this.previewEpisodeOverride,
     this.hideEpisodePreview = false,
     this.onDelete,
+    this.onArrowRightAtEnd,
   });
 
   @override
@@ -407,6 +414,7 @@ class NouveauHeroState extends State<NouveauHero> {
       previewEpisodeOverride: widget.previewEpisodeOverride,
       hideEpisodePreview: widget.hideEpisodePreview,
       onDelete: widget.onDelete,
+      onArrowRightAtEnd: widget.onArrowRightAtEnd,
     );
 
     return Focus(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../data/models/aggregated_item.dart';
 import '../../../../../l10n/app_localizations.dart';
+import '../../../../../util/focus/dpad_keys.dart';
 import '../../../../../util/platform_detection.dart';
 import '../../../../widgets/offline_aware_image.dart';
 
@@ -24,19 +25,30 @@ import '../../../../widgets/offline_aware_image.dart';
 /// 30.10, Sid ("est-ce que quand cliquant sur la miniature, ça peut lancer
 /// la lecture ?") - the thumbnail itself is tappable and plays [episode]
 /// (the one actually shown - the focused one in the grid if there is one,
-/// the real "Reprendre" episode otherwise). Still no FocusNode of its own
-/// though - a tap/click target, not a new stop in the D-pad chain, for the
-/// same reason noted above.
+/// the real "Reprendre" episode otherwise).
+///
+/// 30.10, Sid again ("on ne peut pas accéder à la miniature... ça fait pas
+/// super joli") - on TV this card used to have no FocusNode at all, so the
+/// D-pad simply couldn't reach it; [focusNode] makes it a real stop in the
+/// chain (Select/Enter plays, same as a tap) when the caller wires one in.
 class NouveauEpisodePreviewCard extends StatelessWidget {
   final AggregatedItem episode;
   final String? imageUrl;
   final VoidCallback? onPlay;
+  final FocusNode? focusNode;
+  final VoidCallback? onArrowLeft;
+  final VoidCallback? onArrowDown;
+  final VoidCallback? onArrowUp;
 
   const NouveauEpisodePreviewCard({
     super.key,
     required this.episode,
     required this.imageUrl,
     this.onPlay,
+    this.focusNode,
+    this.onArrowLeft,
+    this.onArrowDown,
+    this.onArrowUp,
   });
 
   String? _runtimeLabel() {
@@ -77,51 +89,106 @@ class NouveauEpisodePreviewCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          GestureDetector(
-            onTap: onPlay,
-            child: MouseRegion(
-              cursor: onPlay != null
-                  ? SystemMouseCursors.click
-                  : MouseCursor.defer,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  imageUrl != null
-                      ? OfflineAwareImage(imageUrl: imageUrl!, fit: BoxFit.cover)
-                      : ColoredBox(color: Colors.white.withValues(alpha: 0.08)),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.55),
-                        ],
-                        stops: const [0.55, 1.0],
+          Focus(
+            focusNode: focusNode,
+            onKeyEvent: (node, event) {
+              if (!event.isActionable) return KeyEventResult.ignored;
+              final key = event.logicalKey;
+              if (key.isSelectKey) {
+                if (onPlay == null) return KeyEventResult.ignored;
+                onPlay!();
+                return KeyEventResult.handled;
+              }
+              if (key.isLeftKey && onArrowLeft != null) {
+                onArrowLeft!();
+                return KeyEventResult.handled;
+              }
+              if (key.isDownKey && onArrowDown != null) {
+                onArrowDown!();
+                return KeyEventResult.handled;
+              }
+              if (key.isUpKey && onArrowUp != null) {
+                onArrowUp!();
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: Builder(
+              builder: (context) {
+                final hasFocus = Focus.of(context).hasFocus;
+                return GestureDetector(
+                  onTap: onPlay,
+                  child: MouseRegion(
+                    cursor: onPlay != null
+                        ? SystemMouseCursors.click
+                        : MouseCursor.defer,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: hasFocus
+                              ? Colors.white
+                              : Colors.transparent,
+                          width: 3,
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              imageUrl != null
+                                  ? OfflineAwareImage(
+                                      imageUrl: imageUrl!,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : ColoredBox(
+                                      color: Colors.white.withValues(alpha: 0.08),
+                                    ),
+                              DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.transparent,
+                                      Colors.black.withValues(alpha: 0.55),
+                                    ],
+                                    stops: const [0.55, 1.0],
+                                  ),
+                                ),
+                              ),
+                              if (onPlay != null)
+                                const Center(
+                                  child: Icon(
+                                    Icons.play_circle_fill,
+                                    color: Colors.white,
+                                    size: 54,
+                                  ),
+                                ),
+                              if (heading != null)
+                                Positioned(
+                                  top: 10,
+                                  left: 10,
+                                  child: _badge(heading, bold: true),
+                                ),
+                              if (runtimeLabel != null)
+                                Positioned(
+                                  top: 10,
+                                  right: 10,
+                                  child: _badge(runtimeLabel),
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  if (onPlay != null)
-                    const Center(
-                      child: Icon(
-                        Icons.play_circle_fill,
-                        color: Colors.white,
-                        size: 54,
-                      ),
-                    ),
-                  if (heading != null)
-                    Positioned(top: 10, left: 10, child: _badge(heading, bold: true)),
-                  if (runtimeLabel != null)
-                    Positioned(top: 10, right: 10, child: _badge(runtimeLabel)),
-                ],
-                  ),
-                ),
-              ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 9),
