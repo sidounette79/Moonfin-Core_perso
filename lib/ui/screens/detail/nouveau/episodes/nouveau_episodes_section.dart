@@ -10,7 +10,6 @@ import '../../../../../l10n/app_localizations.dart';
 import '../../../../../preference/preference_constants.dart';
 import '../../../../../preference/user_preferences.dart';
 import '../../../../../util/focus/dpad_keys.dart';
-import '../../../../../util/item_watch_state.dart';
 import '../../../../../util/platform_detection.dart';
 import '../../../../navigation/destinations.dart';
 import '../../../../widgets/focus/context_menu_sheet.dart';
@@ -39,10 +38,13 @@ class NouveauEpisodesSection extends StatefulWidget {
 
   /// 30.10, Sid (maquette "cliquer un épisode dans la grille, ça remonte
   /// dans la miniature du haut") - fires whenever the focused (TV D-pad) or
-  /// selected episode changes, so the preview card above the action
-  /// buttons can show whichever episode is currently highlighted. Never
-  /// fires from a tap (tapping plays directly) - mobile has no "browse
-  /// without playing" gesture here and this doesn't add one.
+  /// selected (mobile tap) episode changes, so the preview card above the
+  /// action buttons can show whichever episode is currently highlighted.
+  /// 30.10 again ("ça lance l'épisode au lieu de faire venir dans la
+  /// vignette") - a tap used to play directly; now it just selects, same
+  /// as D-pad focus landing on a tile. Play only ever happens from the
+  /// preview card itself (its thumbnail or Lire), never straight from
+  /// this grid on either platform.
   final ValueChanged<AggregatedItem>? onEpisodeFocused;
 
   const NouveauEpisodesSection({
@@ -476,22 +478,6 @@ class NouveauEpisodesSectionState extends State<NouveauEpisodesSection> {
     _setSelectedSeason(seasonNumber);
   }
 
-  void _playEpisode(BuildContext context, AggregatedItem episode) {
-    final actionButtons = widget.actionButtonsKey.currentState;
-
-    if (actionButtons == null) {
-      return;
-    }
-
-    unawaited(
-      actionButtons.playItem(
-        context,
-        episode,
-        resume: watchStateOf(episode).hasProgress,
-      ),
-    );
-  }
-
   void _showEpisodeContextMenu(BuildContext context, AggregatedItem episode) {
     showContextMenu(
       context,
@@ -719,7 +705,17 @@ class NouveauEpisodesSectionState extends State<NouveauEpisodesSection> {
                         imageUrl: _imageUrl(episode),
                         isNextUp: episode.id == nextUpEpisode?.id,
                         isFocused: isFocused,
-                        onTap: () => _playEpisode(context, episode),
+                        // 30.10, Sid ("quand je clique dessus ça lance
+                        // l'épisode au lieu de faire venir dans la
+                        // vignette") - tapping a tile selects it (same as
+                        // TV D-pad focus landing on it), updating the
+                        // preview card above via onEpisodeFocused. Play now
+                        // only happens from that preview card's own
+                        // thumbnail/Lire button, never straight from the
+                        // grid - requestFocus already triggers
+                        // _handleEpisodeFocusChange, so this reuses the
+                        // exact same path D-pad focus uses, nothing new.
+                        onTap: () => _focusEpisodeAt(seasonEpisodes, index),
                         onLongPress: () =>
                             _showEpisodeContextMenu(context, episode),
                         onOpenDetails: () =>
