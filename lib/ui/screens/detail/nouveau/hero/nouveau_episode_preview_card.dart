@@ -14,20 +14,24 @@ import '../../item_detail_screen.dart' show technicalDetailsFor;
 /// resolvable next-up/resume episode - that's the actual gap she flagged:
 /// a never-started episode had no visual at all before this.
 ///
-/// Deliberately not focusable - the existing "Reprendre" button already
-/// handles play, and wiring a new element into the D-pad chain here would
-/// touch the same fragile focus wiring responsible for several bugs this
-/// session. Purely informative.
+/// 30.10, Sid ("est-ce que quand cliquant sur la miniature, ça peut lancer
+/// la lecture ?") - the thumbnail itself is tappable and plays [episode]
+/// (the one actually shown - the focused one in the grid if there is one,
+/// the real "Reprendre" episode otherwise). Still no FocusNode of its own
+/// though - a tap/click target, not a new stop in the D-pad chain, for the
+/// same reason noted above.
 class NouveauEpisodePreviewCard extends StatelessWidget {
   final AggregatedItem episode;
   final String? imageUrl;
   final Map<String, dynamic>? selectedMediaSource;
+  final VoidCallback? onPlay;
 
   const NouveauEpisodePreviewCard({
     super.key,
     required this.episode,
     required this.imageUrl,
     this.selectedMediaSource,
+    this.onPlay,
   });
 
   String? _runtimeLabel() {
@@ -61,11 +65,17 @@ class NouveauEpisodePreviewCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Stack(
+          GestureDetector(
+            onTap: onPlay,
+            child: MouseRegion(
+              cursor: onPlay != null
+                  ? SystemMouseCursors.click
+                  : MouseCursor.defer,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Stack(
                 fit: StackFit.expand,
                 children: [
                   imageUrl != null
@@ -84,11 +94,21 @@ class NouveauEpisodePreviewCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (onPlay != null)
+                    const Center(
+                      child: Icon(
+                        Icons.play_circle_fill,
+                        color: Colors.white,
+                        size: 54,
+                      ),
+                    ),
                   if (heading != null)
                     Positioned(top: 10, left: 10, child: _badge(heading, bold: true)),
                   if (runtimeLabel != null)
                     Positioned(top: 10, right: 10, child: _badge(runtimeLabel)),
                 ],
+                  ),
+                ),
               ),
             ),
           ),

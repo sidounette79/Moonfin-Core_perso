@@ -7838,6 +7838,11 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
             previewItem,
             widget.selectedMediaSourceId,
           ),
+          onPlay: () => playItem(
+            context,
+            previewItem,
+            resume: watchStateOf(previewItem).hasProgress,
+          ),
         );
       }
 
@@ -7942,9 +7947,9 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ?episodePreview,
+          ?resumeBar,
           ?trackInfoBar,
           rowContent,
-          ?resumeBar,
           if (downloads != null) SeerrItemDownloadBars(state: downloads),
         ],
       );
