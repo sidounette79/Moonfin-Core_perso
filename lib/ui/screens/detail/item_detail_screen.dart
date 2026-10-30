@@ -7075,13 +7075,29 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       selectedSource,
     ).where((s) => s['Type'] == 'Audio').toList();
 
+    // 30.10, Sid, page film ("il manque aussi le d-pad pour aller choisir
+    // audio et sous-titres") - moved up from its old spot further below so
+    // hasFocusableSubtitleTrackInfo (just under) can use the same value the
+    // real onSubtitleTap check already used, instead of silently drifting
+    // from it.
+    final canDownloadRemoteSubtitles = _canDownloadRemoteSubtitles(
+      streamSourceItem,
+    );
+
     // 27.10, Sid ("j'ai bien la ligne pour audio et vidéo mais je peux pas
     // l'atteindre à la télécommande") - mêmes conditions que les puces
     // tapables plus bas (onAudioTap/onSubtitleTap), calculées ici pour que
     // les boutons d'action sachent, en construisant leur propre onArrowUp,
-    // s'il y a une puce à atteindre au-dessus d'eux.
+    // s'il y a une puce à atteindre au-dessus d'eux. 30.10, même Sid, page
+    // film cette fois ("il manque aussi le d-pad pour aller choisir audio
+    // et sous-titres") - hasFocusableSubtitleTrackInfo oubliait le cas
+    // "aucun sous-titre local mais recherche en ligne possible" que le
+    // widget réel (onSubtitleTap plus bas) gérait déjà, rendant la puce
+    // visuellement cliquable mais inatteignable au D-pad en montant depuis
+    // la rangée de boutons.
     final hasFocusableAudioTrackInfo = audioStreams.length > 1;
-    final hasFocusableSubtitleTrackInfo = subtitleStreams.isNotEmpty;
+    final hasFocusableSubtitleTrackInfo =
+        subtitleStreams.isNotEmpty || canDownloadRemoteSubtitles;
     final hasFocusableTrackInfoBar =
         hasFocusableAudioTrackInfo || hasFocusableSubtitleTrackInfo;
 
@@ -7828,10 +7844,8 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       // même TrackSelectorDialog, qui ajoute déjà l'option "Télécharger des
       // sous-titres" quand _canDownloadRemoteSubtitles(streamSourceItem) est
       // vrai (voir _showSubtitleSelector plus bas) - rien à dupliquer ici,
-      // juste rendre la puce atteignable dans ce cas.
-      final canDownloadRemoteSubtitles = _canDownloadRemoteSubtitles(
-        streamSourceItem,
-      );
+      // juste rendre la puce atteignable dans ce cas. (canDownloadRemoteSubtitles
+      // is now computed earlier alongside hasFocusableSubtitleTrackInfo.)
 
       final trackInfoBar =
           (videoLabel == null &&
