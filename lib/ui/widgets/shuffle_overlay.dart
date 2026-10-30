@@ -143,19 +143,15 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
     );
   }
 
+  // Logging intentionally disabled for shuffle events - kept as a no-op with
+  // the real signature so call sites don't need touching if it's revived.
   void _logShuffleEvent(
     String message, {
     int level = 800,
     Map<String, Object?> context = const <String, Object?>{},
     Object? error,
     StackTrace? stackTrace,
-  }) {
-    final _ = message;
-    final __ = level;
-    final ___ = context;
-    final ____ = error;
-    final _____ = stackTrace;
-  }
+  }) {}
 
   String _describeError(Object error) {
     if (error is TimeoutException) {

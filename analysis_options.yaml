@@ -18,6 +18,13 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+    # 30.10, Sid ("règle les infos et warning préexistants... j'ai quasi
+    # toutes les analyses qui me génèrent des mails d'erreur") - vendored
+    # copy of pichillilorenzo/flutter_inappwebview's Windows plugin
+    # (packages/flutter_inappwebview_windows/pubspec.yaml), not our code -
+    # its 200+ lint findings aren't ours to fix and would reappear on the
+    # next upstream sync anyway.
+    - packages/flutter_inappwebview_windows/**
 
 linter:
   # The lint rules applied to this project can be customized in the

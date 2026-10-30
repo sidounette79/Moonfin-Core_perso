@@ -6,7 +6,6 @@ import 'package:moonfin/data/models/home_row.dart';
 import 'package:moonfin/data/services/row_data_source.dart';
 import 'package:moonfin/data/viewmodels/book_browse_view_model.dart';
 import 'package:moonfin/preference/user_preferences.dart';
-import 'package:moonfin/ui/widgets/book/book_scope_filter.dart';
 import 'package:server_core/server_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
