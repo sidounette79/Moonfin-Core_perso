@@ -541,8 +541,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         item.type == 'AudioBook' ||
         mediaType == 'Audio';
 
+    // 30.10, Sid ("Chicago med, EP 1. Absent" - the download option never
+    // showed in the in-player subtitle selector): unlike item_detail_
+    // screen.dart's copy of this check, this one runs against whatever is
+    // actually playing - an item straight out of the queue, which for a
+    // series episode is the one from ItemDetailViewModel._episodeOverviewFields
+    // ('Overview,RunTimeTicks,UserData', deliberately without MediaSources,
+    // see its own comment - fetching the whole season/series' MediaSources
+    // just for this button isn't worth it). mediaSources.isNotEmpty was
+    // never actually meaningful here: the item is already playing, so it
+    // has a media source by definition - this was only ever checking
+    // whether that field happened to be fetched, not whether the item
+    // genuinely has one.
     return (user?.canManageSubtitles ?? false) &&
-        item.mediaSources.isNotEmpty &&
         item.type != 'Photo' &&
         item.type != 'Book' &&
         !isAudio;
