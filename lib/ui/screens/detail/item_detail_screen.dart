@@ -7801,7 +7801,38 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       // épisode en cours est viewModel.nextUp (même source déjà utilisée par
       // le bouton "épisode suivant vu", voir plus haut dans ce fichier).
       final isTvShowForResume = item.type == 'Series' || item.type == 'Season';
-      final resumeItem = isTvShowForResume ? widget.viewModel.nextUp : item;
+
+      // 30.10, Sid ("j'ai un épisode mais je n'ai pas la miniature") -
+      // viewModel.nextUp (le vrai "à suivre" serveur) revient parfois null
+      // pour une série/saison qui a pourtant un épisode non-vu détectable
+      // (vu sur "Le Maillon Faible" : un épisode "TBA" à venir perturbait
+      // visiblement la résolution côté serveur). La grille d'épisodes plus
+      // bas (NouveauEpisodesSection._resolveNextUpEpisode) a son propre
+      // repli local pour exactement ce cas - même logique reprise ici, pour
+      // l'AFFICHAGE seulement (miniature + barre de progression). Le
+      // bouton Reprendre/trackInfoBar plus bas ne sont pas concernés, ils
+      // gardent leur résolution actuelle inchangée.
+      AggregatedItem? _resolveFallbackNextUp() {
+        final episodes = isSeries
+            ? viewModel.seriesEpisodes
+            : (isSeason ? viewModel.episodes : const <AggregatedItem>[]);
+        if (episodes.isEmpty) return null;
+        final sorted = [...episodes]..sort((a, b) {
+          final seasonCompare = (a.parentIndexNumber ?? 0).compareTo(
+            b.parentIndexNumber ?? 0,
+          );
+          if (seasonCompare != 0) return seasonCompare;
+          return (a.indexNumber ?? 0).compareTo(b.indexNumber ?? 0);
+        });
+        for (final ep in sorted) {
+          if (!ep.isPlayed) return ep;
+        }
+        return sorted.first;
+      }
+
+      final resumeItem = isTvShowForResume
+          ? (widget.viewModel.nextUp ?? _resolveFallbackNextUp())
+          : item;
       final resumeBar = resumeItem == null
           ? null
           : NouveauResumeProgressBar(resumeItem: resumeItem);
