@@ -7812,7 +7812,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       // l'AFFICHAGE seulement (miniature + barre de progression). Le
       // bouton Reprendre/trackInfoBar plus bas ne sont pas concernés, ils
       // gardent leur résolution actuelle inchangée.
-      AggregatedItem? _resolveFallbackNextUp() {
+      AggregatedItem? resolveFallbackNextUp() {
         final episodes = isSeries
             ? viewModel.seriesEpisodes
             : (isSeason ? viewModel.episodes : const <AggregatedItem>[]);
@@ -7831,7 +7831,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       }
 
       final resumeItem = isTvShowForResume
-          ? (widget.viewModel.nextUp ?? _resolveFallbackNextUp())
+          ? (widget.viewModel.nextUp ?? resolveFallbackNextUp())
           : item;
       final resumeBar = resumeItem == null
           ? null
