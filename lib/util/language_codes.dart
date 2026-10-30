@@ -442,6 +442,14 @@ const Map<String, String> kIso6392TerminologicalToBibliographic = {
   'zho': 'chi',
 };
 
+// 30.10, Sid ("tu peux débrancher les autres langues hein comme chinois
+// allemand portugais et garder que français anglais") - fork personnel,
+// elle n'a besoin que de ces deux-là dans les sélecteurs. Ne touche pas au
+// reste de la logique de correspondance de langue (un fichier peut très
+// bien avoir une piste allemande/chinoise détectée et comparée, seule la
+// LISTE proposée dans les réglages est réduite.
+const Set<String> _kEnabledLanguageOptionCodes = {'fra', 'eng'};
+
 /// ISO 639-2 code to display name for every language the app itself is
 /// translated into, in [kIso6392Languages] order. The audio and subtitle
 /// language pickers all offer this list, each behind its own "none" or
@@ -456,7 +464,8 @@ final Map<String, String> supportedLanguageOptions = Map.unmodifiable(() {
   };
   return {
     for (final entry in kIso6392Languages.entries)
-      if (supportedIso3Codes.contains(entry.key))
+      if (supportedIso3Codes.contains(entry.key) &&
+          _kEnabledLanguageOptionCodes.contains(entry.key))
         entry.key: kLocaleDisplayNames[iso3ToIso1[entry.key]] ?? entry.value,
   };
 }());
