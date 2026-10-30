@@ -1517,7 +1517,11 @@ class _DetailContentState extends State<_DetailContent> {
                   _buildStaticPersonProfilePanel(context, item),
                   Expanded(
                     child: CustomScrollView(
-                      scrollCacheExtent: ScrollCacheExtent.pixels(4000), controller: _scrollController,
+                      // 30.10: `scrollCacheExtent`/`ScrollCacheExtent` don't
+                      // exist on Flutter 3.47.2 - dart fix's deprecation
+                      // migration assumed a newer SDK and broke the build;
+                      // `cacheExtent` is the real working API on this SDK.
+                      cacheExtent: 4000, controller: _scrollController,
                       slivers: [
                         SliverPadding(
                           padding: EdgeInsets.fromLTRB(
@@ -1539,7 +1543,7 @@ class _DetailContentState extends State<_DetailContent> {
               )
             else
               CustomScrollView(
-                scrollCacheExtent: ScrollCacheExtent.pixels(4000), controller: _scrollController,
+                cacheExtent: 4000, controller: _scrollController,
                 slivers: [
                   if (item.type != 'Person' &&
                       item.type != 'MusicArtist' &&

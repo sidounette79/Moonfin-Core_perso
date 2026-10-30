@@ -22,7 +22,6 @@ import '../utils/next_up_cutoff.dart';
 import '../utils/forgotten_front_detection.dart';
 import '../utils/next_up_enrichment.dart';
 import '../utils/playlist_utils.dart';
-import 'package:flutter/foundation.dart';
 import '../repositories/seerr_repository.dart';
 import '../repositories/user_views_repository.dart';
 import 'library_scope_service.dart';
