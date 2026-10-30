@@ -7356,16 +7356,21 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
                   : l10n.contextMenuMarkWatched),
           // 26.10, Sid ("reproduire pour les films... icône") - un film n'a
           // ni saison ni épisode, donc ce bouton EST l'équivalent film de
-          // episodeWatched : même coche fixe, même blanc -> bleu. Séries et
-          // livres gardent leur style existant (le "watched" d'une série
-          // bascule récursivement toute la série, c'est un niveau
-          // conteneur, pas un item unique).
-          icon: item.type == 'Movie'
+          // episodeWatched : même coche fixe, même blanc -> bleu. Livres
+          // gardent leur style existant (lu/non-lu n'a pas le même sens
+          // visuel). 30.10, Sid ("j'ai l'ancien vu et pas le nouveau" sur
+          // une fiche épisode) - un épisode individuel est dans la même
+          // situation qu'un film (ce bouton générique EST son seul "vu",
+          // le commentaire du 27.10 juste en dessous les traite déjà comme
+          // un même groupe "film/épisode/livre où c'est le seul bouton vu
+          // disponible") - étendu, manqué lors du premier passage qui n'a
+          // listé que Movie explicitement.
+          icon: (item.type == 'Movie' || item.type == 'Episode')
               ? Icons.check
               : (item.isPlayed ? Icons.check_circle : Icons.check_circle_outline),
           onPressed: viewModel.togglePlayed,
           isActive: item.isPlayed,
-          activeColor: item.type == 'Movie'
+          activeColor: (item.type == 'Movie' || item.type == 'Episode')
               ? AppColors.blue500
               : AppColorScheme.accent,
         ),
@@ -8566,74 +8571,16 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
                     },
                   ),
                 ),
-              if (actions.contains(DetailAdminAction.delete))
-                Focus(
-                  onKeyEvent: (_, event) {
-                    if (isActivateKey(event)) {
-                      Navigator.of(dialogCtx).pop();
-                      _confirmDeleteItem(context, item);
-                      return KeyEventResult.handled;
-                    }
-                    return KeyEventResult.ignored;
-                  },
-                  child: Builder(
-                    builder: (buttonCtx) {
-                      final hasFocus = Focus.of(buttonCtx).hasFocus;
-                      return InkWell(
-                        onTap: () {
-                          Navigator.of(dialogCtx).pop();
-                          _confirmDeleteItem(context, item);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 16,
-                          ),
-                          decoration: BoxDecoration(
-                            color: hasFocus
-                                ? Colors.white12
-                                : Colors.transparent,
-                            borderRadius: AppRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.delete_forever,
-                                color: Colors.redAccent,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                l10n.delete,
-                                style: const TextStyle(color: Colors.redAccent),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+              // 30.10, Sid ("le rouge il supprime je crois alors que il y a
+              // deja un bouton poubelle. Ça fait doublon") - l'option
+              // Supprimer vivait ici en plus du bouton poubelle dédié
+              // (DetailButton.deleteServer, même action _confirmDeleteItem/
+              // widget.onDelete). Retirée, voir detail_admin_actions.dart.
             ],
           ),
         );
       },
     );
-  }
-
-  Future<void> _confirmDeleteItem(
-    BuildContext context,
-    AggregatedItem item,
-  ) async {
-    final l10n = AppLocalizations.of(context);
-    final confirmed = await _showDeleteConfirmationDialog(
-      context,
-      title: l10n.deleteItem,
-      message: l10n.deleteConfirmMessage(item.name),
-    );
-    if (!confirmed) return;
-
-    appRouter.go(Destinations.home);
-    _deleteItemInBackground(viewModel, isPlaylist: false);
   }
 
   int? _activePlaybackAudioIndex() {
