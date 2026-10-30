@@ -1,0 +1,57 @@
+name: Dart fix (manual)
+
+# 30.10, Sid ("règle les infos et warning préexistants tant qu'à faire, j'ai
+# quasi toutes les analyses qui me génèrent des mails d'erreur") - one-off,
+# manually-triggered cleanup pass using `dart fix --apply`, the standard
+# tool for exactly the mechanical lint categories flutter analyze flags
+# (prefer_initializing_formals, use_null_aware_elements,
+# use_key_in_widget_constructors, unnecessary_underscores,
+# use_super_parameters, unnecessary_import, curly_braces_in_flow_control_
+# structures...). Runs on GitHub's own runners, never locally on FUNMEDIA
+# (see analyze.yml's own comment for why). Commits the result directly to
+# the branch so it can be reviewed as a normal diff before anything ships.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.47.2'
+
+jobs:
+  dart-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Install dependencies (root + local packages)
+        run: |
+          flutter pub get
+          for pkg in packages/*/; do
+            if [ -f "$pkg/pubspec.yaml" ]; then
+              (cd "$pkg" && flutter pub get)
+            fi
+          done
+
+      - name: dart fix --apply
+        run: dart fix --apply
+
+      - name: Commit if there's a diff
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No changes from dart fix."
+            exit 0
+          fi
+          git add -A
+          git commit -m "dart fix --apply (automated, see Dart fix workflow)"
+          git push origin HEAD:${{ github.ref_name }}
