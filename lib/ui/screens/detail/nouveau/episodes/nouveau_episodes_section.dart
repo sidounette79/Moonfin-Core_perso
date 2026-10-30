@@ -14,6 +14,7 @@ import '../../../../../util/platform_detection.dart';
 import '../../../../navigation/destinations.dart';
 import '../../../../widgets/focus/context_menu_sheet.dart';
 import '../../../../widgets/focus/hub_focus_memory.dart';
+import '../../../../widgets/media_badge.dart';
 import '../../../../widgets/offline_aware_image.dart';
 import '../../../../widgets/seerr/seerr_image_urls.dart';
 import '../../../../widgets/seerr/seerr_item_status.dart';
@@ -863,15 +864,17 @@ class _EpisodeGridTile extends StatelessWidget {
                   ),
                 ),
 
+                // 30.10, Sid ("mettre une icône verte avec un vu sur le
+                // même principe que les icônes avec le nombre d'épisodes")
+                // - was a flat white checkmark; MediaWatchedBadge is the
+                // same circular-badge style already used for the number
+                // of unwatched episodes (MediaUnplayedBadge) on library
+                // posters, and for "Vu" everywhere else in the app.
                 if (watched)
                   const Positioned(
                     bottom: 4,
                     right: 4,
-                    child: Icon(
-                      Icons.check_circle,
-                      color: Colors.white,
-                      size: 16,
-                    ),
+                    child: MediaWatchedBadge(size: 18),
                   )
                 else if (isNextUp)
                   Positioned(
