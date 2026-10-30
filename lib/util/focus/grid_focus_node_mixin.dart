@@ -67,6 +67,27 @@ mixin GridFocusNodeMixin<T extends StatefulWidget> on State<T> {
       }
       return;
     }
+    // 30.10, Sid ("le toggle vu, non vu... ça descend tout seul dans la
+    // liste des series et je dois toujours retourner sur le toggle pour
+    // recliquer"): a filter/sort toggle reclaims focus for itself right
+    // after tapping (its own addPostFrameCallback, e.g. library_browse_
+    // screen.dart's onPlayedFilterChanged), but the ViewModel change that
+    // triggers it is itself async (setPlayedFilter awaits a prefs write
+    // then a real reload) - so the data lands later, and this bumps
+    // gridContentVersion and steals focus back to the grid a beat AFTER
+    // the toggle already reclaimed it. Gated to the idx != null branch
+    // only (a grid row was genuinely focused before, not the fresh-visit
+    // case above) - there, a deliberate focus already sitting outside the
+    // grid (the toggle, a search field, anything) is a choice this reload
+    // has no business overriding. The fresh-visit case above still always
+    // redirects, since the 30.09 fix depends on exactly that.
+    final current = FocusManager.instance.primaryFocus;
+    if (current != null &&
+        current.hasFocus &&
+        !gridItemFocusNodes.values.contains(current)) {
+      lastFocusedGridContentVersion = gridContentVersion;
+      return;
+    }
     // The grid may have shrunk, so fall back to the last available row when the
     // remembered index no longer exists.
     var node = gridItemFocusNodes[idx];
