@@ -7886,19 +7886,23 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           (s['DisplayTitle'] as String?) ??
           (s['Language'] as String?) ??
           l10n.unknown;
+      // 30.10, Sid (capture : la puce dit "Aucun" mais le sélecteur montre
+      // "English" coché, et la lecture réelle n'a ni l'un ni l'autre) - ce
+      // bloc ne regardait QUE le flag IsDefault du flux, ignorant
+      // complètement SubtitleMode/la logique "langue étrangère" que le
+      // sélecteur (et le lecteur) utilisent déjà via
+      // _effectiveAudioStreamIndex/_effectiveSubtitleStreamIndex -
+      // remplacé pour utiliser exactement le même calcul partout, plutôt
+      // que trois réponses différentes à "qu'est-ce qui est sélectionné".
       int? resolveCurrentIndex(
         List<Map<String, dynamic>> streams,
-        int? selectedStreamIndex,
+        int? effectiveStreamIndex,
       ) {
-        if (streams.isEmpty) return null;
-        if (selectedStreamIndex != null) {
-          final idx = streams.indexWhere(
-            (s) => s['Index'] == selectedStreamIndex,
-          );
-          if (idx >= 0) return idx;
-        }
-        final def = streams.indexWhere((s) => s['IsDefault'] == true);
-        return def;
+        if (streams.isEmpty || effectiveStreamIndex == null) return null;
+        final idx = streams.indexWhere(
+          (s) => s['Index'] == effectiveStreamIndex,
+        );
+        return idx >= 0 ? idx : null;
       }
 
       final videoStreams = mediaStreams
@@ -7917,11 +7921,11 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
 
       final currentAudioIdx = resolveCurrentIndex(
         audioStreams,
-        viewModel.selectedAudioIndex,
+        _effectiveAudioStreamIndex(audioStreams),
       );
       final currentSubtitleIdx = resolveCurrentIndex(
         subtitleStreams,
-        viewModel.selectedSubtitleIndex,
+        _effectiveSubtitleStreamIndex(subtitleStreams, audioStreams),
       );
 
       // 30.10, Sid ("on rajoutera un bouton pour télécharger les sous-titres,
