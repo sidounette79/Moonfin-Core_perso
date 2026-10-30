@@ -505,6 +505,26 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
     return true;
   }
 
+  // 30.10, Sid ("il faudrait que le focus remonte aussi car il reste en
+  // bas") - scrolls back to the top (where the split-hero preview card
+  // lives) whenever the focused episode changes, but only when the page
+  // is actually scrolled away from it - browsing within the visible grid
+  // never yanks the view around.
+  static const double _splitHeroRevealThreshold = 24.0;
+
+  void _revealSplitHeroIfScrolledAway() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.pixels <= position.minScrollExtent + _splitHeroRevealThreshold) {
+      return;
+    }
+    _scrollController.animateTo(
+      position.minScrollExtent,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
+  }
+
   bool _handleDetailsNavigateDown() {
     if (!_scrollController.hasClients) {
       return true;
@@ -1056,7 +1076,12 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
 
     final sections = isPerson
         ? _buildPersonSections()
-        : _buildMediaSections(context, item, sectionInsets);
+        : _buildMediaSections(
+            context,
+            item,
+            sectionInsets,
+            useSplitHero: useSplitHero,
+          );
 
     if (usePortraitLayout) {
       final heroMinHeight = nouveauHeroMinHeight(size);
@@ -1144,8 +1169,9 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
   List<Widget> _buildMediaSections(
     BuildContext context,
     AggregatedItem item,
-    EdgeInsets contentInsets,
-  ) {
+    EdgeInsets contentInsets, {
+    required bool useSplitHero,
+  }) {
     final sections = <Widget>[];
 
     final isPhonePortrait = _isPhonePortrait(context);
@@ -1194,6 +1220,16 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
           onEpisodeFocused: (episode) {
             if (identical(_previewEpisode, episode)) return;
             setState(() => _previewEpisode = episode);
+            // 30.10, Sid ("quand on sélectionne un autre épisode et qu'il
+            // se met en haut, il faudrait que le focus remonte aussi car
+            // il reste en bas") - the split-hero preview card updates, but
+            // if the page is scrolled down into the episode grid it stays
+            // off-screen; nudge the view back up to show it. Only for the
+            // TV split layout - the grid has no such preview to reveal
+            // otherwise.
+            if (useSplitHero) {
+              _revealSplitHeroIfScrolledAway();
+            }
           },
           onNavigateUp: () => _moveUp(_episodesSectionKey),
           onNavigateDown: () => _moveDown(_episodesSectionKey),
