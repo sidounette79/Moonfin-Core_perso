@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../data/models/aggregated_item.dart';
 import '../../../../../l10n/app_localizations.dart';
+import '../../../../../util/platform_detection.dart';
 import '../../../../widgets/offline_aware_image.dart';
 
 /// 30.10, Sid ("j'ai bien le reprendre mais pas une miniature de l'épisode
@@ -61,7 +62,16 @@ class NouveauEpisodePreviewCard extends StatelessWidget {
     final runtimeLabel = _runtimeLabel();
     final overview = episode.overview?.trim();
 
-    return Padding(
+    // 30.10, Sid ("sur TV ça bouffe tout l'écran, et c'est quand même une
+    // 165 pouces") - sur mobile le Column parent est déjà étroit (largeur
+    // du téléphone), mais côté Nouveau landscape/TV la colonne de contenu
+    // suit une largeur d'écran bien plus généreuse, et rien ne plafonnait
+    // la largeur de cette carte - elle s'étirait d'un bord à l'autre.
+    final maxWidth = PlatformDetection.isTV ? 640.0 : double.infinity;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,6 +149,7 @@ class NouveauEpisodePreviewCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
       ),
     );
   }

@@ -4927,6 +4927,15 @@ class DetailActionButtons extends StatefulWidget {
   /// only what the preview above the buttons shows.
   final AggregatedItem? previewEpisodeOverride;
 
+  /// 30.10, Sid ("vignette à gauche, infos à droite") - true when the TV/
+  /// landscape split layout (see NouveauDetailContent) already renders a
+  /// thumbnail of its own beside this hero, so the inline
+  /// NouveauEpisodePreviewCard that would normally sit above
+  /// NouveauTrackInfoBar is skipped here to avoid showing the same
+  /// thumbnail twice. trackInfoBar/resumeBar/rowContent/the Play button
+  /// are unaffected either way.
+  final bool hideEpisodePreview;
+
   const DetailActionButtons({
     super.key,
     required this.viewModel,
@@ -4952,6 +4961,7 @@ class DetailActionButtons extends StatefulWidget {
     this.onActionsExpandedChanged,
     this.onDelete,
     this.previewEpisodeOverride,
+    this.hideEpisodePreview = false,
   });
 
   @override
@@ -7802,36 +7812,13 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       // le bouton "épisode suivant vu", voir plus haut dans ce fichier).
       final isTvShowForResume = item.type == 'Series' || item.type == 'Season';
 
-      // 30.10, Sid ("j'ai un épisode mais je n'ai pas la miniature") -
-      // viewModel.nextUp (le vrai "à suivre" serveur) revient parfois null
-      // pour une série/saison qui a pourtant un épisode non-vu détectable
-      // (vu sur "Le Maillon Faible" : un épisode "TBA" à venir perturbait
-      // visiblement la résolution côté serveur). La grille d'épisodes plus
-      // bas (NouveauEpisodesSection._resolveNextUpEpisode) a son propre
-      // repli local pour exactement ce cas - même logique reprise ici, pour
-      // l'AFFICHAGE seulement (miniature + barre de progression). Le
-      // bouton Reprendre/trackInfoBar plus bas ne sont pas concernés, ils
-      // gardent leur résolution actuelle inchangée.
-      AggregatedItem? resolveFallbackNextUp() {
-        final episodes = isSeries
-            ? viewModel.seriesEpisodes
-            : (isSeason ? viewModel.episodes : const <AggregatedItem>[]);
-        if (episodes.isEmpty) return null;
-        final sorted = [...episodes]..sort((a, b) {
-          final seasonCompare = (a.parentIndexNumber ?? 0).compareTo(
-            b.parentIndexNumber ?? 0,
-          );
-          if (seasonCompare != 0) return seasonCompare;
-          return (a.indexNumber ?? 0).compareTo(b.indexNumber ?? 0);
-        });
-        for (final ep in sorted) {
-          if (!ep.isPlayed) return ep;
-        }
-        return sorted.first;
-      }
-
       final resumeItem = isTvShowForResume
-          ? (widget.viewModel.nextUp ?? resolveFallbackNextUp())
+          ? (widget.viewModel.nextUp ??
+                resolveFallbackNextUpEpisode(
+                  viewModel,
+                  isSeries: isSeries,
+                  isSeason: isSeason,
+                ))
           : item;
       final resumeBar = resumeItem == null
           ? null
@@ -7852,7 +7839,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       // épisode dans la grille ne doit jamais changer ce que "Lire" lance.
       final previewItem = widget.previewEpisodeOverride ?? resumeItem;
       Widget? episodePreview;
-      if (isTvShowForResume && previewItem != null) {
+      if (isTvShowForResume && previewItem != null && !widget.hideEpisodePreview) {
         final previewTag = previewItem.primaryImageTag;
         final previewImageUrl =
             previewTag != null && !previewItem.id.startsWith('tmdb:')
@@ -11274,6 +11261,38 @@ String? codecFromStreams(
   }
 
   return (formattedSize: formattedSize, badges: badges);
+}
+
+/// 30.10, Sid ("j'ai un épisode mais je n'ai pas la miniature") -
+/// viewModel.nextUp (le vrai "à suivre" serveur) revient parfois null pour
+/// une série/saison qui a pourtant un épisode non-vu détectable (vu sur
+/// "Le Maillon Faible" : un épisode "TBA" à venir perturbait visiblement la
+/// résolution côté serveur). Même repli que
+/// NouveauEpisodesSection._resolveNextUpEpisode (premier épisode non-vu,
+/// trié saison/épisode), extrait ici en fonction partagée - utilisé à la
+/// fois par DetailActionButtonsState (ce fichier) et
+/// NouveauDetailContentState (nouveau_detail_content.dart, pour la
+/// vignette séparée en mode TV/paysage) plutôt que dupliqué deux fois.
+AggregatedItem? resolveFallbackNextUpEpisode(
+  ItemDetailViewModel viewModel, {
+  required bool isSeries,
+  required bool isSeason,
+}) {
+  final episodes = isSeries
+      ? viewModel.seriesEpisodes
+      : (isSeason ? viewModel.episodes : const <AggregatedItem>[]);
+  if (episodes.isEmpty) return null;
+  final sorted = [...episodes]..sort((a, b) {
+    final seasonCompare = (a.parentIndexNumber ?? 0).compareTo(
+      b.parentIndexNumber ?? 0,
+    );
+    if (seasonCompare != 0) return seasonCompare;
+    return (a.indexNumber ?? 0).compareTo(b.indexNumber ?? 0);
+  });
+  for (final ep in sorted) {
+    if (!ep.isPlayed) return ep;
+  }
+  return sorted.first;
 }
 
 String? channelLayoutFromStreams(List<Map<String, dynamic>> streams) {

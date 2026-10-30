@@ -11,6 +11,7 @@ import '../../../../data/services/plugin_sync_service.dart';
 import '../../../../data/services/seerr/seerr_api_models.dart';
 import '../../../../data/viewmodels/item_detail_view_model.dart';
 import '../../../../preference/user_preferences.dart';
+import '../../../../util/item_watch_state.dart';
 import '../../../../util/platform_detection.dart';
 import '../../../../util/seerr_credits.dart';
 import '../../../widgets/fullscreen_backdrop_switcher.dart';
@@ -23,6 +24,7 @@ import 'details/nouveau_details_section.dart';
 import 'discovery/nouveau_discovery_section.dart';
 import 'episodes/nouveau_episodes_section.dart';
 import 'extras/nouveau_extras_section.dart';
+import 'hero/nouveau_episode_preview_card.dart';
 import 'hero/nouveau_hero.dart';
 import 'nouveau_landscape_layout.dart';
 import 'nouveau_portrait_layout.dart';
@@ -940,32 +942,82 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
       ),
     );
 
+    // 30.10, Sid (165"/124"/rétro ~170" TVs, "je vois pas les commandes
+    // dessous... vignette à gauche, info série à droite") - on a big TV
+    // screen the hero's own text column is already a narrow fraction of
+    // the width (heroMaxWidth in nouveau_hero.dart), with the backdrop
+    // filling the rest behind it; nothing used that space for the episode
+    // thumbnail, so everything (buttons, track info) ended up stacked
+    // below a huge vertical image, pushed off-screen. Series/Season only,
+    // TV/landscape only - portrait and movies/episodes/people are
+    // untouched.
+    final isTvSeriesOrSeason = item.type == 'Series' || item.type == 'Season';
+    final useSplitHero =
+        !usePortraitLayout && PlatformDetection.isTV && isTvSeriesOrSeason;
+
+    AggregatedItem? splitPreviewItem;
+    if (useSplitHero) {
+      splitPreviewItem =
+          _previewEpisode ??
+          _vm.nextUp ??
+          resolveFallbackNextUpEpisode(
+            _vm,
+            isSeries: item.type == 'Series',
+            isSeason: item.type == 'Season',
+          );
+    }
+
+    final nouveauHeroWidget = isPerson
+        ? NouveauPersonHero(
+            key: _personHeroKey,
+            item: item,
+            viewModel: _vm,
+            imageApi: _vm.imageApi,
+            prefs: widget.prefs,
+            initialFocusNode: widget.initialFocusNode,
+            onNavigateDown: _focusPersonTabs,
+            onExternalFocusEntry: _handleExternalPersonHeroFocusEntry,
+          )
+        : NouveauHero(
+            key: _heroKey,
+            item: item,
+            viewModel: _vm,
+            actionButtonsKey: _actionButtonsKey,
+            selectedMediaSourceId: widget.selectedMediaSourceId,
+            onSelectedMediaSourceChanged: widget.onSelectedMediaSourceChanged,
+            initialFocusNode: widget.initialFocusNode,
+            autoPlay: widget.autoPlay,
+            actionsExpanded: widget.actionsExpanded,
+            onActionsExpandedChanged: widget.onActionsExpandedChanged,
+            onNavigateDown: () => _moveDown(_heroKey),
+            prefs: widget.prefs,
+            previewEpisodeOverride: _previewEpisode,
+            hideEpisodePreview: splitPreviewItem != null,
+          );
+
     final hero = RepaintBoundary(
-      child: isPerson
-          ? NouveauPersonHero(
-              key: _personHeroKey,
-              item: item,
-              viewModel: _vm,
-              imageApi: _vm.imageApi,
-              prefs: widget.prefs,
-              initialFocusNode: widget.initialFocusNode,
-              onNavigateDown: _focusPersonTabs,
-              onExternalFocusEntry: _handleExternalPersonHeroFocusEntry,
-            )
-          : NouveauHero(
-              key: _heroKey,
-              item: item,
-              viewModel: _vm,
-              actionButtonsKey: _actionButtonsKey,
-              selectedMediaSourceId: widget.selectedMediaSourceId,
-              onSelectedMediaSourceChanged: widget.onSelectedMediaSourceChanged,
-              initialFocusNode: widget.initialFocusNode,
-              autoPlay: widget.autoPlay,
-              actionsExpanded: widget.actionsExpanded,
-              onActionsExpandedChanged: widget.onActionsExpandedChanged,
-              onNavigateDown: () => _moveDown(_heroKey),
-              prefs: widget.prefs,
-              previewEpisodeOverride: _previewEpisode,
+      child: splitPreviewItem == null
+          ? nouveauHeroWidget
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: (size.width * 0.26).clamp(360.0, 460.0),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 24),
+                    child: NouveauEpisodePreviewCard(
+                      episode: splitPreviewItem,
+                      imageUrl: _splitPreviewImageUrl(splitPreviewItem),
+                      onPlay: () => _actionButtonsKey.currentState?.playItem(
+                        context,
+                        splitPreviewItem!,
+                        resume: watchStateOf(splitPreviewItem!).hasProgress,
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(child: nouveauHeroWidget),
+              ],
             ),
     );
 
@@ -1254,6 +1306,18 @@ class NouveauDetailContentState extends State<NouveauDetailContent> {
         items,
         widget.prefs.get(UserPreferences.personPageSortOption),
       );
+
+  String? _splitPreviewImageUrl(AggregatedItem episode) {
+    final tag = episode.primaryImageTag;
+    if (tag == null || episode.id.startsWith('tmdb:')) {
+      return null;
+    }
+    return _vm.imageApi.getPrimaryImageUrl(
+      episode.id,
+      maxHeight: 400,
+      tag: tag,
+    );
+  }
 
   Widget _buildBackdrop(
     BuildContext context,
