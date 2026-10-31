@@ -8,17 +8,17 @@ import org.junit.Test
 class SubtitleOffsetPolicyTest {
 
     @Test
-    fun `manual delay is clamped to five seconds either way`() {
-        assertEquals(5000L, clampManualDelayMs(9000L))
-        assertEquals(-5000L, clampManualDelayMs(-9000L))
-        assertEquals(1500L, clampManualDelayMs(1500L))
+    fun `manual delay is clamped to five minutes either way`() {
+        assertEquals(300_000L, clampManualDelayMs(400_000L))
+        assertEquals(-300_000L, clampManualDelayMs(-400_000L))
+        assertEquals(9000L, clampManualDelayMs(9000L))
     }
 
     @Test
     fun `effective offset adds the clamped manual delay to the auto one`() {
         assertEquals(2_000_000L, effectiveOffsetUs(2_000_000L, 0L))
         assertEquals(1_500_000L, effectiveOffsetUs(2_000_000L, -500L))
-        assertEquals(7_000_000L, effectiveOffsetUs(2_000_000L, 9000L))
+        assertEquals(11_000_000L, effectiveOffsetUs(2_000_000L, 9000L))
     }
 
     @Test

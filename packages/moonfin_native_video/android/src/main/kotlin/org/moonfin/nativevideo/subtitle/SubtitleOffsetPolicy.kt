@@ -4,8 +4,18 @@ import kotlin.math.abs
 
 // Kept free of Android and media3 imports so these run under plain JVM tests.
 
-/** The furthest the user can push subtitles either way. */
-internal const val MAX_MANUAL_SUBTITLE_DELAY_MS = 5000L
+/**
+ * The furthest the user can push subtitles either way.
+ *
+ * 31.10, Sid ("le décalage des sous-titres... j'ai l'impression que ça
+ * change rien") - root cause: the Flutter-side slider range was widened to
+ * ±300s the same night (delay_limits.dart, "il faut au moins pouvoir avoir
+ * 5 minutes"), but this native clamp was never updated to match, so any
+ * value past ±5s was silently clamped back down here and never reached the
+ * player - a large correction looked like it did nothing because, in
+ * effect, it didn't. Mirrors delay_limits.dart's bound exactly.
+ */
+internal const val MAX_MANUAL_SUBTITLE_DELAY_MS = 300_000L
 
 /**
  * An automatic correction has to move at least this far before the text
