@@ -1059,6 +1059,16 @@ class Media3PlayerBackend extends PlayerBackend {
     }
     _skipSilenceEnabled = _prefs.get(UserPreferences.media3SkipSilence);
     _volumeBoostLevel = 0;
+    // 31.10, Sid ("le décalage n'est pas que sur la piste EIA, aussi des
+    // externes et des internes en anglais") - root cause: these two never
+    // got reset per item like every other per-item field just above/below
+    // them, so a delay set once (e.g. to work around the EIA-608 lag on one
+    // episode) silently carried over and got re-applied to every
+    // subsequent, otherwise perfectly-synced video for the rest of the
+    // session - explaining why files that were never actually mistimed
+    // looked shifted too.
+    _audioDelaySeconds = 0.0;
+    _subtitleDelaySeconds = 0.0;
     final preferredAudioLanguage = _normalizeTrackLanguagePref(
       payload['preferredAudioLanguage']?.toString() ??
           _prefs.get(UserPreferences.defaultAudioLanguage),
