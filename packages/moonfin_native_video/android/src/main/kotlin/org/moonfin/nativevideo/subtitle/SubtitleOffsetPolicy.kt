@@ -55,15 +55,23 @@ internal fun effectiveOffsetUs(autoOffsetUs: Long, manualDelayMs: Long): Long =
 /**
  * Whether a track muxed into the content follows the subtitle delay.
  *
- * Closed captions stay put. They ride the video's own timeline already, and
- * the app lists them apart from subtitles. Their own mime types are not in
- * the shifted set, and a parsed cues track names the format it came from in
- * [codecs], which is how captions parsed during extraction are told apart.
+ * 31.10, Sid ("l'embarquée décale de base... environ 5 secondes") - closed
+ * captions used to be excluded on the assumption that they "ride the
+ * video's own timeline already". Confirmed wrong for real broadcast
+ * recordings: a live captioner/encoder bakes its own multi-second lag
+ * behind picture into the CEA-608/708 stream itself (verified against this
+ * exact symptom - a constant few-second offset from the very first cue,
+ * present on the embedded EIA-608 track and absent on the file's own text
+ * subtitle tracks on the same episode). Emby's own client apparently
+ * compensates for this; Moonfin's didn't at all. Letting the MANUAL delay
+ * reach these tracks is the fix - the auto sidecar correction
+ * ([sidecarOffsetUs]) still never touches them, since that mechanism is
+ * calibrated for mis-timed external subtitle files, a different problem.
  */
 internal fun shiftsEmbeddedFormat(sampleMimeType: String?, codecs: String?): Boolean {
     val mime = sampleMimeType ?: return false
-    if (mime == MIME_MEDIA3_CUES && codecs in CLOSED_CAPTION_MIMES) return false
-    return mime in SHIFTED_TEXT_MIMES
+    if (mime == MIME_MEDIA3_CUES) return true
+    return mime in SHIFTED_TEXT_MIMES || mime in CLOSED_CAPTION_MIMES
 }
 
 /**

@@ -35,12 +35,15 @@ class SubtitleOffsetPolicyTest {
     }
 
     @Test
-    fun `closed captions are never shifted`() {
-        assertFalse(shiftsEmbeddedFormat("application/cea-608", null))
-        assertFalse(shiftsEmbeddedFormat("application/cea-708", null))
-        assertFalse(shiftsEmbeddedFormat("application/x-mp4-cea-608", null))
-        assertFalse(shiftsEmbeddedFormat("application/x-media3-cues", "application/cea-608"))
-        assertFalse(shiftsEmbeddedFormat("application/x-media3-cues", "application/cea-708"))
+    fun `closed captions follow the manual delay too`() {
+        // 31.10, Sid: real broadcast recordings bake a multi-second lag into
+        // the CEA-608/708 stream itself - these have to be shiftable by the
+        // manual delay like any other embedded text track now.
+        assertTrue(shiftsEmbeddedFormat("application/cea-608", null))
+        assertTrue(shiftsEmbeddedFormat("application/cea-708", null))
+        assertTrue(shiftsEmbeddedFormat("application/x-mp4-cea-608", null))
+        assertTrue(shiftsEmbeddedFormat("application/x-media3-cues", "application/cea-608"))
+        assertTrue(shiftsEmbeddedFormat("application/x-media3-cues", "application/cea-708"))
     }
 
     @Test
