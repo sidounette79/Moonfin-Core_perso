@@ -1482,7 +1482,20 @@ class Media3PlayerBackend extends PlayerBackend {
 
   @override
   Future<void> setSubtitleDelay(double seconds) async {
+    // 31.10, Sid (progressive subtitle drift, root cause still unknown -
+    // "plus je lis, plus ça se décale"): the diagnostic report she sent
+    // after watching live had zero trace of what delay she'd actually
+    // applied or when - the offset-application code itself was already
+    // ruled out (stateless per-sample addition, no accumulation), but
+    // without knowing the exact value/timing of each manual correction
+    // next to playback position, there was nothing to correlate the drift
+    // against. Logging every real change here (not the auto HLS offset
+    // above, which already has its own _diag call) so the next capture
+    // actually shows it.
+    final previousMs = (_subtitleDelaySeconds * 1000).round();
+    final newMs = (seconds * 1000).round();
     _subtitleDelaySeconds = seconds;
+    _diag('Media3: manual subtitle delay set to ${newMs}ms (was ${previousMs}ms)');
     await _invoke<void>('setSubtitleDelay', {
       'seconds': seconds,
       'delayMs': (seconds * 1000).round(),
