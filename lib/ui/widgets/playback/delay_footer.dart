@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:moonfin_design/moonfin_design.dart';
@@ -36,6 +37,13 @@ class DelayFooter extends StatefulWidget {
 }
 
 class _DelayFooterState extends State<DelayFooter> {
+  // See the Slider's own build-site comment - deliberately much tighter
+  // than widget.minDelay/maxDelay (which can be +/-300s), so dragging
+  // stays precise for the typical small drift. The stepper below reaches
+  // anything beyond this, audio delay included (its own real range is
+  // +/-2s, well inside this anyway).
+  static const double _sliderRangeSeconds = 15.0;
+
   late double _delay;
   late double _autoOffset;
   StreamSubscription<double>? _autoOffsetSubscription;
@@ -110,6 +118,60 @@ class _DelayFooterState extends State<DelayFooter> {
                   color: Colors.white54,
                   fontSize: AppTypography.fontSizeXs,
                 ),
+              ),
+            ),
+          ],
+          // 03.11, Sid ("dans emby j'arrive super bien à caler avec la
+          // barre... carba TV je tombe jamais bien dessus") - a coarse
+          // +/-100ms-per-tap stepper alone made fine positioning tedious
+          // for small drifts. A draggable Slider gives the same
+          // fast-then-fine feel as Emby's own control, BUT mapping it to
+          // this widget's full min/max (+/-300s for subtitles on Media3,
+          // widened 30.10 for one real file that drifted that far) would
+          // make dragging LESS precise than the stepper, not more - ~2s
+          // per pixel over a typical slider width. Real-world subtitle
+          // drift is almost always a few seconds at most; the 5-minute
+          // case is the rare exception the stepper already exists to
+          // reach. So the slider's own visual range is a fixed, much
+          // tighter window (+/-_sliderRangeSeconds) independent of
+          // widget.minDelay/maxDelay, which stay the stepper's real
+          // clamp - landing near _sliderRangeSeconds/px precision, in
+          // line with the stepper's own 100ms step. A delay already
+          // outside that window (reached via the stepper) just shows the
+          // thumb pinned at its edge; the value text above stays accurate
+          // either way.
+          if (widget.minDelay != null && widget.maxDelay != null) ...[
+            const SizedBox(height: 4),
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: AppColorScheme.accent,
+                inactiveTrackColor: Colors.white24,
+                thumbColor: Colors.white,
+                overlayColor: Colors.white24,
+                trackHeight: 2,
+              ),
+              child: Builder(
+                builder: (context) {
+                  final sliderMin = math.max(
+                    -_sliderRangeSeconds,
+                    widget.minDelay!,
+                  );
+                  final sliderMax = math.min(
+                    _sliderRangeSeconds,
+                    widget.maxDelay!,
+                  );
+                  return Slider(
+                    value: _delay.clamp(sliderMin, sliderMax),
+                    min: sliderMin,
+                    max: sliderMax,
+                    onChanged: (v) {
+                      final rounded = (v * 10).roundToDouble() / 10;
+                      if (rounded == _delay) return;
+                      setState(() => _delay = rounded);
+                      widget.onDelayChanged(rounded);
+                    },
+                  );
+                },
               ),
             ),
           ],
