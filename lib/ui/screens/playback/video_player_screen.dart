@@ -890,13 +890,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _scheduleHide();
     _startEndsAtTicker();
     setImmersive(true);
-    if (PlatformDetection.isMobile) {
-      _forcedLandscape = true;
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-    } else if (!PlatformDetection.isTV) {
+    if (!PlatformDetection.isTV) {
+      // 03.11, Sid ("pourquoi je ne peux pas voir en portrait sur mobile ?")
+      // - mobile used to force-lock landscape here (_forcedLandscape = true),
+      // same as desktop was never made to. The manual lock toggle below
+      // (_toggleOrientationLock, the orientation OSD button) already existed
+      // for the opposite direction - starting unlocked like desktop and
+      // letting that button lock to landscape on request, instead of the
+      // other way around.
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
