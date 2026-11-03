@@ -1,5 +1,7 @@
 package org.moonfin.nativevideo
 
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
@@ -43,7 +45,14 @@ object LetterboxCropLayout {
 
         val containerAspect = containerWidth.toFloat() / containerHeight.toFloat()
         val cropAspect = cropW / cropH
-        val (targetW, targetH) = if (cover) {
+        // 03.11, same sur-zoom bug as Media3VideoView's ZoomMode.CROP (see
+        // its comment) - a portrait container against a landscape crop
+        // rectangle would zoom by whatever multiple the two aspects differ
+        // by instead of the few-percent "cover" this is meant for. Falls
+        // back to the "fit" branch below past that same 2.0x cap.
+        val coverZoomRatio = max(containerAspect, cropAspect) / min(containerAspect, cropAspect)
+        val effectiveCover = cover && coverZoomRatio <= 2.0f
+        val (targetW, targetH) = if (effectiveCover) {
             if (containerAspect > cropAspect) {
                 val width = containerWidth.toFloat()
                 width to (width / cropAspect)

@@ -101,6 +101,8 @@ import io.github.peerless2012.ass.media.type.AssRenderType
 import java.io.File
 import java.nio.ByteBuffer
 import java.util.Locale
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 import org.moonfin.nativevideo.iec.Iec61937AudioOutputProvider
 import org.moonfin.nativevideo.subtitle.HlsTimestampOffsetObserver
@@ -3514,6 +3516,13 @@ class Media3VideoView(
 
         val containerAspect = containerWidth.toFloat() / containerHeight.toFloat()
         val sourceAspect = sourceWidth / sourceHeight
+        // How far CROP is allowed to zoom past FIT before it falls back to
+        // FIT's own sizing - see the comment on ZoomMode.CROP below. 2.0
+        // comfortably covers realistic crop uses in landscape (cinema
+        // 2.39:1 in 16:9, ~1.3x; even a square source in an ultra-wide
+        // 21:9 window, ~1.9x) while firmly excluding a portrait container
+        // against a landscape source (~3.8x).
+        val maxCropZoomRatio = 2.0f
         val targetSize = when (zoomMode) {
             ZoomMode.FIT -> {
                 if (containerAspect > sourceAspect) {
@@ -3528,7 +3537,29 @@ class Media3VideoView(
             }
 
             ZoomMode.CROP -> {
-                if (containerAspect > sourceAspect) {
+                // 03.11, Sid ("sur-zoom" reported in portrait) - crop is
+                // meant to remove a small letterbox/pillarbox band (e.g.
+                // 2.39:1 cinema in a 16:9 window, ~1.3x zoom over FIT) by
+                // filling the container and losing a sliver off one edge.
+                // With a portrait container against a landscape source the
+                // two aspects are opposites rather than close, so this same
+                // formula zoomed by ~3.8x and showed only a thin, grossly
+                // enlarged vertical sliver of the frame. Past a sane crop
+                // ratio, fall back to FIT's own sizing instead of zooming by
+                // whatever multiple the aspects happen to differ by.
+                val cropZoomRatio =
+                    max(containerAspect, sourceAspect) / min(containerAspect, sourceAspect)
+                if (cropZoomRatio > maxCropZoomRatio) {
+                    if (containerAspect > sourceAspect) {
+                        val targetHeight = containerHeight
+                        val targetWidth = (targetHeight * sourceAspect).roundToInt()
+                        targetWidth to targetHeight
+                    } else {
+                        val targetWidth = containerWidth
+                        val targetHeight = (targetWidth / sourceAspect).roundToInt()
+                        targetWidth to targetHeight
+                    }
+                } else if (containerAspect > sourceAspect) {
                     val targetWidth = containerWidth
                     val targetHeight = (targetWidth / sourceAspect).roundToInt()
                     targetWidth to targetHeight
