@@ -27,6 +27,15 @@ class SettingsPanel extends StatelessWidget {
 
   static final isOpenNotifier = ValueNotifier<bool>(false);
 
+  // 03.11, Sid ("la fenêtre des paramètres des sous-titres... un peu plus
+  // transparente pour voir les sous-titres en fond quand je les règle") -
+  // this panel's background is one Material shared by every settings screen
+  // in its nested Navigator, so dimming it has to be opt-in per screen
+  // rather than a static value here. SubtitleCustomizationScreen flips this
+  // on in initState()/off in dispose(); every other settings screen never
+  // touches it and stays fully opaque.
+  static final transparentBackgroundNotifier = ValueNotifier<bool>(false);
+
   const SettingsPanel({
     super.key,
     required this.child,
@@ -95,58 +104,66 @@ class SettingsPanel extends StatelessWidget {
         ),
       ),
     );
-    Widget content;
-    if (glass) {
-      content = GlassSurface(
-        cornerRadius: panelCorner,
-        reinforced: true,
-        fallbackColor: Colors.transparent,
-        child: body,
-      );
-    } else if (frostedForTv) {
-      final sigma = GlassSettings.capSigma(32);
-      final panel = DecoratedBox(
-        decoration: BoxDecoration(
-          // Without blur behind it the panel needs more opacity to read.
-          color: surface.withValues(alpha: sigma > 0 ? 0.62 : 0.86),
-          border: Border(
-            left: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-          ),
-        ),
-        child: body,
-      );
-      content = sigma > 0
-          ? BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-              child: panel,
-            )
-          : panel;
-    } else {
-      final navBorder = ThemeRegistry.active.borders.navBorder;
-      if (navBorder != null) {
-        content = DecoratedBox(
-          position: DecorationPosition.foreground,
-          decoration: BoxDecoration(
-            border: Border(
-              left: navBorder,
+    return ValueListenableBuilder<bool>(
+      valueListenable: transparentBackgroundNotifier,
+      builder: (context, dimmed, _) {
+        Widget content;
+        if (glass) {
+          content = GlassSurface(
+            cornerRadius: panelCorner,
+            reinforced: true,
+            fallbackColor: Colors.transparent,
+            child: body,
+          );
+        } else if (frostedForTv) {
+          final sigma = GlassSettings.capSigma(32);
+          final baseAlpha = sigma > 0 ? 0.62 : 0.86;
+          final panel = DecoratedBox(
+            decoration: BoxDecoration(
+              // Without blur behind it the panel needs more opacity to read.
+              color: surface.withValues(alpha: dimmed ? baseAlpha * 0.55 : baseAlpha),
+              border: Border(
+                left: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+              ),
             ),
+            child: body,
+          );
+          content = sigma > 0
+              ? BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+                  child: panel,
+                )
+              : panel;
+        } else {
+          final navBorder = ThemeRegistry.active.borders.navBorder;
+          if (navBorder != null) {
+            content = DecoratedBox(
+              position: DecorationPosition.foreground,
+              decoration: BoxDecoration(
+                border: Border(
+                  left: navBorder,
+                ),
+              ),
+              child: body,
+            );
+          } else {
+            content = body;
+          }
+        }
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Material(
+            color: (glass || frostedForTv)
+                ? Colors.transparent
+                : surface.withValues(alpha: dimmed ? 0.55 : 1.0),
+            borderRadius: BorderRadius.horizontal(
+              left: Radius.circular(panelCorner),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: content,
           ),
-          child: body,
         );
-      } else {
-        content = body;
-      }
-    }
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Material(
-        color: (glass || frostedForTv) ? Colors.transparent : surface,
-        borderRadius: BorderRadius.horizontal(
-          left: Radius.circular(panelCorner),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: content,
-      ),
+      },
     );
   }
 }

@@ -13,6 +13,7 @@ import '../../widgets/overlay_sheet.dart';
 import '../../widgets/settings/clean_settings_typography.dart';
 import '../../widgets/settings/preference_binding.dart';
 import '../../widgets/settings/preference_tiles.dart';
+import '../../widgets/settings/settings_panel.dart';
 import '../../widgets/subtitle_preview.dart';
 import 'settings_app_bar.dart';
 import '../../widgets/focus/request_initial_focus.dart';
@@ -47,6 +48,12 @@ class _SubtitleCustomizationScreenState
   @override
   void initState() {
     super.initState();
+    // 03.11, Sid ("un peu plus transparente pour voir les sous-titres en
+    // fond quand je les règle") - dims the whole settings panel (shared
+    // Material behind every settings screen, see SettingsPanel) only while
+    // this screen is on top, so the real subtitles stay visible to judge
+    // size/position/color against. Turned back off in dispose().
+    SettingsPanel.transparentBackgroundNotifier.value = true;
     final store = GetIt.instance<PreferenceStore>();
     _sizeBind = PreferenceBinding(store, UserPreferences.subtitlesTextSize);
     _offsetBind = PreferenceBinding(
@@ -129,6 +136,7 @@ class _SubtitleCustomizationScreenState
 
   @override
   void dispose() {
+    SettingsPanel.transparentBackgroundNotifier.value = false;
     _sizeOuterNode.dispose();
     _sizeInnerNode.dispose();
     _offsetOuterNode.dispose();
@@ -158,6 +166,10 @@ class _SubtitleCustomizationScreenState
     return withCleanSettingsTypography(
       context,
       Scaffold(
+        // Transparent so the dimmed SettingsPanel Material behind it (see
+        // initState above) actually shows through - a Scaffold paints its
+        // own opaque background otherwise.
+        backgroundColor: Colors.transparent,
         appBar: buildSettingsAppBar(context, Text(l10n.subtitleCustomization)),
         body: ListView(
           padding: EdgeInsets.only(
