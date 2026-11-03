@@ -1,7 +1,7 @@
 name: moonfin
 description: "Moonfin - Jellyfin & Emby media client for mobile, tablet, and desktop"
 publish_to: 'none'
-version: 2.6.10+30000163
+version: 2.6.11+30000164
 
 moonfin:
   android_tv_version: 2.6.6

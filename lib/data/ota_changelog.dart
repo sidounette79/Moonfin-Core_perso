@@ -53,7 +53,36 @@ class OtaChangelogEntry {
 /// this becomes the new OTA base going forward. Verified this tag name
 /// actually matches `version:` in pubspec.yaml before pushing it, unlike
 /// last time.
+///
+/// 03.11, tag "2.6.11": another real release - the CROP zoom-mode cap
+/// below is native Kotlin (Media3VideoView.kt/LetterboxCropLayout.kt);
+/// confirmed Shorebird itself refused to publish it as a patch ("Breaking
+/// differences" in the native bytecode, exit code 70) before tagging.
 const otaChangelog = [
+  OtaChangelogEntry(
+    date: '03.11',
+    title: 'Lecture : en mode zoom "rogner" (autoCrop), un conteneur '
+        'portrait contre une vidéo au format paysage faisait un sur-zoom '
+        'massif (~3,8x) au lieu du léger recadrage prévu - plafonné, '
+        'retombe sur un affichage ajusté normal au-delà. Nécessite une '
+        'réinstallation (code natif Android).',
+  ),
+  OtaChangelogEntry(
+    date: '03.11',
+    title: 'Réglages > Apparence des sous-titres : le panneau est '
+        'maintenant semi-transparent pour voir les vrais sous-titres en '
+        'fond pendant le réglage taille/position/couleur.',
+    patchNumber: 4,
+  ),
+  OtaChangelogEntry(
+    date: '03.11',
+    title: 'Lecteur mobile : le mode portrait n\'était plus bloqué en '
+        'paysage forcé. Décalage ST/audio : curseur ajouté (plage visuelle '
+        'plafonnée à ±15s pour rester précis). Sous-titres : recherche '
+        'directe via Bazarr quand configuré (Réglages > Intégrations), '
+        'français+anglais automatique, plus seulement via Emby.',
+    patchNumber: 3,
+  ),
   OtaChangelogEntry(
     date: '29.10',
     title: 'Lecture : nouveau plafond de débit séparé pour les données '
