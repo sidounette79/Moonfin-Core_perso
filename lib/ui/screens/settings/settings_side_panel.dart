@@ -99,6 +99,7 @@ import 'parental_settings_screen.dart';
 import 'pin_code_settings_screen.dart';
 import 'plugin_settings_screen.dart';
 import 'ratings_config_screen.dart';
+import 'bazarr_config_screen.dart';
 import 'seerr_config_screen.dart';
 import 'settings_app_bar.dart';
 import 'subtitle_customization_screen.dart';

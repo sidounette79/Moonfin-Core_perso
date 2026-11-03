@@ -17,6 +17,7 @@ import '../../../data/services/log_service.dart';
 import '../../../data/services/media_segment_service.dart';
 import '../../../data/services/media_server_client_factory.dart';
 import '../../../data/repositories/item_mutation_repository.dart';
+import '../../../data/services/bazarr_service.dart';
 import '../../../auth/repositories/user_repository.dart';
 import '../../../playback/appletv_backend.dart';
 import '../../../playback/playback_profile_diagnostics.dart';
@@ -852,6 +853,13 @@ class _AppleTvPlayerHostScreenState extends State<AppleTvPlayerHostScreen> {
         .where((s) => s['Type'] == 'Subtitle')
         .toList();
     final audioStreams = allStreams.where((s) => s['Type'] == 'Audio').toList();
+
+    final bazarr = GetIt.instance<BazarrService>();
+    if (bazarr.isConfigured) {
+      _downloadSubtitlesViaBazarr(item, client, bazarr, manager, subtitleStreams);
+      return;
+    }
+
     final language = remoteSubtitleLanguage(subtitleStreams, audioStreams);
     final l10n = AppLocalizations.of(context);
     () async {
@@ -966,6 +974,64 @@ class _AppleTvPlayerHostScreenState extends State<AppleTvPlayerHostScreen> {
       existingIndexes: existingIndexes,
       keepGoing: () => mounted,
     );
+  }
+
+  // 03.11, Sid ("le mien c'est lien direct vers bazarr") - same substitution
+  // as the mobile/desktop screens: when Bazarr is configured it replaces the
+  // two-step Emby search+pick flow above entirely (no results sheet, Bazarr
+  // auto-selects and downloads fr+en itself).
+  void _downloadSubtitlesViaBazarr(
+    AggregatedItem item,
+    MediaServerClient client,
+    BazarrService bazarr,
+    PlaybackManager manager,
+    List<Map<String, dynamic>> subtitleStreams,
+  ) {
+    final backend = _backend;
+    () async {
+      await backend?.showSubtitleProgress(
+        'Recherche des sous-titres sur Bazarr...',
+      );
+      String? outcome;
+      try {
+        final result = await bazarr.downloadSubtitlesForItem(
+          client: client,
+          item: item,
+        );
+        if (!result.anyDownloaded) {
+          outcome = bazarrErrorMessage(result.error);
+          return;
+        }
+        try {
+          await GetIt.instance<ItemMutationRepository>().refreshMetadata(
+            item.id,
+          );
+        } catch (_) {}
+        final existingIndexes = subtitleStreams
+            .map((s) => s['Index'] as int?)
+            .whereType<int>()
+            .toSet();
+        final newStream = await _refreshAndFindSubtitle(
+          item,
+          client,
+          existingIndexes,
+        );
+        final index = newStream?['Index'] as int?;
+        if (index != null) {
+          await manager.changeSubtitleTrack(index, refreshStreams: true);
+        }
+        final languages = <String>[
+          if (result.frenchDownloaded) 'français',
+          if (result.englishDownloaded) 'anglais',
+        ];
+        outcome = 'Bazarr: sous-titres téléchargés (${languages.join(' + ')}).';
+      } catch (error) {
+        outcome = 'Bazarr: erreur ($error).';
+      } finally {
+        await backend?.hideSubtitleProgress(message: outcome);
+        if (mounted) _pushMetadata();
+      }
+    }();
   }
 
   void _toggleFavorite(dynamic item) {

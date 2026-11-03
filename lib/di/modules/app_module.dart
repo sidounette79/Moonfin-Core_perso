@@ -11,6 +11,7 @@ import '../../data/repositories/mdblist_repository.dart';
 import '../../data/repositories/multi_server_repository.dart';
 import '../../data/repositories/media_bar_repository.dart';
 import '../../data/repositories/offline_repository.dart';
+import '../../data/services/bazarr_service.dart';
 import '../../data/services/blocked_content_gate.dart';
 import '../../data/services/iptv_player_service.dart';
 import '../../data/services/library_scope_service.dart';
@@ -53,6 +54,7 @@ import '../../data/services/theme_music_service.dart';
 import '../../data/viewmodels/media_bar_view_model.dart';
 import '../../data/viewmodels/seerr_discover_view_model.dart';
 import '../../playback/external_player_service.dart';
+import '../../preference/bazarr_preferences.dart';
 import '../../preference/seerr_preferences.dart';
 import '../../preference/user_preferences.dart';
 import '../../ui/screensaver/screensaver_controller.dart';
@@ -192,6 +194,16 @@ void registerAppModule() {
       _getIt<PreferenceStore>(),
       _getIt<SessionRepository>(),
     ),
+  );
+  _getIt.registerLazySingleton(
+    () => BazarrPreferences(
+      _getIt<PreferenceStore>(),
+      _getIt<SessionRepository>(),
+    ),
+  );
+  _getIt.registerLazySingleton(
+    () => BazarrService(_getIt<BazarrPreferences>()),
+    dispose: (service) => service.close(),
   );
   _getIt.registerLazySingleton<SyncService>(
     () => SyncService(_getIt<OfflineRepository>(), _getIt<PendingRatingStore>()),

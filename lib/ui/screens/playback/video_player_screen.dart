@@ -43,6 +43,7 @@ import '../../../playback/hdr_stream_capability.dart';
 import '../../../auth/repositories/user_repository.dart';
 import '../../../data/models/aggregated_item.dart';
 import '../../../data/repositories/item_mutation_repository.dart';
+import '../../../data/services/bazarr_service.dart';
 import '../../../data/models/media_segment.dart';
 import '../../../data/models/trickplay_info.dart';
 import '../../../data/models/trickplay_prefetch_planner.dart';
@@ -578,6 +579,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   ) async {
     final messenger = ScaffoldMessenger.of(context);
     final client = _clientForItem(item);
+
+    // 03.11, Sid ("le mien c'est lien direct vers bazarr" - plus de
+    // fournisseurs côté Bazarr que sur ce serveur Emby) - quand Bazarr est
+    // configuré, il remplace entièrement la recherche Emby au lieu de s'y
+    // ajouter : pas de liste de résultats, Bazarr choisit lui-même le
+    // meilleur sous-titre et le télécharge (fr+en automatiquement).
+    final bazarr = GetIt.instance<BazarrService>();
+    if (bazarr.isConfigured) {
+      await _downloadRemoteSubtitlesViaBazarr(
+        item,
+        client,
+        bazarr,
+        subtitleStreams,
+        messenger,
+      );
+      return;
+    }
+
     final language = remoteSubtitleLanguage(subtitleStreams, audioStreams);
 
     List<Map<String, dynamic>> results;
@@ -712,6 +731,72 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         ),
       );
     }
+  }
+
+  Future<void> _downloadRemoteSubtitlesViaBazarr(
+    AggregatedItem item,
+    MediaServerClient client,
+    BazarrService bazarr,
+    List<Map<String, dynamic>> subtitleStreams,
+    ScaffoldMessengerState messenger,
+  ) async {
+    final result = await withProgressSnackBar(
+      messenger,
+      'Recherche des sous-titres sur Bazarr...',
+      () => bazarr.downloadSubtitlesForItem(client: client, item: item),
+    );
+    if (!mounted) return;
+
+    if (!result.anyDownloaded) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(bazarrErrorMessage(result.error))),
+      );
+      return;
+    }
+
+    // Bazarr écrit le .srt directement sur le disque, hors du circuit Emby -
+    // sans un rafraîchissement ciblé du dossier, ce serveur ne verrait le
+    // nouveau fichier qu'à son prochain scan planifié (potentiellement des
+    // heures plus tard). Best-effort : un échec ici (ex. utilisateur sans
+    // droit admin) laisse le téléchargement Bazarr réussi tel quel, juste
+    // sans sélection automatique de la piste.
+    try {
+      await GetIt.instance<ItemMutationRepository>().refreshMetadata(item.id);
+    } catch (_) {}
+
+    final existingIndexes = subtitleStreams
+        .map((stream) => stream['Index'] as int?)
+        .whereType<int>()
+        .toSet();
+    final newStream = await _awaitDownloadedSubtitle(item, existingIndexes);
+    if (!mounted) return;
+
+    final streamIndex = newStream?['Index'] as int?;
+    if (streamIndex != null) {
+      unawaited(
+        _runSinglePlayerMutation(
+          'downloaded_subtitle_$streamIndex',
+          () => _manager.changeSubtitleTrack(
+            streamIndex,
+            refreshStreams: true,
+          ),
+        ).then((_) {
+          if (mounted) _syncSubtitleActive();
+        }),
+      );
+    }
+
+    final languages = <String>[
+      if (result.frenchDownloaded) 'français',
+      if (result.englishDownloaded) 'anglais',
+    ];
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Bazarr: sous-titres téléchargés (${languages.join(' + ')}).',
+        ),
+      ),
+    );
   }
 
   MediaSegmentService _createSegmentService([AggregatedItem? item]) {

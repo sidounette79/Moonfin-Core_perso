@@ -274,6 +274,7 @@ class AggregatedItem {
 
   String? get tmdbId => providerIds['Tmdb'] ?? providerIds['tmdb'] ?? providerIds['TMDB'];
   String? get imdbId => providerIds['Imdb'] ?? providerIds['imdb'] ?? providerIds['IMDB'];
+  String? get tvdbId => providerIds['Tvdb'] ?? providerIds['tvdb'] ?? providerIds['TVDB'];
 
   List<Map<String, dynamic>> get people => _toListOfMaps(rawData['People']);
 

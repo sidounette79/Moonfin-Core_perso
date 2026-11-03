@@ -22,6 +22,7 @@ import 'package:server_core/server_core.dart';
 
 import '../../../data/models/aggregated_item.dart';
 import '../../../data/repositories/item_mutation_repository.dart';
+import '../../../data/services/bazarr_service.dart';
 import '../../../data/repositories/mdblist_repository.dart';
 import '../../../data/repositories/tmdb_repository.dart';
 import '../../../data/services/background_service.dart';
@@ -10486,6 +10487,20 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
   ) async {
     final messenger = ScaffoldMessenger.of(context);
     final client = GetIt.instance<MediaServerClient>();
+
+    final bazarr = GetIt.instance<BazarrService>();
+    if (bazarr.isConfigured) {
+      await _downloadRemoteSubtitlesViaBazarr(
+        context,
+        item,
+        client,
+        bazarr,
+        subtitleStreams,
+        messenger,
+      );
+      return;
+    }
+
     final language = remoteSubtitleLanguage(subtitleStreams, audioStreams);
 
     List<Map<String, dynamic>> results;
@@ -10623,6 +10638,62 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         ),
       );
     }
+  }
+
+  Future<void> _downloadRemoteSubtitlesViaBazarr(
+    BuildContext context,
+    AggregatedItem item,
+    MediaServerClient client,
+    BazarrService bazarr,
+    List<Map<String, dynamic>> subtitleStreams,
+    ScaffoldMessengerState messenger,
+  ) async {
+    final result = await withProgressSnackBar(
+      messenger,
+      'Recherche des sous-titres sur Bazarr...',
+      () => bazarr.downloadSubtitlesForItem(client: client, item: item),
+    );
+    if (!context.mounted) return;
+
+    if (!result.anyDownloaded) {
+      trySnackBar(
+        messenger,
+        SnackBar(content: Text(bazarrErrorMessage(result.error))),
+      );
+      return;
+    }
+
+    try {
+      await GetIt.instance<ItemMutationRepository>().refreshMetadata(item.id);
+    } catch (_) {}
+
+    final existingIndexes = subtitleStreams
+        .map((stream) => stream['Index'] as int?)
+        .whereType<int>()
+        .toSet();
+    final newStream = await _awaitDownloadedSubtitle(
+      item,
+      client,
+      existingIndexes,
+    );
+    if (!context.mounted) return;
+
+    if (newStream != null) {
+      setState(() => _selectedSubtitleIndex = newStream['Index'] as int?);
+    }
+
+    final languages = <String>[
+      if (result.frenchDownloaded) 'français',
+      if (result.englishDownloaded) 'anglais',
+    ];
+    trySnackBar(
+      messenger,
+      SnackBar(
+        content: Text(
+          'Bazarr: sous-titres téléchargés (${languages.join(' + ')}).',
+        ),
+      ),
+    );
   }
 
   void _showSubtitleSelector(

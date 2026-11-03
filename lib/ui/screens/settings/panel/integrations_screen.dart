@@ -104,6 +104,19 @@ class _IntegrationsScreenState extends State<_IntegrationsScreen> {
               onTap: () =>
                   context.pushSettingsScreen(const SeerrConfigScreen()),
             ),
+            // 03.11, Sid ("le mien c'est lien direct vers bazarr") -
+            // direct Bazarr connection, bypassing Emby's own subtitle
+            // search, same spirit as the Xtream IPTV tile above (a
+            // standalone external service, not proxied through Emby).
+            _TvSettingsListTile(
+              leading: const Icon(Icons.subtitles, color: Color(0xFF9C27B0)),
+              title: const Text('Bazarr'),
+              subtitle: const Text(
+                'Recherche directe des sous-titres (fr+en)',
+              ),
+              onTap: () =>
+                  context.pushSettingsScreen(const BazarrConfigScreen()),
+            ),
             if (achievements.available)
               _TvSettingsListTile(
                 leading: const Icon(
