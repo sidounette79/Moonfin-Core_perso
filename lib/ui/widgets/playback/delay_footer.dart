@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../../util/platform_detection.dart';
 import '../adaptive/sf_symbol.dart';
 
 /// The delay stepper under a track picker. [autoOffset] is a correction the
@@ -142,36 +143,52 @@ class _DelayFooterState extends State<DelayFooter> {
           // either way.
           if (widget.minDelay != null && widget.maxDelay != null) ...[
             const SizedBox(height: 4),
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                activeTrackColor: AppColorScheme.accent,
-                inactiveTrackColor: Colors.white24,
-                thumbColor: Colors.white,
-                overlayColor: Colors.white24,
-                trackHeight: 2,
-              ),
-              child: Builder(
-                builder: (context) {
-                  final sliderMin = math.max(
-                    -_sliderRangeSeconds,
-                    widget.minDelay!,
-                  );
-                  final sliderMax = math.min(
-                    _sliderRangeSeconds,
-                    widget.maxDelay!,
-                  );
-                  return Slider(
-                    value: _delay.clamp(sliderMin, sliderMax),
-                    min: sliderMin,
-                    max: sliderMax,
-                    onChanged: (v) {
-                      final rounded = (v * 10).roundToDouble() / 10;
-                      if (rounded == _delay) return;
-                      setState(() => _delay = rounded);
-                      widget.onDelayChanged(rounded);
-                    },
-                  );
-                },
+            // 04.11, Sid ("je suis bloquée dessus avec le d-pad... je peux
+            // plus faire de changement dans la fenêtre") - a Material
+            // Slider is intrinsically focusable and, once it has D-pad
+            // focus, consumes left/right itself to move its thumb instead
+            // of letting them (or up/down) move focus to a neighbouring
+            // row - standard Slider behaviour, but useless on a D-pad
+            // where nothing ever drags it anyway. The stepper below this
+            // (+/-100ms buttons) already covers exactly the same range in
+            // a D-pad-friendly way, so on TV the slider itself is simply
+            // excluded from focus traversal - still visible/accurate as a
+            // read-only position indicator, never grabs or blocks D-pad
+            // navigation. Mouse/touch/remote-with-trackpad users (not
+            // PlatformDetection.isTV) keep normal dragging.
+            ExcludeFocus(
+              excluding: PlatformDetection.isTV,
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: AppColorScheme.accent,
+                  inactiveTrackColor: Colors.white24,
+                  thumbColor: Colors.white,
+                  overlayColor: Colors.white24,
+                  trackHeight: 2,
+                ),
+                child: Builder(
+                  builder: (context) {
+                    final sliderMin = math.max(
+                      -_sliderRangeSeconds,
+                      widget.minDelay!,
+                    );
+                    final sliderMax = math.min(
+                      _sliderRangeSeconds,
+                      widget.maxDelay!,
+                    );
+                    return Slider(
+                      value: _delay.clamp(sliderMin, sliderMax),
+                      min: sliderMin,
+                      max: sliderMax,
+                      onChanged: (v) {
+                        final rounded = (v * 10).roundToDouble() / 10;
+                        if (rounded == _delay) return;
+                        setState(() => _delay = rounded);
+                        widget.onDelayChanged(rounded);
+                      },
+                    );
+                  },
+                ),
               ),
             ),
           ],
