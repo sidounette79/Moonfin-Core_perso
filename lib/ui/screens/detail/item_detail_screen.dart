@@ -6021,6 +6021,16 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
   final FocusNode _subtitleTrackInfoFocusNode = FocusNode(
     debugLabel: 'detail_track_info_subtitle',
   );
+  // 04.11, Sid ("je clique sur l'épisode 2... le petit play ne fonctionne
+  // pas") - same root cause as the 27.10 fix just above: NouveauEpisode
+  // PreviewCard supports a focusNode/onArrowUp/onArrowDown (added 30.10,
+  // see its own doc comment) but nothing here ever wired one in, so on TV
+  // the D-pad could never actually reach the thumbnail to press Select on
+  // it - the play icon was visible but physically unreachable, not broken
+  // per se.
+  final FocusNode _episodePreviewFocusNode = FocusNode(
+    debugLabel: 'detail_episode_preview',
+  );
   final List<FocusNode> _primaryFocusNodes = [];
   final List<FocusNode> _extraFocusNodes = [];
 
@@ -6129,6 +6139,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     _overflowFirstExtraFocusNode.dispose();
     _audioTrackInfoFocusNode.dispose();
     _subtitleTrackInfoFocusNode.dispose();
+    _episodePreviewFocusNode.dispose();
     for (final node in _primaryFocusNodes) {
       node.dispose();
     }
@@ -7781,6 +7792,27 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
             previewItem,
             resume: watchStateOf(previewItem).hasProgress,
           ),
+          // 04.11: same missing-focusNode bug as the audio/subtitle chips
+          // fixed 27.10 (_audioTrackInfoFocusNode's own doc comment) - the
+          // thumbnail's play icon was unreachable by D-pad with nothing
+          // wiring it into the vertical chain. Down mirrors exactly what
+          // trackInfoBar's own onNavigateUp targets below, so the chain
+          // stays symmetric in both directions.
+          focusNode: _episodePreviewFocusNode,
+          onArrowUp:
+              NavigationLayout.focusNavbarNotifier.value != null ||
+                  widget.upTarget != null
+              ? _focusUpTarget
+              : null,
+          onArrowDown: () {
+            if (hasFocusableAudioTrackInfo) {
+              _audioTrackInfoFocusNode.requestFocus();
+            } else if (hasFocusableSubtitleTrackInfo) {
+              _subtitleTrackInfoFocusNode.requestFocus();
+            } else {
+              primaryFocusNode.requestFocus();
+            }
+          },
         );
       }
 
@@ -7874,11 +7906,15 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
                   : null,
               audioFocusNode: _audioTrackInfoFocusNode,
               subtitleFocusNode: _subtitleTrackInfoFocusNode,
-              onNavigateUp:
-                  NavigationLayout.focusNavbarNotifier.value != null ||
-                      widget.upTarget != null
-                  ? _focusUpTarget
-                  : null,
+              // 04.11: mirrors episodePreview's own onArrowDown above - when
+              // the preview thumbnail is showing, Up from here lands on it
+              // instead of jumping straight past it to the navbar/sidebar.
+              onNavigateUp: episodePreview != null
+                  ? () => _episodePreviewFocusNode.requestFocus()
+                  : (NavigationLayout.focusNavbarNotifier.value != null ||
+                            widget.upTarget != null
+                        ? _focusUpTarget
+                        : null),
               onNavigateDown: () => primaryFocusNode.requestFocus(),
             );
 
