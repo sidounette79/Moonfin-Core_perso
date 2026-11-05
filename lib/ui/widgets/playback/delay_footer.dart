@@ -2,15 +2,34 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../../util/focus/dpad_keys.dart';
 import '../../../util/platform_detection.dart';
 import '../adaptive/sf_symbol.dart';
 
-/// The delay stepper under a track picker. [autoOffset] is a correction the
-/// backend applied on its own and only shows when there is one. It is
-/// read only and rides beside the value the user sets, so Reset leaves it.
+/// The delay adjustment widget, now its own standalone dialog (06.11, Sid:
+/// "créer une autre fenêtre qui s'ouvrirait pour régler les sous-titres...
+/// là ils sont cachés sous la fenêtre initiale") rather than riding along
+/// as the last row of TrackSelectorDialog's track list. [autoOffset] is a
+/// correction the backend applied on its own and only shows when there is
+/// one. It is read only and rides beside the value the user sets, so Reset
+/// leaves it.
+///
+/// 04.11, Sid ("je suis bloquée dessus avec le d-pad") - the Slider itself
+/// is excluded from TV focus (see its own build-site comment below), the
+/// stepper row (-100ms / Reset / +100ms) carries the real D-pad navigation.
+/// 06.11, Sid again ("je passe de réinitialiser aux lignes d'en dessous,
+/// sans plus pouvoir accéder à la barre") - that stepper row relied on
+/// Flutter's DEFAULT focus traversal to move Left/Right between its own
+/// three buttons, which turned out unreliable once this dialog stopped
+/// being the very last thing in a scrollable list (traversal order jumped
+/// to whatever else was on screen instead of the adjacent button). Fixed
+/// the same way as bazarr_config_screen.dart's fields: explicit
+/// FocusNode.onKeyEvent wiring between the three buttons AND the new
+/// "Fermer" button below, never left to the default policy again.
 class DelayFooter extends StatefulWidget {
   const DelayFooter({
     super.key,
@@ -22,6 +41,7 @@ class DelayFooter extends StatefulWidget {
     this.autoOffsetStream,
     required this.onDelayChanged,
     required this.formatDelay,
+    this.onClose,
   });
 
   final double initialDelay;
@@ -32,6 +52,10 @@ class DelayFooter extends StatefulWidget {
   final Stream<double>? autoOffsetStream;
   final void Function(double delay) onDelayChanged;
   final String Function(double seconds) formatDelay;
+
+  /// Closes the standalone dialog this now lives in - omitted when (in
+  /// theory) still embedded elsewhere without its own dialog shell.
+  final VoidCallback? onClose;
 
   @override
   State<DelayFooter> createState() => _DelayFooterState();
@@ -49,6 +73,14 @@ class _DelayFooterState extends State<DelayFooter> {
   late double _autoOffset;
   StreamSubscription<double>? _autoOffsetSubscription;
 
+  // 06.11: explicit D-pad wiring between the stepper's three buttons and
+  // the Fermer button below - never left to Flutter's default traversal
+  // again (see this file's own class-level comment for why).
+  final _minusFocus = FocusNode(debugLabel: 'delayMinus');
+  final _resetFocus = FocusNode(debugLabel: 'delayReset');
+  final _plusFocus = FocusNode(debugLabel: 'delayPlus');
+  final _closeFocus = FocusNode(debugLabel: 'delayClose');
+
   @override
   void initState() {
     super.initState();
@@ -58,12 +90,72 @@ class _DelayFooterState extends State<DelayFooter> {
       if (!mounted || offset == _autoOffset) return;
       setState(() => _autoOffset = offset);
     });
+    _minusFocus.onKeyEvent = _onMinusKey;
+    _resetFocus.onKeyEvent = _onResetKey;
+    _plusFocus.onKeyEvent = _onPlusKey;
+    _closeFocus.onKeyEvent = _onCloseKey;
   }
 
   @override
   void dispose() {
     _autoOffsetSubscription?.cancel();
+    _minusFocus.dispose();
+    _resetFocus.dispose();
+    _plusFocus.dispose();
+    _closeFocus.dispose();
     super.dispose();
+  }
+
+  KeyEventResult _onMinusKey(FocusNode node, KeyEvent event) {
+    if (!event.isActionable) return KeyEventResult.ignored;
+    if (event.logicalKey.isRightKey) {
+      _resetFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey.isDownKey) {
+      _closeFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _onResetKey(FocusNode node, KeyEvent event) {
+    if (!event.isActionable) return KeyEventResult.ignored;
+    if (event.logicalKey.isLeftKey) {
+      _minusFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey.isRightKey) {
+      _plusFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey.isDownKey) {
+      _closeFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _onPlusKey(FocusNode node, KeyEvent event) {
+    if (!event.isActionable) return KeyEventResult.ignored;
+    if (event.logicalKey.isLeftKey) {
+      _resetFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey.isDownKey) {
+      _closeFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _onCloseKey(FocusNode node, KeyEvent event) {
+    if (!event.isActionable) return KeyEventResult.ignored;
+    if (event.logicalKey.isUpKey) {
+      _resetFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   void _adjust(double delta) {
@@ -86,8 +178,6 @@ class _DelayFooterState extends State<DelayFooter> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(height: 1, color: Colors.white.withValues(alpha: 0.08)),
-          const SizedBox(height: 10),
           Row(
             children: [
               Text(
@@ -197,6 +287,7 @@ class _DelayFooterState extends State<DelayFooter> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
+                focusNode: _minusFocus,
                 onPressed: () => _adjust(-0.1),
                 icon: const AdaptiveIcon(
                   Icons.remove_circle_outline,
@@ -214,6 +305,8 @@ class _DelayFooterState extends State<DelayFooter> {
               ),
               const Spacer(),
               OutlinedButton(
+                focusNode: _resetFocus,
+                autofocus: PlatformDetection.isTV,
                 onPressed: () {
                   setState(() => _delay = 0.0);
                   widget.onDelayChanged(0.0);
@@ -235,6 +328,7 @@ class _DelayFooterState extends State<DelayFooter> {
                 ),
               ),
               IconButton(
+                focusNode: _plusFocus,
                 onPressed: () => _adjust(0.1),
                 icon: const AdaptiveIcon(
                   Icons.add_circle_outline,
@@ -245,6 +339,23 @@ class _DelayFooterState extends State<DelayFooter> {
               ),
             ],
           ),
+          if (widget.onClose != null) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                focusNode: _closeFocus,
+                onPressed: widget.onClose,
+                style: OutlinedButton.styleFrom(
+                  side: ThemeRegistry.active.borders.chipBorder,
+                ),
+                child: Text(
+                  l10n.close,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

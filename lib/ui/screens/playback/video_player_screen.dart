@@ -7543,20 +7543,29 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       if (!mounted) return;
 
       final delayLimits = delayLimitsFor(_activeBackend, audio: audio);
+      // 06.11, Sid ("créer une autre fenêtre qui s'ouvrirait pour régler
+      // les sous-titres... là ils sont cachés sous la fenêtre initiale") -
+      // no longer rides along as the last row of this track list (see
+      // DelayFooter's own class-level comment for why that kept breaking
+      // D-pad navigation) - just a row showing the current value, opening
+      // a dedicated dialog on tap/select.
       final delayFooter = delayLimits == null
           ? null
-          : DelayFooter(
-              initialDelay: audio ? _audioDelay : _subtitleDelay,
+          : _OsdMenuRow(
+              icon: Icons.timer_outlined,
               label: audio ? l10n.audioDelay : l10n.subtitleDelay,
-              minDelay: delayLimits.$1,
-              maxDelay: delayLimits.$2,
-              autoOffset: audio
-                  ? 0.0
-                  : (_activeBackend?.subtitleAutoOffsetSeconds ?? 0.0),
-              autoOffsetStream:
-                  audio ? null : _activeBackend?.subtitleAutoOffsetStream,
-              onDelayChanged: (d) => _applyDelay(audio: audio, delay: d),
-              formatDelay: _formatDelay,
+              trailing: Text(
+                _formatDelay(audio ? _audioDelay : _subtitleDelay),
+                style: TextStyle(
+                  color: AppColorScheme.accent,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              onTap: () => _showDelayAdjustDialog(
+                audio: audio,
+                minDelay: delayLimits.$1,
+                maxDelay: delayLimits.$2,
+              ),
             );
       // 28.10, Sid: showing Emby's own subtitle menu as the reference -
       // "Apparence des sous-titres" sits above the delay row there, same
@@ -7595,6 +7604,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         selectedIndex: selectedIndex,
         useRootNavigator: false,
         footer: footer,
+        onRefresh: audio ? null : () => _refreshSubtitleTracks(),
       );
       _suppressBackNavigation();
       if (result == null || !mounted) return;
@@ -7632,6 +7642,76 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       }
     }());
     _showControls();
+  }
+
+  // 06.11, Sid ("un petit bouton dans la fenêtre de base des sous-titres
+  // qui rafraîchit... je dois ressortir complètement du lecteur pour
+  // pouvoir avoir les sous-titres [téléchargés via Bazarr]") - same
+  // server refresh + stream re-resolve as after a Bazarr download
+  // (_downloadRemoteSubtitlesViaBazarr above), just triggerable on demand
+  // instead of only right after a download. Re-applies whatever subtitle
+  // track is CURRENTLY selected (possibly "off", -1) through
+  // `refreshStreams: true` - this never changes the user's selection, it
+  // only rebuilds the stream list behind it so a track downloaded/removed
+  // server-side since this dialog first opened becomes visible. Reopens
+  // the dialog with fresh data once done (TrackSelectorDialog.show's own
+  // `onRefresh` wiring already closed the previous one first).
+  Future<void> _refreshSubtitleTracks() async {
+    final item = _queue.currentItem;
+    if (item == null || !mounted) return;
+    try {
+      await GetIt.instance<ItemMutationRepository>().refreshMetadata(item.id);
+    } catch (_) {}
+    if (!mounted) return;
+    final currentIndex = await _manager.getSubtitleStreamIndexAsync() ?? -1;
+    if (!mounted) return;
+    try {
+      await _manager.changeSubtitleTrack(
+        currentIndex,
+        userInitiated: false,
+        refreshStreams: true,
+      );
+    } catch (_) {}
+    if (!mounted) return;
+    _showTrackSelector(audio: false);
+  }
+
+  // 06.11, Sid ("créer une autre fenêtre qui s'ouvrirait pour régler les
+  // sous-titres... ça me permettrait de pouvoir les régler en les
+  // voyant") - the dedicated dialog opened from the "Régler le décalage"
+  // row in _showTrackSelector's footer. Own `showStyledPlayerDialog` call
+  // (not nested inside the track list dialog) so the stepper's D-pad
+  // wiring (DelayFooter's own onKeyEvent handlers) is the only focus
+  // traversal in play here - no risk of the track list's focus order
+  // interfering again.
+  void _showDelayAdjustDialog({
+    required bool audio,
+    required double minDelay,
+    required double maxDelay,
+  }) {
+    final l10n = AppLocalizations.of(context);
+    unawaited(() async {
+      await showStyledPlayerDialog<void>(
+        context,
+        title: audio ? l10n.audioDelay : l10n.subtitleDelay,
+        useRootNavigator: false,
+        builder: (dialogCtx) => DelayFooter(
+          initialDelay: audio ? _audioDelay : _subtitleDelay,
+          label: audio ? l10n.audioDelay : l10n.subtitleDelay,
+          minDelay: minDelay,
+          maxDelay: maxDelay,
+          autoOffset: audio
+              ? 0.0
+              : (_activeBackend?.subtitleAutoOffsetSeconds ?? 0.0),
+          autoOffsetStream:
+              audio ? null : _activeBackend?.subtitleAutoOffsetStream,
+          onDelayChanged: (d) => _applyDelay(audio: audio, delay: d),
+          formatDelay: _formatDelay,
+          onClose: () => Navigator.pop(dialogCtx),
+        ),
+      );
+      _suppressBackNavigation();
+    }());
   }
 
   void _cyclePlayerZoom() {

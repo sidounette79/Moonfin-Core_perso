@@ -21,6 +21,14 @@ Future<T?> showStyledPlayerDialog<T>(
   double maxWidth = 440,
   bool useRootNavigator = true,
   bool barrierDismissible = true,
+  // 06.11, Sid ("un petit bouton dans la fenêtre de base des sous-titres
+  // qui rafraîchit") - a small header action next to the title, not
+  // another row in the list (that list already grew a "Télécharger des
+  // sous-titres" row the same way, but this one is about the list itself,
+  // not a choice within it). Built with the dialog's own `dialogContext`
+  // so the caller can pop THIS dialog (e.g. to reopen it with fresh data)
+  // from inside the button's onPressed.
+  Widget Function(BuildContext dialogCtx)? titleTrailing,
 }) {
   return showFocusRestoringDialog<T>(
     context: context,
@@ -66,16 +74,21 @@ Future<T?> showStyledPlayerDialog<T>(
               children: [
                 Padding(
                   padding: EdgeInsets.fromLTRB(24, 0, 24, subtitle != null ? 4 : 12),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
-                    ),
+                      if (titleTrailing != null)
+                        titleTrailing(dialogContext),
+                    ],
                   ),
                 ),
                 if (subtitle != null)
@@ -171,12 +184,30 @@ class TrackSelectorDialog {
     int? selectedIndex,
     Widget? footer,
     bool useRootNavigator = true,
+    // 06.11, Sid ("un petit bouton dans la fenêtre de base des sous-titres
+    // qui rafraîchit... je dois ressortir complètement du lecteur pour
+    // pouvoir avoir les sous-titres [téléchargés via Bazarr]") - closes
+    // THIS dialog first (so the caller reopening it with fresh data isn't
+    // stacking a second dialog on top), then runs the caller's own
+    // refresh logic. Not wired to the `int?` result at all - this never
+    // participates in "which track was picked".
+    VoidCallback? onRefresh,
   }) {
     return showStyledPlayerDialog<int>(
       context,
       title: title,
       showCancel: true,
       useRootNavigator: useRootNavigator,
+      titleTrailing: onRefresh == null
+          ? null
+          : (dialogCtx) => IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.white70),
+              tooltip: AppLocalizations.of(dialogCtx).refresh,
+              onPressed: () {
+                Navigator.pop(dialogCtx);
+                onRefresh();
+              },
+            ),
       // The footer rides along as the last row rather than sitting under the
       // list, so a long track list keeps the full height and the footer is
       // something you scroll down to instead of something in the way.
