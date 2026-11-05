@@ -7686,8 +7686,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   // interfering again.
   void _showDelayAdjustDialog({
     required bool audio,
-    required double minDelay,
-    required double maxDelay,
+    required double? minDelay,
+    required double? maxDelay,
   }) {
     final l10n = AppLocalizations.of(context);
     unawaited(() async {
