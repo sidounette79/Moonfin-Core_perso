@@ -97,6 +97,16 @@ jobs:
           # (log_service.dart's uploadToNas) - baked in via --dart-define
           # in build-android.sh, never hardcoded in source.
           NAS_DIAGNOSTICS_KEY: ${{ secrets.NAS_DIAGNOSTICS_KEY }}
+          # 06.11, Sid ("je n'aie pas besoin de l'activer sur chaque
+          # appareil... on peut le mettre en dur dans le code ?") - repo is
+          # PUBLIC, so the Bazarr API key is never committed in plain text:
+          # it only exists as this GitHub secret, baked into the compiled
+          # binary at build time via --dart-define (bazarr_preferences.dart
+          # reads it as a default when no per-user value is saved yet).
+          # The server URL (bazarr.sidounette.ch) is already publicly
+          # reachable, so it's hardcoded directly in source - only the key
+          # actually needs to stay out of the repo.
+          BAZARR_DEFAULT_API_KEY: ${{ secrets.BAZARR_DEFAULT_API_KEY }}
           # 09.10: a version tag (2.6.1, ...) = real release (new OTA base,
           # needs reinstall). A plain branch push = OTA patch of the
           # existing release, the everyday case. Manual run uses whatever
