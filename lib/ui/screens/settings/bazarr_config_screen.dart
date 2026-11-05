@@ -7,6 +7,7 @@ import 'package:get_it/get_it.dart';
 
 import '../../../data/services/bazarr_service.dart';
 import '../../../preference/bazarr_preferences.dart';
+import '../../../util/focus/dpad_keys.dart';
 import '../../../util/platform_detection.dart';
 import '../../widgets/settings/clean_settings_typography.dart';
 import 'settings_app_bar.dart';
