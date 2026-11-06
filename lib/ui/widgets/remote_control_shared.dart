@@ -323,9 +323,171 @@ mixin RemoteControlSessionMixin<T extends StatefulWidget> on State<T> {
       _buildVolumeRow(theme, l10n, isMuted, volumeLevel, supportsSetVolume),
       const SizedBox(height: 18),
       _buildDpad(theme, l10n),
+      const SizedBox(height: 18),
+      _buildTrackPickerRow(theme, l10n, nowPlaying, playState),
       const SizedBox(height: 14),
       _buildStopButton(theme, l10n),
     ];
+  }
+
+  // 06.11, Sid ("bouton du sous titre et de l'audio... les chapitres?"):
+  // each opens a bottom sheet of real options read from the session's own
+  // NowPlayingItem/PlayState (MediaStreams, AudioStreamIndex,
+  // SubtitleStreamIndex, Chapters) - not a blind "next track" cycle. A
+  // picker is hidden entirely when there's nothing to choose (one audio
+  // track, no subtitles, no chapters).
+  Widget _buildTrackPickerRow(
+    ThemeData theme,
+    AppLocalizations l10n,
+    Map<String, dynamic> nowPlaying,
+    Map<String, dynamic>? playState,
+  ) {
+    final streams = (nowPlaying['MediaStreams'] as List?)
+            ?.cast<Map<String, dynamic>>() ??
+        const [];
+    final audioStreams =
+        streams.where((s) => s['Type'] == 'Audio').toList();
+    final subtitleStreams =
+        streams.where((s) => s['Type'] == 'Subtitle').toList();
+    final chapters =
+        (nowPlaying['Chapters'] as List?)?.cast<Map<String, dynamic>>() ??
+            const [];
+
+    final buttons = <Widget>[
+      if (audioStreams.length > 1)
+        RemoteControlButton(
+          icon: Icons.audiotrack_rounded,
+          label: l10n.audio,
+          onTap: () => _showTrackPicker(
+            theme: theme,
+            title: l10n.audio,
+            streams: audioStreams,
+            activeIndex: (playState?['AudioStreamIndex'] as num?)?.toInt(),
+            allowOff: false,
+            command: 'SetAudioStreamIndex',
+          ),
+        ),
+      if (subtitleStreams.isNotEmpty)
+        RemoteControlButton(
+          icon: Icons.subtitles_rounded,
+          label: l10n.subtitles,
+          onTap: () => _showTrackPicker(
+            theme: theme,
+            title: l10n.subtitles,
+            streams: subtitleStreams,
+            activeIndex:
+                (playState?['SubtitleStreamIndex'] as num?)?.toInt(),
+            allowOff: true,
+            command: 'SetSubtitleStreamIndex',
+          ),
+        ),
+      if (chapters.isNotEmpty)
+        RemoteControlButton(
+          icon: Icons.bookmark_rounded,
+          label: l10n.chapters,
+          onTap: () => _showChapterPicker(theme, chapters),
+        ),
+    ];
+    if (buttons.isEmpty) return const SizedBox.shrink();
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: buttons);
+  }
+
+  void _showTrackPicker({
+    required ThemeData theme,
+    required String title,
+    required List<Map<String, dynamic>> streams,
+    required int? activeIndex,
+    required bool allowOff,
+    required String command,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Text(title, style: theme.textTheme.titleMedium),
+            ),
+            if (allowOff)
+              ListTile(
+                leading: Icon(
+                  activeIndex == null || activeIndex < 0
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                ),
+                title: Text(AppLocalizations.of(context).off),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  sendGeneral(command, args: const {'Index': '-1'});
+                },
+              ),
+            for (final stream in streams)
+              ListTile(
+                leading: Icon(
+                  (stream['Index'] as num?)?.toInt() == activeIndex
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                ),
+                title: Text(
+                  (stream['DisplayTitle'] as String?) ??
+                      (stream['Language'] as String?) ??
+                      '?',
+                ),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  sendGeneral(
+                    command,
+                    args: {'Index': '${(stream['Index'] as num?)?.toInt()}'},
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showChapterPicker(ThemeData theme, List<Map<String, dynamic>> chapters) {
+    final l10n = AppLocalizations.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Text(l10n.chapters, style: theme.textTheme.titleMedium),
+            ),
+            for (final chapter in chapters)
+              ListTile(
+                leading: const Icon(Icons.bookmark_outline_rounded),
+                title: Text(
+                  (chapter['Name'] as String?)?.trim().isNotEmpty == true
+                      ? (chapter['Name'] as String).trim()
+                      : l10n.chapters,
+                ),
+                trailing: Text(
+                  _ticksToTime(
+                    (chapter['StartPositionTicks'] as num?)?.toInt() ?? 0,
+                  ),
+                  style: theme.textTheme.labelSmall,
+                ),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  sendPlayState(
+                    'Seek',
+                    seekTicks:
+                        (chapter['StartPositionTicks'] as num?)?.toInt() ?? 0,
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildDpad(ThemeData theme, AppLocalizations l10n) {
