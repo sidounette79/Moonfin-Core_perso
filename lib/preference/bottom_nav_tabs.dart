@@ -40,37 +40,99 @@ final Map<String, BottomNavTab> _byName = {
   for (final tab in BottomNavTab.values) tab.name.toLowerCase(): tab,
 };
 
-/// Reads a stored pin list. Unknown names, which a newer client may have
-/// synced, are dropped along with duplicates and anything past [maxPins].
-List<BottomNavTab> parsePinnedBottomNavTabs(
+// 06.11, Sid ("à la place de recherche, favoris etc... juste me donner le
+// choix de mettre à la place... jamais utilisé le bouton recherche"): a
+// pinned slot is either a fixed BottomNavTab, or one specific library -
+// unified so the same ordered list (and the same picker screen) can mix
+// both, and a library can take over any slot a tab would otherwise sit in.
+sealed class PinnedNavItem {
+  const PinnedNavItem();
+
+  /// Wire format for [UserPreferences.bottomNavbarTabs] - a BottomNavTab's
+  /// own name, or "lib:<id>" for a library. A tab's name is never allowed to
+  /// contain ':' (it's a Dart enum member name), so parsing back is
+  /// unambiguous.
+  String get wireValue;
+}
+
+class PinnedTab extends PinnedNavItem {
+  final BottomNavTab tab;
+  const PinnedTab(this.tab);
+
+  @override
+  String get wireValue => tab.name;
+
+  @override
+  bool operator ==(Object other) => other is PinnedTab && other.tab == tab;
+
+  @override
+  int get hashCode => tab.hashCode;
+
+  @override
+  String toString() => 'PinnedTab(${tab.name})';
+}
+
+class PinnedLibrary extends PinnedNavItem {
+  final String libraryId;
+  const PinnedLibrary(this.libraryId);
+
+  @override
+  String get wireValue => 'lib:$libraryId';
+
+  @override
+  bool operator ==(Object other) =>
+      other is PinnedLibrary && other.libraryId == libraryId;
+
+  @override
+  int get hashCode => libraryId.hashCode;
+
+  @override
+  String toString() => 'PinnedLibrary($libraryId)';
+}
+
+/// Reads a stored pin list. Unknown/malformed entries, which a newer client
+/// may have synced, are dropped along with duplicates and anything past
+/// [maxPins].
+List<PinnedNavItem> parsePinnedBottomNavTabs(
   String raw, {
   int maxPins = kDefaultMaxPinnedBottomNavTabs,
 }) {
-  final pins = <BottomNavTab>[];
+  final pins = <PinnedNavItem>[];
   for (final part in raw.split(',')) {
-    final tab = _byName[part.trim().toLowerCase()];
-    if (tab == null || pins.contains(tab)) continue;
-    pins.add(tab);
+    final trimmed = part.trim();
+    if (trimmed.isEmpty) continue;
+    PinnedNavItem? item;
+    if (trimmed.startsWith('lib:')) {
+      final id = trimmed.substring(4);
+      if (id.isNotEmpty) item = PinnedLibrary(id);
+    } else {
+      final tab = _byName[trimmed.toLowerCase()];
+      if (tab != null) item = PinnedTab(tab);
+    }
+    if (item == null || pins.contains(item)) continue;
+    pins.add(item);
     if (pins.length == maxPins) break;
   }
   return pins;
 }
 
 String serializePinnedBottomNavTabs(
-  Iterable<BottomNavTab> tabs, {
+  Iterable<PinnedNavItem> items, {
   int maxPins = kDefaultMaxPinnedBottomNavTabs,
 }) =>
-    tabs.take(maxPins).map((t) => t.name).join(',');
+    items.take(maxPins).map((i) => i.wireValue).join(',');
 
 /// Whether [raw] leaves the pins to be picked automatically. A list whose
-/// names are all unknown counts, so a profile from a newer client falls back
-/// to something sensible instead of an empty bar.
+/// entries are all unknown counts, so a profile from a newer client falls
+/// back to something sensible instead of an empty bar.
 bool isAutomaticBottomNavTabs(String raw) =>
     parsePinnedBottomNavTabs(raw).isEmpty;
 
 /// The settings that decide whether a [BottomNavTab] is on offer at all. Only
 /// preferences and plugin state feed it, never loaded data, so the pins and
-/// their colours don't shift while libraries are still loading.
+/// their colours don't shift while libraries are still loading. A pinned
+/// library's own existence is checked separately (resolveBarItems'
+/// availableLibraryIds) - this gate only concerns the fixed tabs.
 class BottomNavTabGates {
   final bool kidsMode;
   final bool showLibraries;
@@ -125,16 +187,24 @@ class BottomNavTabGates {
         BottomNavTab.remoteControl => !kidsMode,
       };
 
-  /// The tabs the bar shows between Home and You. Automatic pins follow the
-  /// nav button switches without anything being stored. Explicit pins are
-  /// only filtered, never topped up, so turning a button off doesn't slip an
-  /// unchosen tab onto the bar. [maxPins] caps both paths the same way.
-  List<BottomNavTab> resolvePins(
+  /// The items the bar shows between Home and You. Automatic pins follow the
+  /// nav button switches without anything being stored (always plain tabs -
+  /// an automatic pin never guesses a library). Explicit pins are only
+  /// filtered, never topped up, so turning a button off doesn't slip an
+  /// unchosen tab onto the bar. [maxPins] caps both paths the same way. A
+  /// pinned library always passes this gate - its real availability (does
+  /// it still exist) is checked downstream in resolveBarItems.
+  List<PinnedNavItem> resolvePins(
     String raw, {
     int maxPins = kDefaultMaxPinnedBottomNavTabs,
   }) {
     final explicit = parsePinnedBottomNavTabs(raw, maxPins: maxPins);
-    if (explicit.isNotEmpty) return explicit.where(offers).toList();
-    return _autoOrder.where(offers).take(maxPins).toList();
+    if (explicit.isNotEmpty) {
+      return explicit.where((item) {
+        if (item is PinnedTab) return offers(item.tab);
+        return true;
+      }).toList();
+    }
+    return _autoOrder.where(offers).map(PinnedTab.new).take(maxPins).toList();
   }
 }

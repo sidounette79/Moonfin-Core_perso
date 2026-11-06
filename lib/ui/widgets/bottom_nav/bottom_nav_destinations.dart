@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../data/models/aggregated_library.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../preference/bottom_nav_tabs.dart';
 import '../../../preference/preference_constants.dart';
 import '../../../preference/seerr_preferences.dart';
+import '../../../util/game_library.dart';
 import '../../navigation/destinations.dart';
 import '../../navigation/home_refresh_bus.dart';
 import '../../screens/downloads/downloads_panel.dart';
@@ -102,12 +104,15 @@ Widget bottomNavTabIconWidget(
 }
 
 /// What a bar style draws for [item]. The bar and the setup wizard's
-/// previews share it, so the previews show the real tabs.
+/// previews share it, so the previews show the real tabs. [libraries]
+/// resolves a BottomNavItemKind.library item's name/icon - only needed by
+/// callers that may actually have one pinned.
 BottomNavItemView bottomNavItemView(
   BottomNavBarItem item,
   AppLocalizations l10n, {
   required Widget Function(bool active, double size, Color color) avatar,
   int badge = 0,
+  Map<String, AggregatedLibrary> libraries = const {},
 }) {
   return switch (item.kind) {
     BottomNavItemKind.home => BottomNavItemView(
@@ -127,6 +132,21 @@ BottomNavItemView bottomNavItemView(
         icon: (active, size, color) => bottomNavTabIconWidget(
           item.tab!,
           active: active,
+          size: size,
+          color: color,
+        ),
+      ),
+    // 06.11, Sid ("à la place de recherche, favoris etc... juste me donner
+    // le choix de mettre à la place"): same icon the sidebar's own pinned-
+    // library row already uses (iconForCollectionType) - no game-library
+    // special case needed, isGameLibrary() is always false on the
+    // platforms this bar renders on.
+    BottomNavItemKind.library => BottomNavItemView(
+        id: item.id,
+        label: libraries[item.libraryId]?.name ?? item.libraryId!,
+        slot: item.slot,
+        icon: (active, size, color) => AdaptiveIcon(
+          iconForCollectionType(libraries[item.libraryId]?.collectionType ?? ''),
           size: size,
           color: color,
         ),
@@ -160,6 +180,23 @@ void openBottomNavTab(BuildContext context, BottomNavTab tab) {
   };
   if (route == null) return;
   context.navigateTopLevel(route);
+}
+
+/// Opens a pinned library's own screen - same route-picking logic
+/// (libraryRoute) already used by the sidebar's pinned-library row. A no-op
+/// if the library isn't in [libraries] (deleted/unreachable since it was
+/// pinned - resolveBarItems already drops it from the bar itself, this is
+/// just defence against a stale tap).
+void openPinnedLibrary(
+  BuildContext context,
+  String libraryId,
+  Map<String, AggregatedLibrary> libraries,
+) {
+  final lib = libraries[libraryId];
+  if (lib == null) return;
+  context.navigateTopLevel(
+    libraryRoute(lib.id, lib.collectionType, lib.name, serverId: lib.serverId),
+  );
 }
 
 /// Home refreshes when tapped where it already is, and asks for a refresh on

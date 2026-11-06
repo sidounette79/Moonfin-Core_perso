@@ -188,6 +188,11 @@ class _BottomNavbarState extends State<BottomNavbar> {
         } else if (!bottomNavTabMatchesRoute(tab, route)) {
           openBottomNavTab(context, tab);
         }
+      case BottomNavItemKind.library:
+        final libraryId = item.libraryId!;
+        if (!bottomNavLibraryMatchesRoute(libraryId, route)) {
+          openPinnedLibrary(context, libraryId, _controller.librariesById);
+        }
       case BottomNavItemKind.you:
         showYouHub(
           context: context,
@@ -210,6 +215,7 @@ class _BottomNavbarState extends State<BottomNavbar> {
           item,
           l10n,
           badge: _controller.unreadMessages,
+          libraries: _controller.librariesById,
           avatar: (active, size, color) => BottomNavAvatar(
             imageUrl: _controller.userImageUrl,
             name: _controller.userName,

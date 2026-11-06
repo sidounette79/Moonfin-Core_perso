@@ -114,12 +114,20 @@ class BottomNavController extends ChangeNotifier {
       .get(UserPreferences.maxPinnedBottomNavTabs)
       .clamp(1, kMaxPinnedBottomNavTabsCeiling);
 
+  // 06.11, Sid ("à la place de recherche, favoris etc..."): looked up by id
+  // both to resolve a pinned library's name/icon (bottomNavItemView) and to
+  // tell resolveBarItems which pinned libraries still exist.
+  Map<String, AggregatedLibrary> get librariesById => {
+        for (final lib in _libraries) lib.id: lib,
+      };
+
   List<BottomNavBarItem> barItems() => resolveBarItems(
         gates,
         _prefs.get(UserPreferences.bottomNavbarTabs),
         withoutSearch: style == BottomNavbarStyle.split,
         isAvailable: isAvailable,
         maxPins: maxPins,
+        availableLibraryIds: librariesById.keys.toSet(),
       );
 
   List<BottomNavHubTile> hubTiles() {

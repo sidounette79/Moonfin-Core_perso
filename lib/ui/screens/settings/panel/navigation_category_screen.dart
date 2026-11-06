@@ -44,7 +44,16 @@ class _NavigationCategoryScreenState extends State<_NavigationCategoryScreen> {
           .get(UserPreferences.maxPinnedBottomNavTabs)
           .clamp(1, kMaxPinnedBottomNavTabsCeiling),
     );
-    final labels = pins.map((t) => bottomNavTabLabel(l10n, t)).join(', ');
+    // 06.11, Sid ("choisir des bibliothèques spécifiques"): a pinned
+    // library shows as the generic "Libraries" label here - a specific
+    // name would need an async library lookup this one-line settings
+    // summary isn't worth adding just for that.
+    final labels = pins
+        .map((item) => switch (item) {
+              PinnedTab(tab: final t) => bottomNavTabLabel(l10n, t),
+              PinnedLibrary() => l10n.libraries,
+            })
+        .join(', ');
     if (!isAutomaticBottomNavTabs(raw)) return labels;
     return [l10n.bottomNavbarTabsAutomatic, if (labels.isNotEmpty) labels]
         .join(' · ');

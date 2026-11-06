@@ -20,7 +20,9 @@ import '../../../data/services/achievements_service.dart';
 import '../../../data/services/auto_download_service.dart';
 import '../../../data/services/plugin_sync_service.dart';
 import '../../../data/services/custom_external_lists_service.dart';
+import '../../../data/models/aggregated_library.dart';
 import '../../../data/models/media_segment.dart';
+import '../../../data/repositories/user_views_repository.dart';
 import '../../../data/utils/media_segment_actions.dart';
 import '../../../data/repositories/seerr_repository.dart';
 import '../../../di/providers.dart';
@@ -35,6 +37,7 @@ import '../../../util/locale_names.dart';
 import '../../util/home_row_title_localizer.dart';
 import '../../../util/overlay_color_palette.dart';
 import '../../../util/game_cores.dart';
+import '../../../util/game_library.dart';
 import '../../../util/platform_detection.dart';
 import '../../../util/playback_time_label.dart';
 import '../../../util/tv_image_cache_stub.dart'

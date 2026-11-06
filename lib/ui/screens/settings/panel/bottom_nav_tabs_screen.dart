@@ -1,8 +1,9 @@
 part of '../settings_side_panel.dart';
 
-/// Which tabs sit between Home and You on the mobile bottom navbar. Until the
-/// user pins something the bar picks them from the nav button switches, and
-/// this screen shows that choice as the starting point.
+/// Which tabs (or specific libraries) sit between Home and You on the
+/// mobile bottom navbar. Until the user pins something the bar picks tabs
+/// from the nav button switches, and this screen shows that choice as the
+/// starting point.
 class _BottomNavTabsScreen extends StatefulWidget {
   const _BottomNavTabsScreen();
 
@@ -12,6 +13,31 @@ class _BottomNavTabsScreen extends StatefulWidget {
 
 class _BottomNavTabsScreenState extends State<_BottomNavTabsScreen> {
   final _prefs = GetIt.instance<UserPreferences>();
+  final _viewsRepo = GetIt.instance<UserViewsRepository>();
+
+  // 06.11, Sid ("à la place de recherche, favoris etc... juste me donner
+  // le choix de mettre à la place... je n'ai jamais utilisé le bouton
+  // recherche"): same load pattern as LibraryVisibilityScreen - needed
+  // here only to list libraries as pinnable candidates, not to change
+  // their visibility.
+  List<AggregatedLibrary>? _libraries;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final libraries = await _viewsRepo.getAllViewsIncludingHidden();
+      if (!mounted) return;
+      setState(() => _libraries = libraries);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _libraries = const []);
+    }
+  }
 
   BottomNavTabGates get _gates => BottomNavTabGates.fromPreferences(
         _prefs,
@@ -30,11 +56,11 @@ class _BottomNavTabsScreenState extends State<_BottomNavTabsScreen> {
 
   // Explicit pins are listed even when their switch is off, so the user can
   // see why a tab went missing from the bar.
-  List<BottomNavTab> get _pinned => _automatic
+  List<PinnedNavItem> get _pinned => _automatic
       ? _gates.resolvePins(_raw, maxPins: _maxPins)
       : parsePinnedBottomNavTabs(_raw, maxPins: _maxPins);
 
-  Future<void> _write(List<BottomNavTab> pins) async {
+  Future<void> _write(List<PinnedNavItem> pins) async {
     await _prefs.set(
       UserPreferences.bottomNavbarTabs,
       serializePinnedBottomNavTabs(pins, maxPins: _maxPins),
@@ -64,10 +90,49 @@ class _BottomNavTabsScreenState extends State<_BottomNavTabsScreen> {
     if (mounted) setState(() {});
   }
 
-  void _move(List<BottomNavTab> pins, int from, int to) {
+  void _move(List<PinnedNavItem> pins, int from, int to) {
     final next = [...pins];
     next.insert(to, next.removeAt(from));
     _write(next);
+  }
+
+  // Whether this pin's underlying thing (a tab's own setting, or the
+  // library it names) is still actually turned on/present.
+  bool _enabled(PinnedNavItem item, BottomNavTabGates gates) => switch (item) {
+        PinnedTab(tab: final t) => gates.offers(t),
+        PinnedLibrary(libraryId: final id) =>
+          (_libraries ?? const []).any((lib) => lib.id == id),
+      };
+
+  String _label(PinnedNavItem item, AppLocalizations l10n) => switch (item) {
+        PinnedTab(tab: final t) => bottomNavTabLabel(l10n, t),
+        PinnedLibrary(libraryId: final id) =>
+          (_libraries ?? const [])
+                  .cast<AggregatedLibrary?>()
+                  .firstWhere((lib) => lib?.id == id, orElse: () => null)
+                  ?.name ??
+              id,
+      };
+
+  Widget _icon(PinnedNavItem item, ThemeData theme, {required bool enabled}) {
+    final color = enabled
+        ? theme.colorScheme.onSurface
+        : theme.colorScheme.onSurface.withValues(alpha: 0.38);
+    return switch (item) {
+      PinnedTab(tab: final t) =>
+        bottomNavTabIconWidget(t, active: false, size: 24, color: color),
+      PinnedLibrary(libraryId: final id) => Icon(
+          iconForCollectionType(
+            (_libraries ?? const [])
+                    .cast<AggregatedLibrary?>()
+                    .firstWhere((lib) => lib?.id == id, orElse: () => null)
+                    ?.collectionType ??
+                '',
+          ),
+          size: 24,
+          color: color,
+        ),
+    };
   }
 
   @override
@@ -83,16 +148,12 @@ class _BottomNavTabsScreenState extends State<_BottomNavTabsScreen> {
     final full = pinned.length >= maxPins;
     final split = _prefs.get(UserPreferences.bottomNavbarStyle) ==
         BottomNavbarStyle.split;
-
-    Widget icon(BottomNavTab tab, {required bool enabled}) =>
-        bottomNavTabIconWidget(
-          tab,
-          active: false,
-          size: 24,
-          color: enabled
-              ? theme.colorScheme.onSurface
-              : theme.colorScheme.onSurface.withValues(alpha: 0.38),
-        );
+    final pinnedLibraryIds = pinned
+        .whereType<PinnedLibrary>()
+        .map((p) => p.libraryId)
+        .toSet();
+    final availableLibraries =
+        (_libraries ?? const []).where((lib) => !pinnedLibraryIds.contains(lib.id));
 
     return withCleanSettingsTypography(
       context,
@@ -153,9 +214,10 @@ class _BottomNavTabsScreenState extends State<_BottomNavTabsScreen> {
               children: [
                 for (var i = 0; i < pinned.length; i++)
                   ListTile(
-                    leading: icon(pinned[i], enabled: gates.offers(pinned[i])),
-                    title: Text(bottomNavTabLabel(l10n, pinned[i])),
-                    subtitle: gates.offers(pinned[i])
+                    leading: _icon(pinned[i], theme,
+                        enabled: _enabled(pinned[i], gates)),
+                    title: Text(_label(pinned[i], l10n)),
+                    subtitle: _enabled(pinned[i], gates)
                         ? null
                         : Text(l10n.bottomNavbarTabTurnedOff),
                     trailing: Row(
@@ -175,7 +237,7 @@ class _BottomNavTabsScreenState extends State<_BottomNavTabsScreen> {
                               ? null
                               : () => _move(pinned, i, i + 1),
                         ),
-                        // The bar always keeps one tab between Home and You.
+                        // The bar always keeps one item between Home and You.
                         IconButton(
                           tooltip: l10n.remove,
                           icon: const Icon(Icons.remove_circle_outline),
@@ -197,19 +259,44 @@ class _BottomNavTabsScreenState extends State<_BottomNavTabsScreen> {
             adaptiveListSection(
               children: [
                 for (final tab in BottomNavTab.values)
-                  if (!pinned.contains(tab))
+                  if (!pinned.contains(PinnedTab(tab)))
                     ListTile(
                       enabled: gates.offers(tab) && !full,
-                      leading: icon(tab, enabled: gates.offers(tab) && !full),
+                      leading: _icon(PinnedTab(tab), theme,
+                          enabled: gates.offers(tab) && !full),
                       title: Text(bottomNavTabLabel(l10n, tab)),
                       subtitle: gates.offers(tab)
                           ? null
                           : Text(l10n.bottomNavbarTabTurnedOff),
                       trailing: const Icon(Icons.push_pin_outlined),
-                      onTap: () => _write([...pinned, tab]),
+                      onTap: () => _write([...pinned, PinnedTab(tab)]),
                     ),
               ],
             ),
+            // 06.11, Sid ("à la place de recherche, favoris etc... choisir
+            // des bibliothèques spécifiques"): every library not already
+            // pinned, listed the same way a BottomNavTab is above - picking
+            // one takes any free slot, same as a tab would.
+            if (_libraries == null)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (availableLibraries.isNotEmpty) ...[
+              _SectionHeader(l10n.bottomNavbarTabsLibraries),
+              adaptiveListSection(
+                children: [
+                  for (final lib in availableLibraries)
+                    ListTile(
+                      enabled: !full,
+                      leading: _icon(PinnedLibrary(lib.id), theme, enabled: !full),
+                      title: Text(lib.name),
+                      trailing: const Icon(Icons.push_pin_outlined),
+                      onTap: () => _write([...pinned, PinnedLibrary(lib.id)]),
+                    ),
+                ],
+              ),
+            ],
             if (!_automatic)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
