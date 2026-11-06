@@ -16,6 +16,7 @@ import 'server_messages_service.dart';
 import 'storage_path_service.dart';
 import 'synced_fields.dart';
 import '../../ui/widgets/navigation_layout.dart';
+import '../../preference/device_local_overrides.dart';
 import '../../preference/home_section_config.dart';
 import '../../preference/preference_constants.dart' as prefs;
 import '../../preference/seerr_preferences.dart';
@@ -50,6 +51,8 @@ class PluginSyncService extends ChangeNotifier {
   final Dio _dio;
 
   SeerrPreferences get _seerrPrefs => GetIt.instance<SeerrPreferences>();
+  DeviceLocalOverrides get _deviceLocalOverrides =>
+      GetIt.instance<DeviceLocalOverrides>();
 
   /// Null when the app has not registered it yet, which is the case in tests
   /// that only exercise settings sync.
@@ -1010,6 +1013,14 @@ class PluginSyncService extends ChangeNotifier {
       // typed here, so wiping them would stop ratings loading with nothing the
       // user could do about it.
       if (field.receiveOnly) continue;
+      // 06.11, Sid ("je voudrais juste pour la barre de navigation [que ce
+      // soit par appareil]"): a field overridden on THIS device keeps its
+      // local value through a reset/profile-switch too, not just through
+      // an ordinary pull - see DeviceLocalOverrides.
+      if (field.canBeDeviceLocal &&
+          _deviceLocalOverrides.isOverridden(field.serverKey)) {
+        continue;
+      }
       await _prefs.removePreference(field.pref);
     }
 
@@ -1378,6 +1389,16 @@ class PluginSyncService extends ChangeNotifier {
     // the send and receive directions can't drift apart. The settings that need
     // real logic follow below.
     for (final field in syncedFields) {
+      // 06.11, Sid ("là, quand je change sur un, ca change instantanément
+      // les autres... je voudrais juste pour la barre de navigation [que
+      // ce soit par appareil]"): the field she wants exempt on her box
+      // voiture - this is the site that actually matters, since it's the
+      // one that would otherwise overwrite her local choice every time a
+      // sync pulls the shared profile's value back down.
+      if (field.canBeDeviceLocal &&
+          _deviceLocalOverrides.isOverridden(field.serverKey)) {
+        continue;
+      }
       _applySyncedField(resolved, field);
     }
 
@@ -1947,7 +1968,14 @@ class PluginSyncService extends ChangeNotifier {
       // per-device push doesn't also freeze a stale device-local copy that
       // would then outrank the global value when profiles resolve.
       for (final field in syncedFields)
-        if (!field.receiveOnly && !field.alwaysGlobal)
+        if (!field.receiveOnly &&
+            !field.alwaysGlobal &&
+            // 06.11, Sid: a field overridden on this device never pushes
+            // its local value up either - otherwise this device would
+            // overwrite the shared profile with its own local choice, and
+            // every OTHER device on that profile would see it change too.
+            !(field.canBeDeviceLocal &&
+                _deviceLocalOverrides.isOverridden(field.serverKey)))
           field.serverKey: _encodeSyncedField(field),
       'sinceYouWatchedNumRows': _prefs.get(UserPreferences.sinceYouWatchedNumRows).value,
       'mediaBarEnabled': mediaBarEnabled,

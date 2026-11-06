@@ -55,6 +55,7 @@ import '../../data/viewmodels/media_bar_view_model.dart';
 import '../../data/viewmodels/seerr_discover_view_model.dart';
 import '../../playback/external_player_service.dart';
 import '../../preference/bazarr_preferences.dart';
+import '../../preference/device_local_overrides.dart';
 import '../../preference/remote_control_preferences.dart';
 import '../../preference/seerr_preferences.dart';
 import '../../preference/user_preferences.dart';
@@ -201,6 +202,9 @@ void registerAppModule() {
       _getIt<PreferenceStore>(),
       _getIt<SessionRepository>(),
     ),
+  );
+  _getIt.registerLazySingleton(
+    () => DeviceLocalOverrides(_getIt<PreferenceStore>()),
   );
   _getIt.registerLazySingleton(
     () => BazarrService(_getIt<BazarrPreferences>()),

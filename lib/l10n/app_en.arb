@@ -5530,6 +5530,8 @@
   "@navigationStyle": {
     "description": "Setting for navigation style"
   },
+  "navigationStyleDeviceLocal": "Keep this setting local to this device",
+  "navigationStyleDeviceLocalSubtitle": "Will no longer sync with your other devices",
   "topBar": "Top Bar",
   "@topBar": {
     "description": "Navigation style: top bar"

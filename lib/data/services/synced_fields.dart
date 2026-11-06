@@ -54,6 +54,7 @@ class SyncedField {
     this.receiveOnly = false,
     this.fallbackInt,
     this.alwaysGlobal = false,
+    this.canBeDeviceLocal = false,
   });
 
   /// Key used in the profile JSON. It often differs from the local preference name.
@@ -85,6 +86,17 @@ class SyncedField {
   /// PluginSyncService.pushSettingsForProfile), which every device profile
   /// already inherits from via /Settings/Resolved/$profile server-side.
   final bool alwaysGlobal;
+
+  /// 06.11, Sid ("je voudrais juste pour la barre de navigation [que ce
+  /// soit par appareil]"): a field marked true here MAY be opted out of
+  /// sync on a single device via DeviceLocalOverrides, kept independent
+  /// from its normal per-profile value. Opt-in per field (not every
+  /// setting makes sense pinned to one physical device) and opt-in per
+  /// device (most devices on the same profile should keep syncing
+  /// normally) - see PluginSyncService's three call sites that check
+  /// DeviceLocalOverrides.isOverridden(serverKey) before reading or
+  /// writing a field marked true here.
+  final bool canBeDeviceLocal;
 }
 
 /// Every field carried through the generic sync path.
@@ -116,7 +128,7 @@ final List<SyncedField> syncedFields = <SyncedField>[
   SyncedField('customThemeId', UserPreferences.customThemeId, SyncCodec.text),
   SyncedField('customFontFamily', UserPreferences.customFontFamily, SyncCodec.enumName, enumValues: prefs.CustomFontFamily.values),
   SyncedField('oledMode', UserPreferences.oledMode, SyncCodec.enumName, enumValues: prefs.OledMode.values),
-  SyncedField('navbarPosition', UserPreferences.navbarPosition, SyncCodec.enumName, enumValues: NavigationLayout.availableNavbarPositions),
+  SyncedField('navbarPosition', UserPreferences.navbarPosition, SyncCodec.enumName, enumValues: NavigationLayout.availableNavbarPositions, canBeDeviceLocal: true),
   SyncedField('bottomNavbarStyle', UserPreferences.bottomNavbarStyle, SyncCodec.enumName, enumValues: prefs.BottomNavbarStyle.values),
   SyncedField('bottomNavbarTabs', UserPreferences.bottomNavbarTabs, SyncCodec.csvList),
   // 30.09, Sid: "je dois refaire sur chaque appareil" - same alwaysGlobal

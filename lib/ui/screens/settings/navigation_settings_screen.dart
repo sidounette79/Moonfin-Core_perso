@@ -3,6 +3,7 @@ import 'package:get_it/get_it.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../../data/services/plugin_sync_service.dart';
+import '../../../preference/device_local_overrides.dart';
 import '../../../preference/preference_constants.dart';
 import '../../../preference/user_preferences.dart';
 import '../../../util/overlay_color_palette.dart';
@@ -26,7 +27,14 @@ class NavigationSettingsScreen extends StatefulWidget {
 
 class _NavigationSettingsScreenState extends State<NavigationSettingsScreen> {
   final _prefs = GetIt.instance<UserPreferences>();
+  final _deviceLocalOverrides = GetIt.instance<DeviceLocalOverrides>();
   bool _navbarNormalizeQueued = false;
+
+  // 06.11, Sid ("je voudrais juste pour la barre de navigation [que ce
+  // soit par appareil]"): must match the serverKey given to navbarPosition
+  // in synced_fields.dart - not reused from there directly to avoid
+  // importing the whole sync table into a settings screen for one string.
+  static const _navbarPositionServerKey = 'navbarPosition';
 
   void _pushSync() {
     final syncService = GetIt.instance<PluginSyncService>();
@@ -85,6 +93,29 @@ class _NavigationSettingsScreenState extends State<NavigationSettingsScreen> {
                     _prefs.set(UserPreferences.navbarPosition, newPos);
                     _pushSync();
                     NavigationLayout.positionNotifier.value = newPos;
+                    setState(() {});
+                  },
+                ),
+                // 06.11, Sid ("là, quand je change sur un, ca change
+                // instantanément les autres... je voudrais juste pour la
+                // barre de navigation"): her 3 TVs all share the 'tv' sync
+                // profile, so this is normally pushed to every one of
+                // them. Flipping this on THIS device stops it both ways
+                // (never receives, never pushes this one field) - her
+                // other TVs on the same profile keep syncing normally
+                // between themselves.
+                SwitchListTile(
+                  secondary: const Icon(Icons.phonelink_lock_outlined),
+                  title: Text(l10n.navigationStyleDeviceLocal),
+                  subtitle: Text(l10n.navigationStyleDeviceLocalSubtitle),
+                  value: _deviceLocalOverrides.isOverridden(
+                    _navbarPositionServerKey,
+                  ),
+                  onChanged: (value) async {
+                    await _deviceLocalOverrides.setOverridden(
+                      _navbarPositionServerKey,
+                      value,
+                    );
                     setState(() {});
                   },
                 ),
