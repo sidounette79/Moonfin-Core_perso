@@ -4,8 +4,10 @@ import 'package:moonfin_design/moonfin_design.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../preference/bottom_nav_tabs.dart';
 import '../../../preference/preference_constants.dart';
+import '../../../util/platform_detection.dart';
 import '../../screens/settings/settings_side_panel.dart';
 import '../adaptive/sf_symbol.dart';
+import '../remote_control_dialog.dart';
 import '../server_messages_dialog.dart';
 import '../settings/settings_panel.dart';
 import '../user_menu_dialog.dart';
@@ -64,6 +66,8 @@ Future<void> showYouHub({
               }
             }),
             onMessages: () => then(() => showServerMessagesDialog(context)),
+            onRemoteControl: () =>
+                then(() => showRemoteControlDialog(context)),
             onSettings: () => then(
               () => SettingsPanel.open(context, const SettingsSidePanel()),
             ),
@@ -82,6 +86,7 @@ class _YouHub extends StatelessWidget {
   final VoidCallback onAccount;
   final ValueChanged<BottomNavHubTile> onTile;
   final VoidCallback onMessages;
+  final VoidCallback onRemoteControl;
   final VoidCallback onSettings;
 
   const _YouHub({
@@ -90,6 +95,7 @@ class _YouHub extends StatelessWidget {
     required this.onAccount,
     required this.onTile,
     required this.onMessages,
+    required this.onRemoteControl,
     required this.onSettings,
   });
 
@@ -199,6 +205,21 @@ class _YouHub extends StatelessWidget {
                     theme: theme,
                     trailing: _countBadge(),
                     onTap: onMessages,
+                  ),
+                // 06.11, Sid ("remplacer ma remote home assistant" /
+                // "je trouve pas dans le menu"): the remote-control
+                // dialog was only reachable through the "Compte" sub-
+                // menu (showUserMenu, see user_menu_dialog.dart) - this
+                // hub (the actual "Vous" tab she was looking at) never
+                // had a direct entry for it. Hidden on the TV being
+                // controlled, same as there - no point remote-
+                // controlling itself.
+                if (!PlatformDetection.isTV)
+                  _HubRow(
+                    icon: Icons.settings_remote_rounded,
+                    label: l10n.remoteControlTitle,
+                    theme: theme,
+                    onTap: onRemoteControl,
                   ),
                 _HubRow(
                   icon: Icons.settings_rounded,
