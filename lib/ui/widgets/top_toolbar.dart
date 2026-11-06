@@ -31,6 +31,7 @@ import 'downloads_nav_slot.dart';
 import 'expandable_icon_button.dart';
 import 'overlay_sheet.dart';
 import 'navigation_layout.dart';
+import 'remote_control_screen.dart';
 import 'settings/settings_panel.dart';
 import '../screens/downloads/downloads_panel.dart';
 import '../screens/settings/settings_side_panel.dart';
@@ -119,6 +120,9 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
   final _settingsFocus = FocusNode(debugLabel: 'TopToolbarSettings');
   final _serverMessagesFocus = FocusNode(
     debugLabel: 'TopToolbarServerMessages',
+  );
+  final _remoteControlFocus = FocusNode(
+    debugLabel: 'TopToolbarRemoteControl',
   );
   final _inlineLibrariesTriggerFocus = FocusNode(
     debugLabel: 'TopToolbarInlineLibrariesTrigger',
@@ -245,6 +249,7 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
     _homeFocus.dispose();
     _settingsFocus.dispose();
     _serverMessagesFocus.dispose();
+    _remoteControlFocus.dispose();
     _inlineLibrariesTriggerFocus.dispose();
     _musicBarFocusNode.dispose();
     _userSub?.cancel();
@@ -1208,6 +1213,21 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
                     label: l10n.serverMessages,
                   ),
                 ),
+              // 06.11, Sid ("un onglet purement telecommande, accessible
+              // depuis la page d'accueil") - quick full-screen entry point
+              // next to Settings, so controlling another TV doesn't need
+              // the account sub-menu (showUserMenu still has the original
+              // bottom-sheet dialog too). Hidden on the TV being
+              // controlled, same as the account-menu button.
+              if (!PlatformDetection.isTV)
+                _orderButton(
+                  order: 98.5,
+                  child: _buildRemoteControlButton(
+                    navColor: nextNavColor(),
+                    alwaysExpanded: alwaysExpanded,
+                    label: l10n.remoteControlTitle,
+                  ),
+                ),
               _orderButton(
                 order: 99,
                 child: ExpandableIconButton(
@@ -1376,6 +1396,34 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
           _gap(),
         ],
       ),
+    );
+  }
+
+  /// 06.11, Sid ("un onglet purement telecommande, accessible depuis la
+  /// page d'accueil"): opens the full-screen quick remote (RemoteControlScreen)
+  /// the same way Settings opens its own panel, right next to it.
+  Widget _buildRemoteControlButton({
+    required Color? navColor,
+    required bool alwaysExpanded,
+    required String label,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ExpandableIconButton(
+          key: const ValueKey('toolbar_remote_control'),
+          forceExpanded: alwaysExpanded,
+          icon: Icons.settings_remote_rounded,
+          label: label,
+          baseColor: navColor,
+          focusNode: _remoteControlFocus,
+          onPressed: () async {
+            await SettingsPanel.open(context, const RemoteControlScreen());
+            if (mounted) _remoteControlFocus.requestFocus();
+          },
+        ),
+        _gap(),
+      ],
     );
   }
 

@@ -6098,6 +6098,17 @@
     "remoteFailedToLoadSessions": "Échec du chargement des sessions",
     "remoteNoSessions": "Aucune session contrôlable",
     "remoteStartPlayback": "Démarrer la lecture sur un autre appareil",
+    "remoteSelectATv": "Sélectionnez une TV ci-dessus",
+    "remoteEditTvs": "Modifier mes TV",
+    "remoteOffline": "Hors ligne",
+    "remoteChooseTvs": "Choisissez jusqu'à {count} appareils",
+    "@remoteChooseTvs": {
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
+        }
+    },
     "unknownUser": "Inconnu",
     "unknownItem": "Inconnu",
     "remoteNothingPlaying": "Rien n'est en cours de lecture sur cette session",

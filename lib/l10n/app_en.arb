@@ -9330,6 +9330,17 @@
   "remoteFailedToLoadSessions": "Failed to load sessions",
   "remoteNoSessions": "No controllable sessions",
   "remoteStartPlayback": "Start playback on another device",
+  "remoteSelectATv": "Select a TV above",
+  "remoteEditTvs": "Edit my TVs",
+  "remoteOffline": "Offline",
+  "remoteChooseTvs": "Choose up to {count} devices",
+  "@remoteChooseTvs": {
+      "placeholders": {
+          "count": {
+              "type": "int"
+          }
+      }
+  },
   "unknownUser": "Unknown",
   "unknownItem": "Unknown",
   "remoteNothingPlaying": "Nothing playing on this session",

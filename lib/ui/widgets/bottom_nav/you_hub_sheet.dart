@@ -7,7 +7,7 @@ import '../../../preference/preference_constants.dart';
 import '../../../util/platform_detection.dart';
 import '../../screens/settings/settings_side_panel.dart';
 import '../adaptive/sf_symbol.dart';
-import '../remote_control_dialog.dart';
+import '../remote_control_screen.dart';
 import '../server_messages_dialog.dart';
 import '../settings/settings_panel.dart';
 import '../user_menu_dialog.dart';
@@ -67,7 +67,12 @@ Future<void> showYouHub({
             }),
             onMessages: () => then(() => showServerMessagesDialog(context)),
             onRemoteControl: () =>
-                then(() => showRemoteControlDialog(context)),
+                then(
+                  () => SettingsPanel.open(
+                    context,
+                    const RemoteControlScreen(),
+                  ),
+                ),
             onSettings: () => then(
               () => SettingsPanel.open(context, const SettingsSidePanel()),
             ),
