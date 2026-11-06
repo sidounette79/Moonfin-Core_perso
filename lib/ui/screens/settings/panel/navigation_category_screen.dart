@@ -103,6 +103,24 @@ class _NavigationCategoryScreenState extends State<_NavigationCategoryScreen> {
                   _pushPersonalizationSync();
                 },
               ),
+              // 06.11, Sid ("là, quand je change sur un, ca change
+              // instantanément les autres... je voudrais juste pour la
+              // barre de navigation") - was first added to
+              // navigation_settings_screen.dart, a screen that turned out
+              // to be dead code (never pushed from anywhere) - moved to
+              // the screen actually reachable from Paramètres > Navigation.
+              SwitchListTile(
+                secondary: const Icon(Icons.phonelink_lock_outlined),
+                title: Text(l10n.navigationStyleDeviceLocal),
+                subtitle: Text(l10n.navigationStyleDeviceLocalSubtitle),
+                value: GetIt.instance<DeviceLocalOverrides>()
+                    .isOverridden('navbarPosition'),
+                onChanged: (value) async {
+                  await GetIt.instance<DeviceLocalOverrides>()
+                      .setOverridden('navbarPosition', value);
+                  setState(() {});
+                },
+              ),
               // The picker above writes through its own binding, so this
               // watches the preferences to follow it.
               ListenableBuilder(
