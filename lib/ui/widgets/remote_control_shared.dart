@@ -338,37 +338,18 @@ mixin RemoteControlSessionMixin<T extends StatefulWidget> on State<T> {
           label: l10n.home,
           onTap: () => sendGeneral('GoHome'),
         ),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RemoteDpadButton(
-              icon: Icons.keyboard_arrow_up_rounded,
-              onTap: () => sendGeneral('MoveUp'),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                RemoteDpadButton(
-                  icon: Icons.keyboard_arrow_left_rounded,
-                  onTap: () => sendGeneral('MoveLeft'),
-                ),
-                const SizedBox(width: 6),
-                RemotePrimaryTransportButton(
-                  icon: Icons.check_rounded,
-                  onTap: () => sendGeneral('Select'),
-                ),
-                const SizedBox(width: 6),
-                RemoteDpadButton(
-                  icon: Icons.keyboard_arrow_right_rounded,
-                  onTap: () => sendGeneral('MoveRight'),
-                ),
-              ],
-            ),
-            RemoteDpadButton(
-              icon: Icons.keyboard_arrow_down_rounded,
-              onTap: () => sendGeneral('MoveDown'),
-            ),
-          ],
+        // 06.11, Sid ("un vrai carré avec les mouvements au doigts... si
+        // mon doigt va à droite, ca decale la cellule vers la droite"):
+        // one swipe = one step, not a continuous drag repeating MoveUp/
+        // etc. while the finger moves - see RemoteSwipePad.
+        RemoteSwipePad(
+          onSwipe: (direction) => sendGeneral(switch (direction) {
+            _SwipeDirection.up => 'MoveUp',
+            _SwipeDirection.down => 'MoveDown',
+            _SwipeDirection.left => 'MoveLeft',
+            _SwipeDirection.right => 'MoveRight',
+          }),
+          onTap: () => sendGeneral('Select'),
         ),
         RemoteControlButton(
           icon: Icons.arrow_back_rounded,
@@ -727,28 +708,72 @@ class RemotePrimaryTransportButton extends StatelessWidget {
   }
 }
 
-// 06.11, Sid ("remplacer ma remote home assistant"): the D-pad's four
-// direction buttons - same InkResponse-on-bare-icon pattern as
-// RemoteTransportButton above, just square-ish and smaller so the 3x3
-// cross layout stays compact.
-class RemoteDpadButton extends StatelessWidget {
-  final IconData icon;
+enum _SwipeDirection { up, down, left, right }
+
+// 06.11, Sid ("un vrai carré avec les mouvements au doigts... si mon doigt
+// va à droite, ca decale la cellule vers la droite"): one discrete swipe
+// = one MoveUp/Down/Left/Right, same as a real Android TV remote's
+// trackpad in practice - not a continuous drag repeating the command
+// while the finger moves (the API only has discrete steps, no absolute
+// cursor position to track). A short tap (below the swipe threshold)
+// selects instead, same as tapping a real trackpad.
+class RemoteSwipePad extends StatefulWidget {
+  final ValueChanged<_SwipeDirection> onSwipe;
   final VoidCallback onTap;
 
-  const RemoteDpadButton({super.key, required this.icon, required this.onTap});
+  const RemoteSwipePad({
+    super.key,
+    required this.onSwipe,
+    required this.onTap,
+  });
+
+  @override
+  State<RemoteSwipePad> createState() => _RemoteSwipePadState();
+}
+
+class _RemoteSwipePadState extends State<RemoteSwipePad> {
+  Offset _dragTotal = Offset.zero;
+
+  // Below this many logical pixels of total movement, a gesture is a tap
+  // (a perfectly still finger lifting off a touchscreen is rare), not an
+  // attempted swipe.
+  static const double _swipeThreshold = 20;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Material(
-      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Icon(icon, size: 24, color: theme.colorScheme.onSurface),
+    return GestureDetector(
+      onPanStart: (_) => _dragTotal = Offset.zero,
+      onPanUpdate: (details) => _dragTotal += details.delta,
+      onPanEnd: (_) {
+        final dx = _dragTotal.dx;
+        final dy = _dragTotal.dy;
+        if (dx.abs() < _swipeThreshold && dy.abs() < _swipeThreshold) {
+          widget.onTap();
+          return;
+        }
+        widget.onSwipe(
+          dx.abs() > dy.abs()
+              ? (dx > 0 ? _SwipeDirection.right : _SwipeDirection.left)
+              : (dy > 0 ? _SwipeDirection.down : _SwipeDirection.up),
+        );
+      },
+      child: Container(
+        width: 148,
+        height: 148,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+          borderRadius: AppRadius.circular(20),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.check_rounded,
+            size: 32,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
         ),
       ),
     );
