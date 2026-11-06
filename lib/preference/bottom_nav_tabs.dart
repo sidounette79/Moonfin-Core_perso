@@ -49,7 +49,7 @@ sealed class PinnedNavItem {
   const PinnedNavItem();
 
   /// Wire format for [UserPreferences.bottomNavbarTabs] - a BottomNavTab's
-  /// own name, or "lib:<id>" for a library. A tab's name is never allowed to
+  /// own name, or `lib:<id>` for a library. A tab's name is never allowed to
   /// contain ':' (it's a Dart enum member name), so parsing back is
   /// unambiguous.
   String get wireValue;
