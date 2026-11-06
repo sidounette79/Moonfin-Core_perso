@@ -493,8 +493,19 @@ class _RemoteControlSheetState extends State<_RemoteControlSheet> {
     final volumeLevel = (playState?['VolumeLevel'] as num?)?.toDouble();
     final supportsSetVolume = _supportsCommand(session, 'SetVolume');
 
+    // 06.11, Sid ("ça viendrait remplacer ma remote home assistant") -
+    // unlike the playback transport row below, D-pad navigation has to
+    // work even when nothing is currently playing (navigating CarbaTV's
+    // own menus from the couch is exactly the case HA's remote covers
+    // today). Same MoveUp/MoveDown/MoveLeft/MoveRight/Select/Back/GoHome
+    // GeneralCommand names the receiving side already handles - see
+    // session_repository.dart's _handleGeneralCommandMessage, wired in
+    // since this feature's original "remote control" commit - only the
+    // buttons to send them were missing.
     if (nowPlaying == null) {
       return [
+        _buildDpad(theme, l10n),
+        const SizedBox(height: 18),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 28),
           child: Center(
@@ -519,9 +530,62 @@ class _RemoteControlSheetState extends State<_RemoteControlSheet> {
       _buildTransportRow(theme, isPaused),
       const SizedBox(height: 18),
       _buildVolumeRow(theme, l10n, isMuted, volumeLevel, supportsSetVolume),
+      const SizedBox(height: 18),
+      _buildDpad(theme, l10n),
       const SizedBox(height: 14),
       _buildStopButton(theme, l10n),
     ];
+  }
+
+  Widget _buildDpad(ThemeData theme, AppLocalizations l10n) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _ControlButton(
+          icon: Icons.home_rounded,
+          label: l10n.home,
+          onTap: () => _sendGeneral('GoHome'),
+        ),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _DpadButton(
+              icon: Icons.keyboard_arrow_up_rounded,
+              onTap: () => _sendGeneral('MoveUp'),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _DpadButton(
+                  icon: Icons.keyboard_arrow_left_rounded,
+                  onTap: () => _sendGeneral('MoveLeft'),
+                ),
+                const SizedBox(width: 6),
+                _PrimaryTransportButton(
+                  icon: Icons.check_rounded,
+                  onTap: () => _sendGeneral('Select'),
+                ),
+                const SizedBox(width: 6),
+                _DpadButton(
+                  icon: Icons.keyboard_arrow_right_rounded,
+                  onTap: () => _sendGeneral('MoveRight'),
+                ),
+              ],
+            ),
+            _DpadButton(
+              icon: Icons.keyboard_arrow_down_rounded,
+              onTap: () => _sendGeneral('MoveDown'),
+            ),
+          ],
+        ),
+        _ControlButton(
+          icon: Icons.arrow_back_rounded,
+          label: l10n.back,
+          onTap: () => _sendGeneral('Back'),
+        ),
+      ],
+    );
   }
 
   Widget _buildNowPlayingCard(
@@ -894,6 +958,34 @@ class _TransportButton extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(6),
         child: Icon(icon, size: 28, color: theme.colorScheme.onSurface),
+      ),
+    );
+  }
+}
+
+// 06.11, Sid ("remplacer ma remote home assistant"): the D-pad's four
+// direction buttons - same InkResponse-on-bare-icon pattern as
+// _TransportButton above, just square-ish and smaller so the 3x3 cross
+// layout stays compact inside the bottom sheet.
+class _DpadButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _DpadButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Icon(icon, size: 24, color: theme.colorScheme.onSurface),
+        ),
       ),
     );
   }
