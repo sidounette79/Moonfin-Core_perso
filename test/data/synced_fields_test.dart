@@ -130,6 +130,7 @@ void main() {
     'liveTvChannelSortBy',
     'liveTvDirectPlayEnabled',
     'maxBitrate',
+    'maxPinnedBottomNavTabs',
     'maxVideoResolution',
     'mdblistApiKey',
     'mdblistEnabled',

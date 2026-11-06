@@ -51,8 +51,18 @@ class PluginSyncService extends ChangeNotifier {
   final Dio _dio;
 
   SeerrPreferences get _seerrPrefs => GetIt.instance<SeerrPreferences>();
-  DeviceLocalOverrides get _deviceLocalOverrides =>
-      GetIt.instance<DeviceLocalOverrides>();
+
+  /// Null when the app hasn't registered it yet, same reasoning as
+  /// [_messages] just below - several PluginSyncService tests exercise
+  /// sync without registering every service the real app would.
+  DeviceLocalOverrides? get _deviceLocalOverrides =>
+      GetIt.instance.isRegistered<DeviceLocalOverrides>()
+          ? GetIt.instance<DeviceLocalOverrides>()
+          : null;
+
+  bool _isDeviceLocal(SyncedField field) =>
+      field.canBeDeviceLocal &&
+      (_deviceLocalOverrides?.isOverridden(field.serverKey) ?? false);
 
   /// Null when the app has not registered it yet, which is the case in tests
   /// that only exercise settings sync.
@@ -1017,8 +1027,7 @@ class PluginSyncService extends ChangeNotifier {
       // soit par appareil]"): a field overridden on THIS device keeps its
       // local value through a reset/profile-switch too, not just through
       // an ordinary pull - see DeviceLocalOverrides.
-      if (field.canBeDeviceLocal &&
-          _deviceLocalOverrides.isOverridden(field.serverKey)) {
+      if (_isDeviceLocal(field)) {
         continue;
       }
       await _prefs.removePreference(field.pref);
@@ -1395,8 +1404,7 @@ class PluginSyncService extends ChangeNotifier {
       // voiture - this is the site that actually matters, since it's the
       // one that would otherwise overwrite her local choice every time a
       // sync pulls the shared profile's value back down.
-      if (field.canBeDeviceLocal &&
-          _deviceLocalOverrides.isOverridden(field.serverKey)) {
+      if (_isDeviceLocal(field)) {
         continue;
       }
       _applySyncedField(resolved, field);
@@ -1974,8 +1982,7 @@ class PluginSyncService extends ChangeNotifier {
             // its local value up either - otherwise this device would
             // overwrite the shared profile with its own local choice, and
             // every OTHER device on that profile would see it change too.
-            !(field.canBeDeviceLocal &&
-                _deviceLocalOverrides.isOverridden(field.serverKey)))
+            !_isDeviceLocal(field))
           field.serverKey: _encodeSyncedField(field),
       'sinceYouWatchedNumRows': _prefs.get(UserPreferences.sinceYouWatchedNumRows).value,
       'mediaBarEnabled': mediaBarEnabled,

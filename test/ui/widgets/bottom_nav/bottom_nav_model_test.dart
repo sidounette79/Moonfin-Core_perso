@@ -37,6 +37,39 @@ void main() {
       );
       expect(items.map((i) => i.id), ['home', 'libraries', 'favorites', 'you']);
     });
+
+    // 06.11, Sid ("à la place de recherche, favoris etc... choisir des
+    // bibliothèques spécifiques"): a pinned library takes a real slot,
+    // same as a tab would, but only once it's actually in
+    // availableLibraryIds - otherwise it's dropped like an unavailable tab.
+    test('a pinned library becomes a library item once it is available', () {
+      final items = resolveBarItems(
+        const BottomNavTabGates(),
+        'search,lib:42',
+        availableLibraryIds: {'42'},
+      );
+      expect(items, const [
+        BottomNavBarItem.home(),
+        BottomNavBarItem.tab(BottomNavTab.search, 1),
+        BottomNavBarItem.library('42', 2),
+        BottomNavBarItem.you(3),
+      ]);
+    });
+
+    test('a pinned library not yet available is dropped, slots keep its gap',
+        () {
+      final items = resolveBarItems(
+        const BottomNavTabGates(),
+        'search,lib:42,favorites',
+        availableLibraryIds: const {},
+      );
+      expect(items, const [
+        BottomNavBarItem.home(),
+        BottomNavBarItem.tab(BottomNavTab.search, 1),
+        BottomNavBarItem.tab(BottomNavTab.favorites, 3),
+        BottomNavBarItem.you(4),
+      ]);
+    });
   });
 
   group('activeBarIndex', () {
@@ -72,6 +105,19 @@ void main() {
           isFalse);
       expect(bottomNavTabMatchesRoute(BottomNavTab.discover, '/seerr/requests'),
           isTrue);
+    });
+
+    // 06.11, Sid: a library id can prefix another (server-assigned, no
+    // guarantee against it) - matched as a whole path segment, not a
+    // plain prefix.
+    test('a pinned library matches its own route by whole segment, not prefix',
+        () {
+      expect(bottomNavLibraryMatchesRoute('42', '/library/42'), isTrue);
+      expect(bottomNavLibraryMatchesRoute('42', '/library/42/suggestions'),
+          isTrue);
+      expect(bottomNavLibraryMatchesRoute('42', '/library/420'), isFalse);
+      expect(bottomNavLibraryMatchesRoute('42', '/music/42'), isTrue);
+      expect(bottomNavLibraryMatchesRoute('42', '/library/7'), isFalse);
     });
   });
 
