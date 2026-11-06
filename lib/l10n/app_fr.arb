@@ -3344,6 +3344,7 @@
     },
     "navigationStyleDeviceLocal": "Garder ce réglage local à cet appareil",
     "navigationStyleDeviceLocalSubtitle": "Ne se synchronisera plus avec vos autres appareils",
+    "bottomNavbarTabsMaxPins": "Nombre max d'onglets épinglés",
     "topBar": "Barre supérieure",
     "@topBar": {
         "description": "Navigation style: top bar"

@@ -21,16 +21,23 @@ class _BottomNavTabsScreenState extends State<_BottomNavTabsScreen> {
   String get _raw => _prefs.get(UserPreferences.bottomNavbarTabs);
   bool get _automatic => isAutomaticBottomNavTabs(_raw);
 
+  // 06.11, Sid ("et pouvoir en épingler plus que 3 - me laisser le
+  // choix"): was a fixed constant, now a profile preference clamped to
+  // the picker's ceiling.
+  int get _maxPins => _prefs
+      .get(UserPreferences.maxPinnedBottomNavTabs)
+      .clamp(1, kMaxPinnedBottomNavTabsCeiling);
+
   // Explicit pins are listed even when their switch is off, so the user can
   // see why a tab went missing from the bar.
   List<BottomNavTab> get _pinned => _automatic
-      ? _gates.resolvePins(_raw)
-      : parsePinnedBottomNavTabs(_raw);
+      ? _gates.resolvePins(_raw, maxPins: _maxPins)
+      : parsePinnedBottomNavTabs(_raw, maxPins: _maxPins);
 
   Future<void> _write(List<BottomNavTab> pins) async {
     await _prefs.set(
       UserPreferences.bottomNavbarTabs,
-      serializePinnedBottomNavTabs(pins),
+      serializePinnedBottomNavTabs(pins, maxPins: _maxPins),
     );
     _pushPersonalizationSync();
     if (mounted) setState(() {});
@@ -38,6 +45,21 @@ class _BottomNavTabsScreenState extends State<_BottomNavTabsScreen> {
 
   Future<void> _reset() async {
     await _prefs.removePreference(UserPreferences.bottomNavbarTabs);
+    _pushPersonalizationSync();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _setMaxPins(int value) async {
+    await _prefs.set(UserPreferences.maxPinnedBottomNavTabs, value);
+    // A lower ceiling can leave more pins than it now allows - trim rather
+    // than silently ignore the overflow next time the bar reads them.
+    final current = _pinned;
+    if (current.length > value) {
+      await _prefs.set(
+        UserPreferences.bottomNavbarTabs,
+        serializePinnedBottomNavTabs(current, maxPins: value),
+      );
+    }
     _pushPersonalizationSync();
     if (mounted) setState(() {});
   }
@@ -57,7 +79,8 @@ class _BottomNavTabsScreenState extends State<_BottomNavTabsScreen> {
     );
     final gates = _gates;
     final pinned = _pinned;
-    final full = pinned.length >= kMaxPinnedBottomNavTabs;
+    final maxPins = _maxPins;
+    final full = pinned.length >= maxPins;
     final split = _prefs.get(UserPreferences.bottomNavbarStyle) ==
         BottomNavbarStyle.split;
 
@@ -86,6 +109,40 @@ class _BottomNavTabsScreenState extends State<_BottomNavTabsScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
                 child: Text(l10n.bottomNavbarSplitSearchNote, style: hint),
               ),
+            // 06.11, Sid ("et pouvoir en épingler plus que 3 - me laisser
+            // le choix"): a plain stepper rather than IntPickerPreferenceTile
+            // - lowering the max has to trim any pins that no longer fit
+            // (_setMaxPins), which that tile's onChanged (no new value
+            // passed) can't drive cleanly.
+            adaptiveListSection(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.push_pin_outlined),
+                  title: Text(l10n.bottomNavbarTabsMaxPins),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: maxPins <= 1
+                            ? null
+                            : () => _setMaxPins(maxPins - 1),
+                      ),
+                      Text(
+                        '$maxPins',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: maxPins >= kMaxPinnedBottomNavTabsCeiling
+                            ? null
+                            : () => _setMaxPins(maxPins + 1),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
             _SectionHeader(
               _automatic
                   ? '${l10n.bottomNavbarTabsPinned} · '

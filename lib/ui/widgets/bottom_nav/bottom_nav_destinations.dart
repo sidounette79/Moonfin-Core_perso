@@ -27,6 +27,7 @@ String bottomNavTabLabel(AppLocalizations l10n, BottomNavTab tab) =>
           ? GetIt.instance<SeerrPreferences>().labelOrDefault(l10n.seerr)
           : l10n.seerr,
       BottomNavTab.folders => l10n.folders,
+      BottomNavTab.remoteControl => l10n.remoteControlTitle,
     };
 
 String bottomNavHubActionLabel(
@@ -93,6 +94,10 @@ Widget bottomNavTabIconWidget(
         fit: BoxFit.contain,
       ),
     BottomNavTab.discover => SeerrIcon(size: size, color: color, solid: active),
+    BottomNavTab.remoteControl => adaptive(
+        Icons.settings_remote_rounded,
+        Icons.settings_remote_outlined,
+      ),
   };
 }
 
@@ -148,7 +153,10 @@ void openBottomNavTab(BuildContext context, BottomNavTab tab) {
     BottomNavTab.liveTv => Destinations.liveTv,
     BottomNavTab.discover => Destinations.seerrDiscover,
     BottomNavTab.folders => Destinations.folderView,
+    // Both open a panel rather than navigating to a go_router route -
+    // handled by each call site instead, same as libraries already was.
     BottomNavTab.libraries => null,
+    BottomNavTab.remoteControl => null,
   };
   if (route == null) return;
   context.navigateTopLevel(route);

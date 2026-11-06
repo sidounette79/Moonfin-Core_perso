@@ -38,7 +38,12 @@ class _NavigationCategoryScreenState extends State<_NavigationCategoryScreen> {
     final pins = BottomNavTabGates.fromPreferences(
       prefs,
       seerrAvailable: _syncService.seerrAvailable,
-    ).resolvePins(raw);
+    ).resolvePins(
+      raw,
+      maxPins: prefs
+          .get(UserPreferences.maxPinnedBottomNavTabs)
+          .clamp(1, kMaxPinnedBottomNavTabsCeiling),
+    );
     final labels = pins.map((t) => bottomNavTabLabel(l10n, t)).join(', ');
     if (!isAutomaticBottomNavTabs(raw)) return labels;
     return [l10n.bottomNavbarTabsAutomatic, if (labels.isNotEmpty) labels]

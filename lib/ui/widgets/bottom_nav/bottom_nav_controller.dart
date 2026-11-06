@@ -110,11 +110,16 @@ class BottomNavController extends ChangeNotifier {
         _ => true,
       };
 
+  int get maxPins => _prefs
+      .get(UserPreferences.maxPinnedBottomNavTabs)
+      .clamp(1, kMaxPinnedBottomNavTabsCeiling);
+
   List<BottomNavBarItem> barItems() => resolveBarItems(
         gates,
         _prefs.get(UserPreferences.bottomNavbarTabs),
         withoutSearch: style == BottomNavbarStyle.split,
         isAvailable: isAvailable,
+        maxPins: maxPins,
       );
 
   List<BottomNavHubTile> hubTiles() {

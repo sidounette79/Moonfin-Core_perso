@@ -11,6 +11,8 @@ import '../../../preference/bottom_nav_tabs.dart';
 import '../../../preference/preference_constants.dart';
 import '../../../preference/user_preferences.dart';
 import '../../navigation/destinations.dart';
+import '../remote_control_screen.dart';
+import '../settings/settings_panel.dart';
 import 'bottom_mini_player.dart';
 import 'bottom_nav_controller.dart';
 import 'bottom_nav_destinations.dart';
@@ -181,6 +183,8 @@ class _BottomNavbarState extends State<BottomNavbar> {
             style: _style,
             barHeight: barHeight,
           );
+        } else if (tab == BottomNavTab.remoteControl) {
+          SettingsPanel.open(context, const RemoteControlScreen());
         } else if (!bottomNavTabMatchesRoute(tab, route)) {
           openBottomNavTab(context, tab);
         }

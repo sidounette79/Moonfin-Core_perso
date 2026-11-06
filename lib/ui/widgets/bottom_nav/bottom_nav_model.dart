@@ -51,9 +51,10 @@ List<BottomNavBarItem> resolveBarItems(
   String rawPins, {
   bool withoutSearch = false,
   bool Function(BottomNavTab tab)? isAvailable,
+  int maxPins = kDefaultMaxPinnedBottomNavTabs,
 }) {
   final pins = gates
-      .resolvePins(rawPins)
+      .resolvePins(rawPins, maxPins: maxPins)
       .where((t) => !withoutSearch || t != BottomNavTab.search)
       .toList();
   final items = <BottomNavBarItem>[const BottomNavBarItem.home()];
@@ -81,6 +82,9 @@ bool bottomNavTabMatchesRoute(BottomNavTab tab, String route) {
     BottomNavTab.discover => under('/seerr'),
     BottomNavTab.folders =>
       route == Destinations.folderView || under('/folder'),
+    // Opens a panel, not a route - never "active" by route the way a real
+    // destination tab is.
+    BottomNavTab.remoteControl => false,
   };
 }
 

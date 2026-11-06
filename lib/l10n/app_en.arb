@@ -12301,6 +12301,10 @@
   "@bottomNavbarTabsPinned": {
     "description": "Section header for the tabs pinned to the bottom bar"
   },
+  "bottomNavbarTabsMaxPins": "Max pinned tabs",
+  "@bottomNavbarTabsMaxPins": {
+    "description": "Stepper label for how many tabs can be pinned to the bottom bar"
+  },
   "bottomNavbarTabsAvailable": "Available",
   "@bottomNavbarTabsAvailable": {
     "description": "Section header for tabs that can be pinned to the bottom bar"

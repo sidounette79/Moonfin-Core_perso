@@ -3,9 +3,27 @@ import 'user_preferences.dart';
 /// Destinations that can be pinned between Home and You on the mobile bottom
 /// navbar. The names are the wire format of [UserPreferences.bottomNavbarTabs],
 /// so renaming one breaks every synced profile that holds it.
-enum BottomNavTab { search, libraries, favorites, genres, liveTv, discover, folders }
+// 06.11, Sid ("y mettre le raccourci télécommande"): remoteControl opens
+// RemoteControlScreen as a panel (like Settings) rather than a go_router
+// route, same special-cased shape as libraries - see openBottomNavTab's own
+// comment and its two call sites (you_hub_sheet.dart, bottom_navbar.dart).
+enum BottomNavTab {
+  search,
+  libraries,
+  favorites,
+  genres,
+  liveTv,
+  discover,
+  folders,
+  remoteControl,
+}
 
-const int kMaxPinnedBottomNavTabs = 3;
+// 06.11, Sid ("et pouvoir en épingler plus que 3 - me laisser le choix"):
+// the ceiling the picker screen offers; the actual number in effect is
+// UserPreferences.maxPinnedBottomNavTabs (default kDefaultMaxPinnedBottomNavTabs),
+// adjustable per profile like everything else on this bar.
+const int kDefaultMaxPinnedBottomNavTabs = 3;
+const int kMaxPinnedBottomNavTabsCeiling = 7;
 
 // Libraries sits second so a user on default settings keeps it on the bar.
 const List<BottomNavTab> _autoOrder = [
@@ -23,20 +41,26 @@ final Map<String, BottomNavTab> _byName = {
 };
 
 /// Reads a stored pin list. Unknown names, which a newer client may have
-/// synced, are dropped along with duplicates and anything past the limit.
-List<BottomNavTab> parsePinnedBottomNavTabs(String raw) {
+/// synced, are dropped along with duplicates and anything past [maxPins].
+List<BottomNavTab> parsePinnedBottomNavTabs(
+  String raw, {
+  int maxPins = kDefaultMaxPinnedBottomNavTabs,
+}) {
   final pins = <BottomNavTab>[];
   for (final part in raw.split(',')) {
     final tab = _byName[part.trim().toLowerCase()];
     if (tab == null || pins.contains(tab)) continue;
     pins.add(tab);
-    if (pins.length == kMaxPinnedBottomNavTabs) break;
+    if (pins.length == maxPins) break;
   }
   return pins;
 }
 
-String serializePinnedBottomNavTabs(Iterable<BottomNavTab> tabs) =>
-    tabs.take(kMaxPinnedBottomNavTabs).map((t) => t.name).join(',');
+String serializePinnedBottomNavTabs(
+  Iterable<BottomNavTab> tabs, {
+  int maxPins = kDefaultMaxPinnedBottomNavTabs,
+}) =>
+    tabs.take(maxPins).map((t) => t.name).join(',');
 
 /// Whether [raw] leaves the pins to be picked automatically. A list whose
 /// names are all unknown counts, so a profile from a newer client falls back
@@ -94,15 +118,23 @@ class BottomNavTabGates {
         BottomNavTab.liveTv => !kidsMode && showLiveTv,
         BottomNavTab.discover => !kidsMode && showSeerr && seerrAvailable,
         BottomNavTab.folders => folderView,
+        // 06.11, Sid ("y mettre le raccourci télécommande"): always
+        // offered, no server feature/toggle gates it the way Live TV or
+        // Seerr do - but still excluded from Kids Mode, a remote isn't
+        // something a kid profile needs either.
+        BottomNavTab.remoteControl => !kidsMode,
       };
 
   /// The tabs the bar shows between Home and You. Automatic pins follow the
   /// nav button switches without anything being stored. Explicit pins are
   /// only filtered, never topped up, so turning a button off doesn't slip an
-  /// unchosen tab onto the bar.
-  List<BottomNavTab> resolvePins(String raw) {
-    final explicit = parsePinnedBottomNavTabs(raw);
+  /// unchosen tab onto the bar. [maxPins] caps both paths the same way.
+  List<BottomNavTab> resolvePins(
+    String raw, {
+    int maxPins = kDefaultMaxPinnedBottomNavTabs,
+  }) {
+    final explicit = parsePinnedBottomNavTabs(raw, maxPins: maxPins);
     if (explicit.isNotEmpty) return explicit.where(offers).toList();
-    return _autoOrder.where(offers).take(kMaxPinnedBottomNavTabs).toList();
+    return _autoOrder.where(offers).take(maxPins).toList();
   }
 }

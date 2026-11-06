@@ -1723,6 +1723,19 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: '',
   );
 
+  // 06.11, Sid ("et pouvoir en épingler plus que 3 - me laisser le choix"):
+  // how many of bottomNavbarTabs are actually honoured, between 1 and
+  // kMaxPinnedBottomNavTabsCeiling (bottom_nav_tabs.dart) - a profile
+  // setting like the rest of this screen, not a device-local one (it's a
+  // layout choice, not the navbarPosition kind of thing device-local
+  // overrides exist for). Default is 3 - kept as a literal rather than
+  // importing bottom_nav_tabs.dart's kDefaultMaxPinnedBottomNavTabs here,
+  // which already imports this file.
+  static final maxPinnedBottomNavTabs = Preference(
+    key: 'pref_max_bottom_navbar_tabs',
+    defaultValue: 3,
+  );
+
   // 27.09, Sid: "avoir directe des favoris de bibliothèque... pouvoir en
   // épingler qu'on puisse les avoir tout le temps" - comma separated
   // AggregatedLibrary.id values, same shape as bottomNavbarTabs above but

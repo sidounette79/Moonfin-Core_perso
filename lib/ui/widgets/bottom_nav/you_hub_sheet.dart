@@ -4,7 +4,6 @@ import 'package:moonfin_design/moonfin_design.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../preference/bottom_nav_tabs.dart';
 import '../../../preference/preference_constants.dart';
-import '../../../util/platform_detection.dart';
 import '../../screens/settings/settings_side_panel.dart';
 import '../adaptive/sf_symbol.dart';
 import '../remote_control_screen.dart';
@@ -59,6 +58,8 @@ Future<void> showYouHub({
                   style: style,
                   barHeight: barHeight,
                 );
+              } else if (tab == BottomNavTab.remoteControl) {
+                SettingsPanel.open(context, const RemoteControlScreen());
               } else if (tab != null) {
                 openBottomNavTab(context, tab);
               } else {
@@ -66,13 +67,6 @@ Future<void> showYouHub({
               }
             }),
             onMessages: () => then(() => showServerMessagesDialog(context)),
-            onRemoteControl: () =>
-                then(
-                  () => SettingsPanel.open(
-                    context,
-                    const RemoteControlScreen(),
-                  ),
-                ),
             onSettings: () => then(
               () => SettingsPanel.open(context, const SettingsSidePanel()),
             ),
@@ -91,7 +85,6 @@ class _YouHub extends StatelessWidget {
   final VoidCallback onAccount;
   final ValueChanged<BottomNavHubTile> onTile;
   final VoidCallback onMessages;
-  final VoidCallback onRemoteControl;
   final VoidCallback onSettings;
 
   const _YouHub({
@@ -100,7 +93,6 @@ class _YouHub extends StatelessWidget {
     required this.onAccount,
     required this.onTile,
     required this.onMessages,
-    required this.onRemoteControl,
     required this.onSettings,
   });
 
@@ -211,21 +203,13 @@ class _YouHub extends StatelessWidget {
                     trailing: _countBadge(),
                     onTap: onMessages,
                   ),
-                // 06.11, Sid ("remplacer ma remote home assistant" /
-                // "je trouve pas dans le menu"): the remote-control
-                // dialog was only reachable through the "Compte" sub-
-                // menu (showUserMenu, see user_menu_dialog.dart) - this
-                // hub (the actual "Vous" tab she was looking at) never
-                // had a direct entry for it. Hidden on the TV being
-                // controlled, same as there - no point remote-
-                // controlling itself.
-                if (!PlatformDetection.isTV)
-                  _HubRow(
-                    icon: Icons.settings_remote_rounded,
-                    label: l10n.remoteControlTitle,
-                    theme: theme,
-                    onTap: onRemoteControl,
-                  ),
+                // 06.11, Sid ("y mettre le raccourci télécommande"):
+                // Télécommande is now a real BottomNavTab (remoteControl)
+                // instead of a standalone row here - it shows up via the
+                // generic `for (final tab in BottomNavTab.values)` tile
+                // loop below (resolveHubTiles) when not pinned to the bar,
+                // and can be pinned to the bar itself from the picker
+                // screen, same as any other tab.
                 _HubRow(
                   icon: Icons.settings_rounded,
                   label: l10n.settings,

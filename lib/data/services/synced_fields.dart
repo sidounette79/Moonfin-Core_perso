@@ -131,6 +131,7 @@ final List<SyncedField> syncedFields = <SyncedField>[
   SyncedField('navbarPosition', UserPreferences.navbarPosition, SyncCodec.enumName, enumValues: NavigationLayout.availableNavbarPositions, canBeDeviceLocal: true),
   SyncedField('bottomNavbarStyle', UserPreferences.bottomNavbarStyle, SyncCodec.enumName, enumValues: prefs.BottomNavbarStyle.values),
   SyncedField('bottomNavbarTabs', UserPreferences.bottomNavbarTabs, SyncCodec.csvList),
+  SyncedField('maxPinnedBottomNavTabs', UserPreferences.maxPinnedBottomNavTabs, SyncCodec.integer),
   // 30.09, Sid: "je dois refaire sur chaque appareil" - same alwaysGlobal
   // fix as the IPTV providers above: pinned libraries were scoped per
   // device profile like a display preference, but she wants one pinned
