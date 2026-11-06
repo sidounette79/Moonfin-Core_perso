@@ -344,10 +344,10 @@ mixin RemoteControlSessionMixin<T extends StatefulWidget> on State<T> {
         // etc. while the finger moves - see RemoteSwipePad.
         RemoteSwipePad(
           onSwipe: (direction) => sendGeneral(switch (direction) {
-            _SwipeDirection.up => 'MoveUp',
-            _SwipeDirection.down => 'MoveDown',
-            _SwipeDirection.left => 'MoveLeft',
-            _SwipeDirection.right => 'MoveRight',
+            SwipeDirection.up => 'MoveUp',
+            SwipeDirection.down => 'MoveDown',
+            SwipeDirection.left => 'MoveLeft',
+            SwipeDirection.right => 'MoveRight',
           }),
           onTap: () => sendGeneral('Select'),
         ),
@@ -708,7 +708,7 @@ class RemotePrimaryTransportButton extends StatelessWidget {
   }
 }
 
-enum _SwipeDirection { up, down, left, right }
+enum SwipeDirection { up, down, left, right }
 
 // 06.11, Sid ("un vrai carré avec les mouvements au doigts... si mon doigt
 // va à droite, ca decale la cellule vers la droite"): one discrete swipe
@@ -718,7 +718,7 @@ enum _SwipeDirection { up, down, left, right }
 // cursor position to track). A short tap (below the swipe threshold)
 // selects instead, same as tapping a real trackpad.
 class RemoteSwipePad extends StatefulWidget {
-  final ValueChanged<_SwipeDirection> onSwipe;
+  final ValueChanged<SwipeDirection> onSwipe;
   final VoidCallback onTap;
 
   const RemoteSwipePad({
@@ -754,8 +754,8 @@ class _RemoteSwipePadState extends State<RemoteSwipePad> {
         }
         widget.onSwipe(
           dx.abs() > dy.abs()
-              ? (dx > 0 ? _SwipeDirection.right : _SwipeDirection.left)
-              : (dy > 0 ? _SwipeDirection.down : _SwipeDirection.up),
+              ? (dx > 0 ? SwipeDirection.right : SwipeDirection.left)
+              : (dy > 0 ? SwipeDirection.down : SwipeDirection.up),
         );
       },
       child: Container(
