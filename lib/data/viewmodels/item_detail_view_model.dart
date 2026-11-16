@@ -1043,7 +1043,7 @@ class ItemDetailViewModel extends ChangeNotifier {
       );
       _seriesEpisodesLoaded = true;
       notifyListeners();
-      unawaited(_enrichFeaturedEpisode());
+      unawaited(_enrichEpisodeTracks());
     } catch (_) {
       // Left unloaded and silent on purpose. The Modern layout calls this from
       // build, so the next rebuild gets another go, and notifying here would
@@ -1077,46 +1077,76 @@ class ItemDetailViewModel extends ChangeNotifier {
   /// vus : Emby perd alors toute trace que la série est entamée. Ce n'est
   /// donc pas un cas marginal.
   ///
-  /// On recharge ce SEUL épisode avec ses `MediaSources` et on le remplace
-  /// dans la liste — une requête d'un élément, exactement comme NextUp. La
-  /// raison d'être du choix du 30.09 (ne pas alourdir la liste entière) est
-  /// préservée, et les deux thèmes en profitent sans rien changer à leur
-  /// logique d'affichage.
-  Future<void> _enrichFeaturedEpisode() async {
-    if (_isDisposed || _nextUp != null || _seriesEpisodes.isEmpty) return;
+  /// 16.11, Sid : « le 30.09, ça date de bien avant une tonne de changements
+  /// qu'on a fait, comme quasiment supprimer le côté "à suivre" pour ne garder
+  /// que "à voir" [...] on a complètement refait la page série depuis le
+  /// 30.09. Il faut donc que les épisodes présents sur le disque, surtout le
+  /// premier des disponibles à voir, donnent les infos audio et sous-titres.
+  /// Sinon je suis obligée de lancer la lecture pour constater que je n'ai pas
+  /// les sous-titres ou que c'est que en anglais, ce qui peut poser problème à
+  /// Monsieur qui ne regarde que des trucs en français. »
+  ///
+  /// Le compromis du 30.09 - n'enrichir que NextUp pour ne pas charger les
+  /// pistes de toute une saison - ne tient donc plus : la page a changé, et
+  /// comme elle supprime les fichiers déjà vus, une série n'a souvent que
+  /// quelques épisodes sur le disque. Le coût qu'on évitait n'existe plus
+  /// dans cet usage.
+  ///
+  /// On enrichit maintenant TOUS les épisodes de la liste, en **une seule**
+  /// requête `getItems(ids:)`, avec un plafond pour le cas inverse (une
+  /// bibliothèque qui garde une saison entière) : au-delà, on sert d'abord
+  /// les non-vus, qui sont ceux qu'elle regarde.
+  static const _trackEnrichmentLimit = 30;
 
-    AggregatedItem? featured;
-    for (final episode in _seriesEpisodes) {
-      if (!episode.isPlayed) {
-        featured = episode;
-        break;
-      }
-    }
-    featured ??= _seriesEpisodes.first;
+  Future<void> _enrichEpisodeTracks() async {
+    if (_isDisposed || _seriesEpisodes.isEmpty) return;
 
-    // Déjà complet (liste venue d'ailleurs, ou enrichissement précédent).
-    if (featured.rawData['MediaSources'] != null) return;
+    // Ceux à qui il manque les pistes, les non-vus d'abord : si le plafond
+    // tranche, il tranche dans ce qu'elle ne regardera pas.
+    final manquants = _seriesEpisodes
+        .where((e) => e.rawData['MediaSources'] == null)
+        .toList()
+      ..sort((a, b) {
+        if (a.isPlayed == b.isPlayed) return 0;
+        return a.isPlayed ? 1 : -1;
+      });
+    if (manquants.isEmpty) return;
+
+    final ids = manquants
+        .take(_trackEnrichmentLimit)
+        .map((e) => e.id)
+        .toList();
 
     try {
-      final data = await _client.itemsApi.getItem(
-        featured.id,
+      final data = await _client.itemsApi.getItems(
+        ids: ids,
         fields: _nextUpFields,
       );
-      if (_isDisposed || data.isEmpty) return;
+      if (_isDisposed) return;
       final enriched = _mapItems(
-        [data],
+        (data['Items'] as List?) ?? const [],
         fallbackRating: _item?.officialRating,
       );
       if (enriched.isEmpty) return;
-      final index = _seriesEpisodes.indexWhere((e) => e.id == featured!.id);
-      if (index < 0) return;
-      final updated = List<AggregatedItem>.of(_seriesEpisodes);
-      updated[index] = enriched.first;
+
+      final parId = {for (final e in enriched) e.id: e};
+      var touche = false;
+      final updated = <AggregatedItem>[];
+      for (final episode in _seriesEpisodes) {
+        final remplacant = parId[episode.id];
+        if (remplacant != null) {
+          updated.add(remplacant);
+          touche = true;
+        } else {
+          updated.add(episode);
+        }
+      }
+      if (!touche) return;
       _seriesEpisodes = updated;
       notifyListeners();
     } catch (_) {
-      // Sans importance : on garde l'épisode tel quel, la carte s'affiche
-      // simplement sans ses pistes comme avant.
+      // Sans importance : on garde les épisodes tels quels, la fiche
+      // s'affiche simplement sans les pistes, comme avant.
     }
   }
 
