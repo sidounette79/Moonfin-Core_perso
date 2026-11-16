@@ -118,6 +118,10 @@ class Media3PlayerBackend extends PlayerBackend {
   final UserPreferences _prefs;
   late final Media3LetterboxCropper _letterboxCropper;
   String? _currentUrl;
+  // 16.11: l'identifiant du média en cours, extrait de l'URL. Sert à
+  // distinguer "nouvel élément" de "même élément, nouveau flux" - voir la
+  // remise à zéro des décalages dans play().
+  String? _currentItemKey;
 
   StreamSubscription<dynamic>? _eventSub;
 
@@ -1004,6 +1008,20 @@ class Media3PlayerBackend extends PlayerBackend {
     };
   }
 
+  // L'identifiant de l'élément tel qu'il apparaît dans une URL de lecture
+  // Jellyfin/Emby (/Videos/<id>/..., /Items/<id>/..., /Audio/<id>/...). Deux
+  // URL différentes du même épisode - lecture directe puis transcodage, ou
+  // changement de piste - donnent la même clé ; deux épisodes donnent des
+  // clés différentes. Null quand l'URL ne suit pas ce schéma (fichier local,
+  // flux externe) : on retombe alors sur l'ancien comportement, remise à
+  // zéro à chaque play().
+  static final RegExp _itemKeyPattern = RegExp(
+    r'/(?:Videos|Items|Audio)/([0-9a-fA-F-]{8,})',
+  );
+
+  String? _itemKeyFromUrl(String url) =>
+      _itemKeyPattern.firstMatch(url)?.group(1)?.toLowerCase();
+
   String? _normalizeTrackLanguagePref(String? value) {
     final normalized = (value ?? '').trim().toLowerCase();
     if (normalized.isEmpty || normalized == 'auto' || normalized == 'none') {
@@ -1067,8 +1085,26 @@ class Media3PlayerBackend extends PlayerBackend {
     // subsequent, otherwise perfectly-synced video for the rest of the
     // session - explaining why files that were never actually mistimed
     // looked shifted too.
-    _audioDelaySeconds = 0.0;
-    _subtitleDelaySeconds = 0.0;
+    //
+    // 16.11, Sid : "les sous-titres - les rares fois où j'arrive à les caler,
+    // se redécalent en cours de lecture". La remise à zéro ci-dessus était
+    // inconditionnelle, or play() n'est pas appelé qu'au changement
+    // d'élément : il l'est aussi sur LE MÊME média quand le flux change
+    // (bascule en transcodage, changement de piste, nouvelle URL) - c'est-à-
+    // dire précisément pendant qu'elle cale ses sous-titres. Le décalage
+    // repartait donc à zéro en pleine lecture, sans que l'écran le sache.
+    //
+    // On ne réinitialise plus que sur un élément réellement différent. Rien
+    // d'autre à faire pour le réappliquer : les setAudioDelay /
+    // setSubtitleDelay poussés plus bas dans cette même méthode renvoient la
+    // valeur conservée au nouveau flux.
+    final itemKey = _itemKeyFromUrl(url);
+    final isSameItem = itemKey != null && itemKey == _currentItemKey;
+    _currentItemKey = itemKey;
+    if (!isSameItem) {
+      _audioDelaySeconds = 0.0;
+      _subtitleDelaySeconds = 0.0;
+    }
     final preferredAudioLanguage = _normalizeTrackLanguagePref(
       payload['preferredAudioLanguage']?.toString() ??
           _prefs.get(UserPreferences.defaultAudioLanguage),
