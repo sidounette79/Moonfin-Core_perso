@@ -173,6 +173,24 @@ class NouveauDetailsSectionState extends State<NouveauDetailsSection> {
     super.dispose();
   }
 
+  // 16.11, Sid : "sur la TV, y a un souci de d-pad quand je suis dans le
+  // détail d'une série, si je descends voir les détails, ben après je peux
+  // plus remonter."
+  //
+  // Ce getter décide si la section compte parmi les sections navigables de
+  // la page (_focusableVerticalSections, côté nouveau_detail_content) ; si
+  // elle n'en est pas, _moveUp ne la trouve pas, renvoie false, et la flèche
+  // haut ne fait RIEN.
+  //
+  // Il s'arrêtait au premier candidat au lieu de descendre la cascade, alors
+  // que focusTop() ci-dessous, lui, essaie studios PUIS Seerr PUIS la zone de
+  // texte. Les deux étaient donc incohérents : sur une fiche avec studios
+  // dont les puces ne sont pas (ou plus) montées - précisément le cas quand
+  // on a descendu et que le haut de la section est sorti de l'écran -
+  // canFocusTop répondait faux bien que focusTop() aurait réussi.
+  //
+  // Même cascade que focusTop(), dans le même ordre : les deux ne peuvent
+  // plus diverger.
   bool get canFocusTop {
     if (!mounted) {
       return false;
@@ -184,12 +202,15 @@ class NouveauDetailsSectionState extends State<NouveauDetailsSection> {
       final key = _studioKey(0, studios.first);
       final node = _studioFocusNodes[key];
 
-      return node != null && node.canRequestFocus && node.context != null;
+      if (node != null && node.canRequestFocus && node.context != null) {
+        return true;
+      }
     }
 
-    if (_hasSeerrChips) {
-      return _seerrChipsFocusNode.canRequestFocus &&
-          _seerrChipsFocusNode.context != null;
+    if (_hasSeerrChips &&
+        _seerrChipsFocusNode.canRequestFocus &&
+        _seerrChipsFocusNode.context != null) {
+      return true;
     }
 
     return _readingFocusNode.canRequestFocus &&

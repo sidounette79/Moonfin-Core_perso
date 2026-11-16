@@ -2527,19 +2527,13 @@ class _ContentRowsState extends State<_ContentRows>
     final screenWidth = size.width;
 
     if (_isBannerMode()) {
-      // 16.11, Sid : "est-ce que la bannière pourrait être un peu moins
-      // haute ? genre 1 tiers de moins ?" - 320 -> 215 sur TV. Desktop et
-      // mobile ne sont pas concernés par la demande, laissés tels quels.
-      if (PlatformDetection.isTV) return 215.0;
+      if (PlatformDetection.isTV) return 320.0;
       if (!PlatformDetection.useMobileUi) return 240.0;
       return 200.0;
     }
 
     if (_isAyaMode()) {
-      // 16.11, même demande d'un tiers de moins : elle vaut pour la TV quel
-      // que soit le mode d'accueil, donc aussi ici. Desktop et mobile gardent
-      // leurs 65 %.
-      return screenHeight * (PlatformDetection.isTV ? 0.43 : 0.65);
+      return screenHeight * 0.65;
     }
 
     // 27.09, Sid: "la barre média est trop grande sur TV, elle prend
@@ -2549,11 +2543,12 @@ class _ContentRowsState extends State<_ContentRows>
     // height on both. Desktop wasn't reported as broken, so this only
     // special-cases TV, to the same 65% Aya mode already uses rather than
     // inventing a new fraction.
-    // 16.11, même demande : un tiers de moins. Appliqué ici aussi parce que
-    // c'est cette branche qui sert quand l'accueil n'est PAS en mode
-    // bannière (bookshelf/galerie/défaut), et je ne sais pas lequel des deux
-    // modes elle utilise - dans les deux cas elle obtient "un tiers de
-    // moins". 0.65 -> 0.43.
+    // 16.11, Sid : "est-ce que la bannière pourrait être un peu moins haute ?
+    // genre 1 tiers de moins ?", puis "page d'accueil, c'est style classique,
+    // bannière = moonfin". C'est donc CETTE branche qui la concerne (le mode
+    // `moonfin` ne passe ni par _isBannerMode ni par _isAyaMode), et aucune
+    // autre - les modes banner/aya/makd sont laissés tels quels.
+    // TV : 0.65 -> 0.43.
     if (PlatformDetection.isTV) {
       return screenHeight * 0.43;
     }
@@ -2574,7 +2569,10 @@ class _ContentRowsState extends State<_ContentRows>
       return screenHeight * 0.46;
     }
 
-    return screenHeight * 0.55;
+    // 16.11, Sid : "tu peux aussi changer la bannière sur mobile". Même mode
+    // `moonfin` que sur TV, en portrait : 0.55 -> 0.37. (Le paysage mobile
+    // sort plus haut, volontairement plein écran, et n'est pas concerné.)
+    return screenHeight * 0.37;
   }
 
   bool _isBookshelfMode() {
