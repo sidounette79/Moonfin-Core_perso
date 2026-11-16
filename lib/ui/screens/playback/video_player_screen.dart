@@ -1004,13 +1004,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       if (backend is Media3PlayerBackend) {
         unawaited(_syncMedia3ZoomMode());
         _syncMedia3VolumeBoostLevel();
-        if (!_appliedSavedVolumeBoost) {
-          _appliedSavedVolumeBoost = true;
-          final savedBoost = _prefs.get(UserPreferences.video3VolumeBoostLevel);
-          if (savedBoost > 0) {
-            unawaited(_setMedia3VolumeBoostLevel(savedBoost));
-          }
-        }
+        _restoreSavedVolumeBoost();
       } else {
         _syncMedia3VolumeBoostLevel(resetWhenUnavailable: true);
       }
@@ -1023,6 +1017,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       setState(() {});
     });
     _syncMedia3VolumeBoostLevel(resetWhenUnavailable: true);
+    // 16.11, Sid : "on avait mis en place un réglage (qui ne fonctionne pas)
+    // [...] que le volume reste enregistré (en tout cas pour la voiture)".
+    // La restauration ne vivait QUE dans le listener backendChangedStream
+    // ci-dessus, donc elle n'avait lieu que si le backend changeait APRÈS
+    // l'abonnement. Quand la lecture est déjà en place au moment où cet écran
+    // s'initialise - le cas courant - l'événement n'arrive jamais et le
+    // niveau sauvegardé n'était jamais appliqué. On tente donc aussi ici, sur
+    // le backend déjà actif ; _appliedSavedVolumeBoost empêche le doublon.
+    _restoreSavedVolumeBoost();
     if (PlatformDetection.isTV) {
       _tvSeekbarFocus.addListener(_onSeekbarFocusChange);
     }
@@ -1064,7 +1067,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       _manager.suppressAutoNext = false;
       _consecutiveEpisodes++;
       unawaited(_pushMedia3UiMetadata());
+      // 16.11: au passage à l'élément suivant le backend est recréé avec un
+      // boost à 0 (media3_player_backend.dart le remet à zéro), et cette
+      // synchro recopiait ce 0 dans l'écran - donc le volume retombait à
+      // chaque épisode. On réapplique le niveau mémorisé à la place.
+      _appliedSavedVolumeBoost = false;
       _syncMedia3VolumeBoostLevel();
+      _restoreSavedVolumeBoost();
       unawaited(_syncAutoHdrSwitching());
       final isPreroll = _isCurrentPreroll;
       _resetSkipSegmentAutoHide();
@@ -6259,6 +6268,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       _wasAlwaysOnTopOnEntry ??= _isAlwaysOnTop;
     }
     await _setAlwaysOnTop(!_isAlwaysOnTop);
+  }
+
+  // Réapplique le niveau de volume mémorisé, une seule fois par écran de
+  // lecture. Sans effet tant que le backend Media3 n'est pas là : l'appelant
+  // d'après (init ou changement de backend) réessaiera.
+  void _restoreSavedVolumeBoost() {
+    if (_appliedSavedVolumeBoost) return;
+    if (_activeMedia3Backend == null) return;
+    _appliedSavedVolumeBoost = true;
+    final savedBoost = _prefs.get(UserPreferences.video3VolumeBoostLevel);
+    if (savedBoost > 0) {
+      unawaited(_setMedia3VolumeBoostLevel(savedBoost));
+    }
   }
 
   void _syncMedia3VolumeBoostLevel({bool resetWhenUnavailable = false}) {

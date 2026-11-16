@@ -2527,13 +2527,19 @@ class _ContentRowsState extends State<_ContentRows>
     final screenWidth = size.width;
 
     if (_isBannerMode()) {
-      if (PlatformDetection.isTV) return 320.0;
+      // 16.11, Sid : "est-ce que la bannière pourrait être un peu moins
+      // haute ? genre 1 tiers de moins ?" - 320 -> 215 sur TV. Desktop et
+      // mobile ne sont pas concernés par la demande, laissés tels quels.
+      if (PlatformDetection.isTV) return 215.0;
       if (!PlatformDetection.useMobileUi) return 240.0;
       return 200.0;
     }
 
     if (_isAyaMode()) {
-      return screenHeight * 0.65;
+      // 16.11, même demande d'un tiers de moins : elle vaut pour la TV quel
+      // que soit le mode d'accueil, donc aussi ici. Desktop et mobile gardent
+      // leurs 65 %.
+      return screenHeight * (PlatformDetection.isTV ? 0.43 : 0.65);
     }
 
     // 27.09, Sid: "la barre média est trop grande sur TV, elle prend
@@ -2543,8 +2549,13 @@ class _ContentRowsState extends State<_ContentRows>
     // height on both. Desktop wasn't reported as broken, so this only
     // special-cases TV, to the same 65% Aya mode already uses rather than
     // inventing a new fraction.
+    // 16.11, même demande : un tiers de moins. Appliqué ici aussi parce que
+    // c'est cette branche qui sert quand l'accueil n'est PAS en mode
+    // bannière (bookshelf/galerie/défaut), et je ne sais pas lequel des deux
+    // modes elle utilise - dans les deux cas elle obtient "un tiers de
+    // moins". 0.65 -> 0.43.
     if (PlatformDetection.isTV) {
-      return screenHeight * 0.65;
+      return screenHeight * 0.43;
     }
 
     if (!PlatformDetection.useMobileUi) {
