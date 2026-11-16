@@ -7717,6 +7717,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         context,
         title: audio ? l10n.audioDelay : l10n.subtitleDelay,
         useRootNavigator: false,
+        // 16.11 : pour le décalage des SOUS-TITRES, la fenêtre doit laisser
+        // voir la ligne qu'on est en train de caler - sans ça, on règle à
+        // l'aveugle. Pas nécessaire pour le décalage audio.
+        keepSubtitlesVisible: !audio,
         builder: (dialogCtx) => DelayFooter(
           initialDelay: audio ? _audioDelay : _subtitleDelay,
           label: audio ? l10n.audioDelay : l10n.subtitleDelay,

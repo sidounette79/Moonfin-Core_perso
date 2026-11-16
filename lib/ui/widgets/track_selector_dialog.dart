@@ -29,6 +29,17 @@ Future<T?> showStyledPlayerDialog<T>(
   // so the caller can pop THIS dialog (e.g. to reopen it with fresh data)
   // from inside the button's onPressed.
   Widget Function(BuildContext dialogCtx)? titleTrailing,
+  // 16.11, Sid : « sur emby, la fenêtre de réglage des sous-titres est
+  // suffisamment haute pour que je voie le sous-titre en dessous et je peux
+  // facilement caler le truc », puis, photos à l'appui : « je vois un petit
+  // bout de ligne et un gros truc flou en semi transparence opaque ».
+  //
+  // Centré, ce panneau descend pile sur la bande où s'affichent les
+  // sous-titres - impossible de caler en voyant le résultat, ce qui est
+  // pourtant tout l'intérêt de l'écran. Les appelants qui doivent laisser le
+  // bas de l'image libre passent `keepSubtitlesVisible: true` ; les autres
+  // dialogues ne bougent pas.
+  bool keepSubtitlesVisible = false,
 }) {
   return showFocusRestoringDialog<T>(
     context: context,
@@ -123,13 +134,30 @@ Future<T?> showStyledPlayerDialog<T>(
             ),
           );
 
+          // Le clavier a priorité : s'il est là, il faut monter beaucoup plus
+          // haut que pour dégager les sous-titres.
+          final alignment = shiftUp
+              ? const Alignment(0, -0.85)
+              : (keepSubtitlesVisible
+                    ? const Alignment(0, -0.55)
+                    : Alignment.center);
+          // Réserve le bas de l'image, là où vivent les sous-titres.
+          final subtitleRoom = (mediaQuery.size.height * 0.28).clamp(
+            120.0,
+            280.0,
+          );
           return Dialog(
-            alignment: shiftUp ? const Alignment(0, -0.85) : Alignment.center,
+            alignment: alignment,
             insetAnimationDuration: const Duration(milliseconds: 200),
             insetAnimationCurve: Curves.easeOutCubic,
             insetPadding: shiftUp
                 ? const EdgeInsets.fromLTRB(40, 20, 40, 360)
-                : const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+                : (keepSubtitlesVisible
+                      ? EdgeInsets.fromLTRB(40, 24, 40, subtitleRoom)
+                      : const EdgeInsets.symmetric(
+                          horizontal: 40,
+                          vertical: 24,
+                        )),
             backgroundColor: Colors.transparent,
             child: glass
                 ? GlassSurface(

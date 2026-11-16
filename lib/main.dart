@@ -125,8 +125,30 @@ void _configureImageCache() {
     return;
   }
 
+  // 16.11, Sid : « la miniature qui devient noire si je passe dessus [...] il
+  // faut genre 2 secondes sur la miniature pour qu'elle devienne noire, mais
+  // des fois j'ouvre l'app et la première est déjà noire d'office », et « la
+  // miniature revient après 22 secondes ».
+  //
+  // Établi à partir de son rapport de diagnostic et de trois photos : le noir
+  // SUIT LE FOCUS (la carte focalisée est noire, la précédente retrouve son
+  // image), aucune image n'a échoué à charger (compteurs [artwork] fail=0,
+  // inflight=0 sur toute la fenêtre), et le fond d'écran affiche justement
+  // l'image de la carte dont la vignette est noire. Ce n'était donc pas un
+  // problème de données mais de place en mémoire.
+  //
+  // Un backdrop est décodé jusqu'à ArtworkDecode.maxSourceWidth (1920), soit
+  // ~8 Mo, et il y en a deux en mémoire pendant le fondu. Sur 96 Mo - 32 Mo
+  // en tier réduit - ça chasse les vignettes, à commencer par celle dont le
+  // fond vient d'être chargé. Les deux secondes sont le délai de chargement
+  // du fond, et les ~22 secondes la durée au bout de laquelle le diaporama
+  // passe à l'image suivante et rend la place.
+  //
+  // Le budget disponible double. Attention : le réglage « Limite du cache
+  // d'images » (imageCacheLimitMb, 350 Mo) ne joue PAS ici - il borne le
+  // cache DISQUE via _sweepImageCache, pas ce plafond mémoire.
   if (PlatformDetection.isTV) {
-    apply(500, 96 << 20);
+    apply(500, 192 << 20);
     return;
   }
 

@@ -44,7 +44,11 @@ DevicePerformanceTier resolveDevicePerformanceTierFor(
 int imageCacheBytesFor(DevicePerformanceTier tier, int standardBytes) =>
     switch (tier) {
       DevicePerformanceTier.standard => standardBytes,
-      DevicePerformanceTier.reduced => 32 << 20,
+      // 16.11: 32 Mo ne tenaient plus debout dès qu'un fond d'écran est à
+      // l'écran - voir le commentaire du budget TV dans main.dart. Un seul
+      // backdrop décodé pèse ~8 Mo, deux pendant le fondu : un quart du
+      // budget partait dans le décor, au sens propre.
+      DevicePerformanceTier.reduced => 64 << 20,
     };
 
 /// Whether an inline trailer may play. Off on the reduced tier even when the
