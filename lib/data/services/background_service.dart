@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:get_it/get_it.dart';
 
 import '../../data/models/aggregated_item.dart';
-import '../../ui/widgets/image_source.dart';
 import 'connectivity_service.dart';
 import 'media_server_client_factory.dart';
 
@@ -175,15 +174,24 @@ class BackgroundService {
     _blurContextController.close();
   }
 
-  void _evictBackgrounds(Iterable<String> urls) {
-    // Every backdrop widget builds its provider through ArtworkDecode, which
-    // remembers the sizes each URL was decoded at, so this drops the entries
-    // that were actually inserted rather than guessing at widths. Handing a
-    // ResizeImage straight to imageCache.evict never matched anything: the
-    // cache is keyed by what obtainKey returns, and for a ResizeImage that is
-    // a ResizeImageKey, not the ResizeImage itself.
-    for (final url in urls) {
-      unawaited(ArtworkDecode.evict(url));
-    }
-  }
+  // 16.11 : NE PLUS ÉVINCER. Conservé en fonction nommée pour que l'intention
+  // reste lisible à l'appel.
+  //
+  // Sid, après avoir essayé une par une les 14 entrées de « Continuer à
+  // regarder » : « sur les 14 trucs, y a UNIQUEMENT New York Unité Spéciale
+  // dont la vignette ne devient pas noire ». C'est ce test qui a tranché.
+  //
+  // `ArtworkDecode.evict(url)` évince TOUTES les tailles décodées d'une URL,
+  // pas seulement celle du fond d'écran. Quand une série n'a pas de backdrop
+  // propre, son fond et sa vignette sont la MÊME image à deux tailles : se
+  // débarrasser du fond détruisait donc aussi la vignette, et la carte
+  // devenait noire jusqu'au rechargement. New York Unité Spéciale y échappait
+  // parce qu'elle a un vrai backdrop, distinct de sa vignette — rien de
+  // partagé, rien à casser.
+  //
+  // Le cache a déjà sa propre politique de remplacement (LRU, plafond relevé
+  // à 192 Mo sur TV dans main.dart) : il libère ce qui n'est plus utilisé,
+  // sans toucher à ce qui est à l'écran. Évincer à la main, c'était décider à
+  // sa place sans savoir qui d'autre se sert de l'image.
+  void _evictBackgrounds(Iterable<String> urls) {}
 }
