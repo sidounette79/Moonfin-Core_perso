@@ -80,6 +80,21 @@ class _DelayFooterState extends State<DelayFooter> {
   final _plusFocus = FocusNode(debugLabel: 'delayPlus');
   final _closeFocus = FocusNode(debugLabel: 'delayClose');
 
+  // 16.11, Sid : "dans emby, on a une barre et je clique dessus gauche droite
+  // avec la télécommande pour avancer/reculer [...] je dois toujours cliquer
+  // sur les petits boutons +/- pour faire changer."
+  //
+  // Le 04.11 la barre avait été retirée du parcours de focus sur TV parce
+  // qu'un Slider Material, une fois focalisé, avale lui-même gauche/droite ET
+  // haut/bas - d'où son "je suis bloquée dessus avec le d-pad". La barre est
+  // restée visible mais inerte, et il ne restait que les boutons.
+  //
+  // On la rend à nouveau pilotable, mais avec NOTRE gestion de touches
+  // explicite plutôt que celle du Slider : gauche/droite ajustent la valeur
+  // et ne déplacent jamais le focus, bas descend vers les boutons, haut
+  // remonte. Il n'y a donc plus d'état d'où l'on ne peut pas sortir.
+  final _barFocus = FocusNode(debugLabel: 'delayBar');
+
   @override
   void initState() {
     super.initState();
@@ -93,7 +108,17 @@ class _DelayFooterState extends State<DelayFooter> {
     _resetFocus.onKeyEvent = _onResetKey;
     _plusFocus.onKeyEvent = _onPlusKey;
     _closeFocus.onKeyEvent = _onCloseKey;
+    _barFocus.onKeyEvent = _onBarKey;
+    // Sur TV, la barre prend le focus d'entrée : c'est elle qu'on veut sous
+    // le pouce, exactement comme dans Emby.
+    if (PlatformDetection.isTV && _hasBar) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _barFocus.requestFocus();
+      });
+    }
   }
+
+  bool get _hasBar => widget.minDelay != null && widget.maxDelay != null;
 
   @override
   void dispose() {
@@ -102,7 +127,33 @@ class _DelayFooterState extends State<DelayFooter> {
     _resetFocus.dispose();
     _plusFocus.dispose();
     _closeFocus.dispose();
+    _barFocus.dispose();
     super.dispose();
+  }
+
+  // Gauche/droite ajustent la valeur et NE déplacent PAS le focus : c'est
+  // tout l'intérêt de la barre. La répétition de touche fonctionne (maintenir
+  // la flèche fait défiler), via event.isActionable qui accepte KeyRepeat.
+  KeyEventResult _onBarKey(FocusNode node, KeyEvent event) {
+    if (!event.isActionable) return KeyEventResult.ignored;
+    if (event.logicalKey.isLeftKey) {
+      _adjust(-0.1);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey.isRightKey) {
+      _adjust(0.1);
+      return KeyEventResult.handled;
+    }
+    // Les deux sorties, pour ne jamais rester prisonnier de la barre.
+    if (event.logicalKey.isDownKey) {
+      _resetFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey.isUpKey) {
+      _closeFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   KeyEventResult _onMinusKey(FocusNode node, KeyEvent event) {
@@ -113,6 +164,9 @@ class _DelayFooterState extends State<DelayFooter> {
     }
     if (event.logicalKey.isDownKey) {
       _closeFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey.isUpKey && _focusBarIfAvailable()) {
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
@@ -132,7 +186,20 @@ class _DelayFooterState extends State<DelayFooter> {
       _closeFocus.requestFocus();
       return KeyEventResult.handled;
     }
+    // 16.11: retour vers la barre, pour pouvoir y revenir après avoir
+    // utilisé les boutons.
+    if (event.logicalKey.isUpKey && _focusBarIfAvailable()) {
+      return KeyEventResult.handled;
+    }
     return KeyEventResult.ignored;
+  }
+
+  bool _focusBarIfAvailable() {
+    if (!PlatformDetection.isTV || !_hasBar || !_barFocus.canRequestFocus) {
+      return false;
+    }
+    _barFocus.requestFocus();
+    return true;
   }
 
   KeyEventResult _onPlusKey(FocusNode node, KeyEvent event) {
@@ -143,6 +210,9 @@ class _DelayFooterState extends State<DelayFooter> {
     }
     if (event.logicalKey.isDownKey) {
       _closeFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey.isUpKey && _focusBarIfAvailable()) {
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
@@ -245,9 +315,29 @@ class _DelayFooterState extends State<DelayFooter> {
             // read-only position indicator, never grabs or blocks D-pad
             // navigation. Mouse/touch/remote-with-trackpad users (not
             // PlatformDetection.isTV) keep normal dragging.
-            ExcludeFocus(
-              excluding: PlatformDetection.isTV,
-              child: SliderTheme(
+            Focus(
+              focusNode: PlatformDetection.isTV ? _barFocus : null,
+              canRequestFocus: PlatformDetection.isTV,
+              descendantsAreFocusable: false,
+              child: AnimatedBuilder(
+                animation: _barFocus,
+                builder: (context, child) {
+                  final focused =
+                      PlatformDetection.isTV && _barFocus.hasFocus;
+                  return Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: focused
+                            ? AppColorScheme.accent
+                            : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                    child: child,
+                  );
+                },
+                child: SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   activeTrackColor: AppColorScheme.accent,
                   inactiveTrackColor: Colors.white24,
@@ -277,6 +367,7 @@ class _DelayFooterState extends State<DelayFooter> {
                       },
                     );
                   },
+                ),
                 ),
               ),
             ),
