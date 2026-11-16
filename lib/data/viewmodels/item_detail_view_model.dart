@@ -1043,6 +1043,7 @@ class ItemDetailViewModel extends ChangeNotifier {
       );
       _seriesEpisodesLoaded = true;
       notifyListeners();
+      unawaited(_enrichFeaturedEpisode());
     } catch (_) {
       // Left unloaded and silent on purpose. The Modern layout calls this from
       // build, so the next rebuild gets another go, and notifying here would
@@ -1055,6 +1056,68 @@ class ItemDetailViewModel extends ChangeNotifier {
     _seriesEpisodesRequested = false;
     _seriesEpisodesLoaded = false;
     return loadAllSeriesEpisodes();
+  }
+
+  /// 16.11, Sid : « si je vais dans fire country, l'épisode No Way Out
+  /// l'audio, les sous-titres et le nom de l'épisode ne s'affiche pas, alors
+  /// que si je vais sur la fiche de FBI, j'ai tout. »
+  ///
+  /// La fiche série met en avant un épisode : `nextUp` quand il existe, sinon
+  /// le premier non vu de [seriesEpisodes] (voir `_getRelevantEpisode` dans
+  /// les thèmes). Or seul le fetch NextUp demande `MediaSources`
+  /// ([_nextUpFields]) ; la liste des épisodes s'en passe volontairement
+  /// (30.09) pour ne pas charger les pistes de toute une saison. Résultat :
+  /// sans `nextUp`, la carte n'avait aucune piste à montrer.
+  ///
+  /// Vérifié côté serveur sur son cas réel : l'épisode a bien son image, sa
+  /// piste audio et ses deux pistes de sous-titres — rien ne manquait dans
+  /// Emby, c'est la requête qui ne les demandait pas.
+  ///
+  /// Chez elle, `nextUp` est vide parce qu'elle supprime les fichiers déjà
+  /// vus : Emby perd alors toute trace que la série est entamée. Ce n'est
+  /// donc pas un cas marginal.
+  ///
+  /// On recharge ce SEUL épisode avec ses `MediaSources` et on le remplace
+  /// dans la liste — une requête d'un élément, exactement comme NextUp. La
+  /// raison d'être du choix du 30.09 (ne pas alourdir la liste entière) est
+  /// préservée, et les deux thèmes en profitent sans rien changer à leur
+  /// logique d'affichage.
+  Future<void> _enrichFeaturedEpisode() async {
+    if (_isDisposed || _nextUp != null || _seriesEpisodes.isEmpty) return;
+
+    AggregatedItem? featured;
+    for (final episode in _seriesEpisodes) {
+      if (!episode.isPlayed) {
+        featured = episode;
+        break;
+      }
+    }
+    featured ??= _seriesEpisodes.first;
+
+    // Déjà complet (liste venue d'ailleurs, ou enrichissement précédent).
+    if (featured.rawData['MediaSources'] != null) return;
+
+    try {
+      final data = await _client.itemsApi.getItem(
+        featured.id,
+        fields: _nextUpFields,
+      );
+      if (_isDisposed || data.isEmpty) return;
+      final enriched = _mapItems(
+        [data],
+        fallbackRating: _item?.officialRating,
+      );
+      if (enriched.isEmpty) return;
+      final index = _seriesEpisodes.indexWhere((e) => e.id == featured!.id);
+      if (index < 0) return;
+      final updated = List<AggregatedItem>.of(_seriesEpisodes);
+      updated[index] = enriched.first;
+      _seriesEpisodes = updated;
+      notifyListeners();
+    } catch (_) {
+      // Sans importance : on garde l'épisode tel quel, la carte s'affiche
+      // simplement sans ses pistes comme avant.
+    }
   }
 
   Future<void> _loadNextUpThenEpisodes() async {
