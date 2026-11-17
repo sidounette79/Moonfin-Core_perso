@@ -7571,22 +7571,39 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       // DelayFooter's own class-level comment for why that kept breaking
       // D-pad navigation) - just a row showing the current value, opening
       // a dedicated dialog on tap/select.
+      // 17.11, Sid : « la première page de réglage reste toujours visible
+      // quand j'active la page de décalage et masque toujours la première
+      // ligne des sous-titres ». Remonter la fenêtre de décalage ne suffisait
+      // pas : c'est la LISTE DES PISTES, restée ouverte derrière, qui
+      // descend sur les sous-titres. On la ferme donc en passant au décalage
+      // - elle n'a plus d'utilité pendant qu'on cale, et la vidéo redevient
+      // entièrement visible sous la fenêtre.
+      //
+      // Le Builder sert uniquement à obtenir le contexte du dialogue, pour
+      // pouvoir le fermer. Fermeture avec un résultat nul : l'appelant de
+      // TrackSelectorDialog.show traite déjà ce cas par un simple retour, il
+      // n'applique aucun changement de piste.
       final delayFooter = delayLimits == null
           ? null
-          : _OsdMenuRow(
-              icon: Icons.timer_outlined,
-              label: audio ? l10n.audioDelay : l10n.subtitleDelay,
-              trailing: Text(
-                _formatDelay(audio ? _audioDelay : _subtitleDelay),
-                style: TextStyle(
-                  color: AppColorScheme.accent,
-                  fontWeight: FontWeight.w700,
+          : Builder(
+              builder: (dialogCtx) => _OsdMenuRow(
+                icon: Icons.timer_outlined,
+                label: audio ? l10n.audioDelay : l10n.subtitleDelay,
+                trailing: Text(
+                  _formatDelay(audio ? _audioDelay : _subtitleDelay),
+                  style: TextStyle(
+                    color: AppColorScheme.accent,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              onTap: () => _showDelayAdjustDialog(
-                audio: audio,
-                minDelay: delayLimits.$1,
-                maxDelay: delayLimits.$2,
+                onTap: () {
+                  Navigator.of(dialogCtx).pop();
+                  _showDelayAdjustDialog(
+                    audio: audio,
+                    minDelay: delayLimits.$1,
+                    maxDelay: delayLimits.$2,
+                  );
+                },
               ),
             );
       // 28.10, Sid: showing Emby's own subtitle menu as the reference -

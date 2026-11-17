@@ -126,10 +126,37 @@ class _BoundedNetworkImageState extends State<BoundedNetworkImage> {
   int _attempt = 0;
   bool _retried = false;
 
-  void _handleError(String url) {
+  // 17.11, Sid : « la miniature qui devient noire si je passe dessus », et le
+  // test qui a tout tranché : « sur les 14 trucs que j'ai dans continuer à
+  // regarder, y a UNIQUEMENT New York Unité Spéciale dont la vignette ne
+  // devient pas noire ».
+  //
+  // `ArtworkDecode.evict(url)` efface TOUTES les tailles décodées d'une URL.
+  // Une image qui échoue emportait donc toutes les autres vues de la même
+  // image - au premier chef le fond d'écran et la vignette de la carte, qui
+  // sont la même image à deux tailles dès que la série n'a pas de backdrop
+  // propre. New York Unité Spéciale en a un, distinct de sa vignette : rien
+  // de partagé, rien à casser, d'où la seule épargnée des 14.
+  //
+  // (Une première tentative avait neutralisé l'éviction côté
+  // background_service ; elle n'a rien changé parce que le vrai appel était
+  // celui-ci.)
+  //
+  // On n'évince plus que la taille de CETTE image, qui est celle qui a
+  // réellement échoué. L'intention d'origine - forcer un vrai rechargement
+  // plutôt que resservir l'échec depuis le cache - est conservée, sans
+  // toucher aux autres vues de la même œuvre.
+  void _handleError(String url, int? decodeWidth, int? decodeHeight) {
     if (_retried || !mounted) return;
     _retried = true;
-    unawaited(ArtworkDecode.evict(url));
+    unawaited(
+      offlineAwareImageProvider(
+        url,
+        maxWidth: decodeWidth,
+        maxHeight: decodeHeight,
+        cacheManager: widget.cacheManager,
+      ).evict(),
+    );
     Future.delayed(const Duration(milliseconds: 800), () {
       if (mounted) setState(() => _attempt++);
     });
@@ -189,7 +216,7 @@ class _BoundedNetworkImageState extends State<BoundedNetworkImage> {
               },
         errorBuilder: (context, error, stackTrace) {
           _notifyLoadFinished();
-          _handleError(imageUrl);
+          _handleError(imageUrl, decodeWidth, decodeHeight);
           return widget.errorBuilder?.call(context, imageUrl, error) ??
               const SizedBox.shrink();
         },
@@ -216,7 +243,7 @@ class _BoundedNetworkImageState extends State<BoundedNetworkImage> {
             },
       errorWidget: (context, url, error) {
         _notifyLoadFinished();
-        _handleError(imageUrl);
+        _handleError(imageUrl, decodeWidth, decodeHeight);
         return widget.errorBuilder?.call(context, url, error) ??
             const SizedBox.shrink();
       },
