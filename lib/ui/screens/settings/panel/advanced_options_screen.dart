@@ -19,6 +19,47 @@ class _AdvancedOptionsScreenState extends State<_AdvancedOptionsScreen> {
     super.dispose();
   }
 
+  bool _testingRequests = false;
+
+  /// 17.11, Sid : « j'ai complete dans lecture & sync mais a aucun moment j'ai
+  /// pu tester la connexion ». Elle avait raison : la connexion directe n'est
+  /// tentee qu'au demarrage de l'app (_initMoonfinMode), donc remplir ces
+  /// champs ne declenchait rien et rien ne disait si c'etait bon. Pendant ce
+  /// temps les journaux de Patoune TV n'affichaient que des « gate rejected »,
+  /// invisibles depuis l'app.
+  Future<void> _testRequestsLogin(BuildContext context) async {
+    if (_testingRequests) return;
+    setState(() => _testingRequests = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final prefs = GetIt.instance<UserPreferences>();
+    final email = prefs.get(UserPreferences.seerrDirectEmail).trim();
+    final password = prefs.get(UserPreferences.seerrDirectPassword);
+    String message;
+    try {
+      if (email.isEmpty || password.isEmpty) {
+        message = 'Renseigne d\'abord l\'e-mail et le mot de passe.';
+      } else {
+        final repo = GetIt.instance<SeerrRepository>();
+        final response = await repo.loginWithMoonbase(
+          username: email,
+          password: password,
+        );
+        message = response.success
+            ? 'Connexion réussie.'
+            : 'Connexion refusée : vérifie l\'e-mail et le mot de passe.';
+      }
+    } catch (e) {
+      // Le detail compte ici : une adresse injoignable et un mot de passe
+      // faux se ressemblent trop a l'ecran sans lui.
+      message = 'Échec : $e';
+    }
+    if (!mounted) return;
+    setState(() => _testingRequests = false);
+    messenger.showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 6)),
+    );
+  }
+
   Future<void> _clearImageCache(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
     await clearImageDiskCache();
@@ -104,6 +145,22 @@ class _AdvancedOptionsScreenState extends State<_AdvancedOptionsScreen> {
                   icon: Icons.key_outlined,
                   hintText: l10n.password,
                   obscure: true,
+                ),
+                _TvSettingsListTile(
+                  leading: _testingRequests
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.wifi_tethering),
+                  title: const Text('Tester la connexion'),
+                  subtitle: const Text(
+                    'Se connecte maintenant et dit si ça marche',
+                  ),
+                  onTap: _testingRequests
+                      ? null
+                      : () => _testRequestsLogin(context),
                 ),
               ],
             ),
