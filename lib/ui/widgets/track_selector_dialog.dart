@@ -70,10 +70,13 @@ Future<T?> showStyledPlayerDialog<T>(
               maxWidth: maxWidth,
               maxHeight: maxDialogHeight,
             ),
-            decoration: glass
+            decoration: (glass && !keepSubtitlesVisible)
                 ? null
                 : BoxDecoration(
-                    color: AppColorScheme.surface.withValues(alpha: 0.9),
+                    // Plein, pas 0.9, quand ce dialogue se pose sur un autre.
+                    color: keepSubtitlesVisible
+                        ? AppColorScheme.surface
+                        : AppColorScheme.surface.withValues(alpha: 0.9),
                     borderRadius: AppRadius.circular(20),
                     border: Border.fromBorderSide(
                       ThemeRegistry.active.borders.chipBorder,
@@ -159,14 +162,31 @@ Future<T?> showStyledPlayerDialog<T>(
                           vertical: 24,
                         )),
             backgroundColor: Colors.transparent,
-            child: glass
+            // 17.11, Sid : « tu as remonté la page de décalage des
+            // sous-titres, mais la page de réglage des sous-titres est
+            // toujours visible en dessous ». Le verre dépoli est lisible
+            // posé sur une vidéo, pas sur un autre dialogue : les deux
+            // listes de texte se superposaient. Ce dialogue-ci s'ouvre
+            // par-dessus la liste des pistes, donc il lui faut un fond plein.
+            child: (glass && !keepSubtitlesVisible)
                 ? GlassSurface(
                     cornerRadius: 20,
                     reinforced: true,
                     fallbackColor: Colors.transparent,
                     child: inner,
                   )
-                : inner,
+                : (keepSubtitlesVisible
+                      ? DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: AppColorScheme.surface,
+                            borderRadius: AppRadius.circular(20),
+                            border: Border.fromBorderSide(
+                              ThemeRegistry.active.borders.chipBorder,
+                            ),
+                          ),
+                          child: inner,
+                        )
+                      : inner),
           );
         },
       );

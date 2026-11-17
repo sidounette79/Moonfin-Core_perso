@@ -7073,7 +7073,25 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     // here is what plays when Reprendre starts that episode - same
     // _selectedAudioIndex/_showSubtitleSelector state _play() already
     // reads regardless of which item's page it was set from.
-    final streamSourceItem = (isSeries ? viewModel.nextUp : null) ?? item;
+    // 17.11, Sid : « je n'ai toujours pas la ligne audio, sous-titre qui
+    // s'affiche quand je vais dans la fiche détail d'une série », avec deux
+    // photos : Sheriff Country la montre, Fire Country non.
+    //
+    // La ligne ci-dessous n'allait chercher les pistes QUE dans `nextUp`.
+    // Sans « à suivre » - le cas dès qu'elle a supprimé les épisodes déjà
+    // vus, Emby perdant alors la trace que la série est entamée - elle
+    // retombait sur la série elle-même, qui ne porte aucune piste. D'où une
+    // fiche sur deux sans audio ni sous-titres.
+    //
+    // On reprend donc le même choix que les thèmes font pour l'épisode mis
+    // en avant (`_getRelevantEpisode`) : à défaut de `nextUp`, le premier
+    // épisode non vu de la série. Ses pistes sont disponibles parce que
+    // _enrichEpisodeTracks les a chargées (voir son commentaire) - les deux
+    // morceaux vont ensemble, l'enrichissement seul ne suffisait pas.
+    final featuredEpisode = isSeries
+        ? (viewModel.nextUp ?? _firstUnplayedSeriesEpisode(viewModel))
+        : null;
+    final streamSourceItem = featuredEpisode ?? item;
     final selectedSource = selectedMediaSourceForItem(
       streamSourceItem,
       widget.selectedMediaSourceId,
@@ -10276,6 +10294,19 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       widget.selectedMediaSourceId,
     );
     return mediaStreamsForItem(item, selectedSource);
+  }
+
+  /// L'épisode qu'une fiche série met en avant à défaut de « à suivre » : le
+  /// premier non vu, et sinon le premier tout court. Même choix que
+  /// `_getRelevantEpisode` dans les thèmes, pour que la ligne audio /
+  /// sous-titres parle bien de l'épisode affiché au-dessus d'elle.
+  AggregatedItem? _firstUnplayedSeriesEpisode(ItemDetailViewModel viewModel) {
+    final episodes = viewModel.seriesEpisodes;
+    if (episodes.isEmpty) return null;
+    for (final episode in episodes) {
+      if (!episode.isPlayed) return episode;
+    }
+    return episodes.first;
   }
 
   AggregatedItem? _firstLocalTrailerFromFeatures(
