@@ -91,14 +91,9 @@ class NouveauDiscoverySection extends StatefulWidget {
       return false;
     }
 
-    if (!viewModel.similarInitialLoadComplete) {
-      return true;
-    }
-
-    if (viewModel.similar.isNotEmpty) {
-      return true;
-    }
-
+    // 17.11 : la rangée ne vient plus que du service de requêtes (voir
+    // _related), donc les similaires d'Emby ne doivent plus la faire
+    // apparaître à eux seuls - sans quoi elle s'afficherait vide.
     if (!_seerrExpected(viewModel)) {
       return false;
     }
@@ -535,16 +530,6 @@ class NouveauDiscoverySectionState extends State<NouveauDiscoverySection>
     return _baseRelated.take(_protectedBaseCount).toList(growable: false);
   }
 
-  List<AggregatedItem> get _baseRelatedTail {
-    final base = _baseRelated;
-
-    if (base.length <= _protectedBaseCount) {
-      return const [];
-    }
-
-    return base.skip(_protectedBaseCount).toList(growable: false);
-  }
-
   List<AggregatedItem> get _recommendations {
     final state = seerrItemTabState(_vm);
 
@@ -585,15 +570,26 @@ class NouveauDiscoverySectionState extends State<NouveauDiscoverySection>
     return result;
   }
 
+  /// 17.11, Sid : « j'ai que 20 propositions, qui viennent toutes de mon emby
+  /// [...] aucun intérêt qu'il me propose des similaires qui n'en sont pas et
+  /// qu'en plus certains j'ai déjà vu. Ils restent simplement dans mon emby ».
+  ///
+  /// La rangée empilait trois sources dans cet ordre : les similaires d'Emby
+  /// « protégés » (toujours en tête, donc les seuls visibles sans faire
+  /// défiler), la suite de ceux d'Emby, puis ceux de TMDB tout à la fin. Or
+  /// Emby ne peut proposer que ce qu'il contient déjà : la rangée ne montrait
+  /// donc jamais autre chose que sa propre bibliothèque, et les suggestions
+  /// TMDB étaient reléguées hors de vue.
+  ///
+  /// Elle ne vient plus que du service de requêtes. Sans réponse de sa part,
+  /// la rangée disparaît (voir shouldInclude) plutôt que de retomber sur une
+  /// liste sans intérêt. `_protectedBaseRelated` reste utilisé par
+  /// `_recommendations` pour dédoublonner les deux rangées entre elles.
   List<AggregatedItem> get _related {
-    final protectedBase = _protectedBaseRelated;
-
-    final baseTail = _baseRelatedTail;
-
     final state = seerrItemTabState(_vm);
 
     if (state == null) {
-      return [...protectedBase, ...baseTail];
+      return const [];
     }
 
     final recommendations = _recommendations;
@@ -602,24 +598,7 @@ class NouveauDiscoverySectionState extends State<NouveauDiscoverySection>
       for (final item in recommendations) ..._identityKeys(item),
     };
 
-    final filteredTail = <AggregatedItem>[];
-
-    final tailSeen = <String>{};
-
-    for (final item in baseTail) {
-      final keys = _identityKeys(item);
-
-      if (_sharesIdentity(keys, recommendationKeys) ||
-          _sharesIdentity(keys, tailSeen)) {
-        continue;
-      }
-
-      tailSeen.addAll(keys);
-
-      filteredTail.add(item);
-    }
-
-    final result = <AggregatedItem>[...protectedBase, ...filteredTail];
+    final result = <AggregatedItem>[];
 
     final currentItem = _vm.item;
 
