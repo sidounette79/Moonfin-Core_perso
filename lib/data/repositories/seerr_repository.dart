@@ -393,10 +393,27 @@ class SeerrRepository {
     // n'y a qu'une façon de se connecter à Patoune TV.
     final MoonfinLoginResponse response;
     if (client.proxyConfig.isDirect) {
+      // 17.11, Sid : « j'ai fait une demande, je sais pas ou ca part [...]
+      // c'est pas venu dans radarr ». Les journaux de Patoune TV montraient
+      // « gate rejected » sur TOUTES les routes et AUCUN appel a /auth/local :
+      // l'app n'avait tout simplement pas de session.
+      //
+      // Cause : les identifiants vivaient a deux endroits. Ceux saisis dans
+      // cet ecran servaient a l'appel de connexion et etaient oublies aussitot,
+      // tandis que seuls ceux d'Options avancees declenchent la reconnexion
+      // automatique au demarrage (_initMoonfinMode). Se connecter ici ne
+      // survivait donc pas au redemarrage de l'app, sans que rien ne le dise.
+      //
+      // Une connexion reussie ici les enregistre desormais comme identifiants
+      // directs : un seul endroit a remplir, et la session se retablit seule.
       final ok = await client.directLogin(
         email: username,
         password: password,
       );
+      if (ok) {
+        await _store.set(UserPreferences.seerrDirectEmail, username);
+        await _store.set(UserPreferences.seerrDirectPassword, password);
+      }
       if (!ok) {
         return const MoonfinLoginResponse(success: false);
       }

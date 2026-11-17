@@ -103,6 +103,7 @@ class _AdvancedOptionsScreenState extends State<_AdvancedOptionsScreen> {
                   title: l10n.password,
                   icon: Icons.key_outlined,
                   hintText: l10n.password,
+                  obscure: true,
                 ),
               ],
             ),
