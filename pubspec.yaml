@@ -1,10 +1,10 @@
 name: moonfin
 description: "Moonfin - Jellyfin & Emby media client for mobile, tablet, and desktop"
 publish_to: 'none'
-version: 2.6.11+30000164
+version: 2.6.12+30000165
 
 moonfin:
-  android_tv_version: 2.6.7
+  android_tv_version: 2.6.8
   # 29.09: this used to track upstream Moonfin's own small counter
   # (2000012 -> 2000019), completely separate from the `version:` line
   # above's much larger one. Some earlier build installed on Sid's TV
