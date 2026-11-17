@@ -2,6 +2,7 @@ import 'package:jellyfin_preference/jellyfin_preference.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../auth/repositories/session_repository.dart';
+import '../../preference/user_preferences.dart';
 import '../services/seerr/seerr_api_models.dart';
 import '../services/seerr/seerr_http_client.dart';
 import '../services/seerr/seerr_models.dart';
@@ -135,6 +136,37 @@ class SeerrRepository {
   Future<void> _initMoonfinMode() async {
     final baseUrl = _client.baseUrl;
     final token = _client.accessToken;
+
+    // 17.11 : une adresse directe l'emporte sur le chemin du plugin. C'est le
+    // seul moyen d'atteindre un service de requêtes quand le serveur média
+    // n'héberge pas le plugin Moonfin - le cas d'un serveur Emby, donc le
+    // sien. Voir UserPreferences.seerrDirectApiUrl.
+    final directUrl = _store.getString(UserPreferences.seerrDirectApiUrl.key)
+        ?.trim();
+    if (directUrl != null && directUrl.isNotEmpty) {
+      _initClient(MoonfinProxyConfig(
+        jellyfinBaseUrl: baseUrl,
+        jellyfinToken: token ?? '',
+        directApiBaseUrl: directUrl,
+      ));
+      _isMoonfinMode = true;
+
+      final email = _store.getString(UserPreferences.seerrDirectEmail.key) ?? '';
+      final password =
+          _store.getString(UserPreferences.seerrDirectPassword.key) ?? '';
+      try {
+        if (email.isNotEmpty && password.isNotEmpty) {
+          await _httpClient!.directLogin(email: email, password: password);
+        }
+        final status = await _httpClient!.getMoonfinStatus();
+        _isAvailable = status.authenticated;
+        _serverReportsEnabled = status.enabled;
+      } catch (_) {
+        _isAvailable = false;
+      }
+      return;
+    }
+
     if (baseUrl.isEmpty || token == null || token.isEmpty) {
       _isAvailable = false;
       return;

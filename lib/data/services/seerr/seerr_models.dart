@@ -6,10 +6,35 @@ class MoonfinProxyConfig {
   final String jellyfinBaseUrl;
   final String jellyfinToken;
 
+  /// 17.11, Sid : « si tu arrives à me faire fonctionner patounetv en tant que
+  /// seerr, je prends », puis « on avait déjà modifié pas mal de choses pour
+  /// lier Patoune TV à la place de Seerr ».
+  ///
+  /// Vérifié : tout le travail avait été fait CÔTÉ SERVEUR. Patoune TV expose
+  /// déjà une API compatible Jellyseerr complète sur
+  /// `/api/jellyseerr/api/v1/` (status, auth/local, auth/jellyfin, request,
+  /// request-options, search, discover/*, movie/:id, Radarr, Sonarr, quotas),
+  /// et son propre commentaire du 28.09 cite des logs Emby de Moonbase : le
+  /// branchement avait déjà été tenté depuis ce côté-là.
+  ///
+  /// Ce qui manquait était ici : l'adresse était fabriquée en dur à partir du
+  /// serveur média (`<serveur>/Moonfin/Seerr/Api/...`), ce qui suppose le
+  /// plugin Moonfin — un plugin Jellyfin, alors qu'elle est sur Emby. L'app
+  /// tapait donc dans le vide, et aucun réglage ne pouvait y remédier.
+  ///
+  /// Renseigné, ce champ est l'adresse complète de l'API, utilisée telle
+  /// quelle. Vide, rien ne change : on retombe exactement sur le chemin
+  /// Moonfin d'origine.
+  final String? directApiBaseUrl;
+
   const MoonfinProxyConfig({
     required this.jellyfinBaseUrl,
     required this.jellyfinToken,
+    this.directApiBaseUrl,
   });
+
+  bool get isDirect =>
+      directApiBaseUrl != null && directApiBaseUrl!.trim().isNotEmpty;
 }
 
 /// Outcome of the password-less Quick Connect sign in. Parsed by hand from any

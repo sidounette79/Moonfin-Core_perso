@@ -3351,6 +3351,32 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: false,
   );
 
+  // 17.11, Sid : « si tu arrives à me faire fonctionner patounetv en tant que
+  // seerr, je prends ». L'app n'avait qu'un seul chemin : le plugin Moonfin
+  // côté serveur média, c'est-à-dire un plugin Jellyfin - inutilisable sur
+  // son Emby, ce qui explique que le branchement n'ait jamais fonctionné.
+  //
+  // Renseignée, cette adresse est celle de l'API compatible Jellyseerr, prise
+  // telle quelle (chez elle :
+  // `https://patounetv.sidounette.ch/api/jellyseerr/api/v1`). Vide, rien ne
+  // change et on reste sur le chemin Moonfin.
+  static final seerrDirectApiUrl = Preference(
+    key: 'seerr_direct_api_url',
+    defaultValue: '',
+  );
+
+  // Patoune TV authentifie par session, pas par jeton : il faut donc de quoi
+  // se connecter. Mêmes identifiants que son compte Patoune TV.
+  static final seerrDirectEmail = Preference(
+    key: 'seerr_direct_email',
+    defaultValue: '',
+  );
+
+  static final seerrDirectPassword = Preference(
+    key: 'seerr_direct_password',
+    defaultValue: '',
+  );
+
   static final seerrBlockNsfw = Preference(
     key: 'seerrBlockNsfw',
     defaultValue: false,

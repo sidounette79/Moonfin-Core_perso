@@ -55,7 +55,23 @@ class SeerrHttpClient {
   static String _trimSlash(String path) =>
       path.startsWith('/') ? path.substring(1) : path;
 
+  static String _trimTrailingSlash(String url) {
+    var out = url.trim();
+    while (out.endsWith('/')) {
+      out = out.substring(0, out.length - 1);
+    }
+    return out;
+  }
+
+  // 17.11 : en mode direct, l'adresse configurée EST celle de l'API (par
+  // exemple `https://patounetv.sidounette.ch/api/jellyseerr/api/v1`), on ne
+  // lui ajoute donc pas le chemin du plugin Moonfin. Voir
+  // MoonfinProxyConfig.directApiBaseUrl pour le pourquoi.
   String _apiUrl(String path) {
+    if (proxyConfig.isDirect) {
+      final base = _trimTrailingSlash(proxyConfig.directApiBaseUrl!);
+      return '$base/${_trimSlash(path)}';
+    }
     return '${proxyConfig.jellyfinBaseUrl}/Moonfin/Seerr/Api/${_trimSlash(path)}';
   }
 
@@ -63,10 +79,45 @@ class SeerrHttpClient {
     return '${proxyConfig.jellyfinBaseUrl}/Moonfin/Seerr/${_trimSlash(path)}';
   }
 
+  /// 17.11 : en mode direct, Patoune TV n'authentifie pas par jeton mais par
+  /// COOKIE de session, comme le ferait un navigateur. Son propre code le dit
+  /// (`mirrorSessionCookies`) : la connexion renvoie
+  /// `__Secure-better-auth.session_token`, doublé en `connect.sid` pour
+  /// imiter Jellyseerr. On garde donc le cookie reçu à la connexion et on le
+  /// renvoie à chaque appel.
+  ///
+  /// Capturé à la main plutôt qu'avec `dio_cookie_manager` : une dépendance
+  /// de plus pour un seul usage, alors que l'en-tête suffit et reste lisible.
+  String? _sessionCookie;
+
+  bool get hasDirectSession =>
+      _sessionCookie != null && _sessionCookie!.isNotEmpty;
+
+  /// Retient les cookies d'une réponse de connexion. Ne garde que le couple
+  /// nom=valeur : les attributs (Path, Secure, SameSite…) ne se renvoient pas.
+  void _captureSessionCookie(Response response) {
+    final raw = response.headers.map['set-cookie'];
+    if (raw == null || raw.isEmpty) return;
+    final pairs = <String>[];
+    for (final cookie in raw) {
+      final nameValue = cookie.split(';').first.trim();
+      if (nameValue.isEmpty || !nameValue.contains('=')) continue;
+      pairs.add(nameValue);
+    }
+    if (pairs.isEmpty) return;
+    _sessionCookie = pairs.join('; ');
+  }
+
+  void clearDirectSession() => _sessionCookie = null;
+
   Options _authOptions([Options? existing]) {
-    final headers = <String, dynamic>{
-      'Authorization': 'MediaBrowser Token="${proxyConfig.jellyfinToken}"',
-    };
+    final headers = <String, dynamic>{};
+    if (proxyConfig.isDirect) {
+      if (hasDirectSession) headers['Cookie'] = _sessionCookie;
+    } else {
+      headers['Authorization'] =
+          'MediaBrowser Token="${proxyConfig.jellyfinToken}"';
+    }
     if (existing != null) {
       return existing.copyWith(headers: {...?existing.headers, ...headers});
     }
@@ -809,6 +860,12 @@ class SeerrHttpClient {
   }
 
   Future<List<dynamic>> getRadarrCalendar({String? start, String? end}) async {
+    // 17.11 : le calendrier est une route du plugin Moonfin. Patoune TV
+    // expose /service/radarr et /service/sonarr, mais pas de calendrier - en
+    // mode direct on renvoie donc une liste vide plutôt que de laisser
+    // l'appel partir sur une adresse qui n'existe pas et remonter une erreur
+    // dans une page qui, elle, fonctionne par ailleurs.
+    if (proxyConfig.isDirect) return const <dynamic>[];
     final response = await _dio.get(
       _moonfinUrl('Radarr/Calendar'),
       queryParameters: {
@@ -822,6 +879,12 @@ class SeerrHttpClient {
   }
 
   Future<List<dynamic>> getSonarrCalendar({String? start, String? end}) async {
+    // 17.11 : le calendrier est une route du plugin Moonfin. Patoune TV
+    // expose /service/radarr et /service/sonarr, mais pas de calendrier - en
+    // mode direct on renvoie donc une liste vide plutôt que de laisser
+    // l'appel partir sur une adresse qui n'existe pas et remonter une erreur
+    // dans une page qui, elle, fonctionne par ailleurs.
+    if (proxyConfig.isDirect) return const <dynamic>[];
     final response = await _dio.get(
       _moonfinUrl('Sonarr/Calendar'),
       queryParameters: {
@@ -834,7 +897,68 @@ class SeerrHttpClient {
     return response.data as List<dynamic>;
   }
 
+  /// Connexion en mode direct : `/auth/local` attend {email, password} et
+  /// répond par le cookie de session qu'on gardera. Pas de jeton ici.
+  Future<bool> directLogin({
+    required String email,
+    required String password,
+  }) async {
+    final response = await _dio.post(
+      _apiUrl('auth/local'),
+      data: {'email': email, 'password': password},
+      options: Options(
+        contentType: Headers.jsonContentType,
+        // On veut lire le corps d'un 401 sans lever, pour distinguer un
+        // mauvais mot de passe d'un service injoignable.
+        validateStatus: (code) => code != null && code < 500,
+      ),
+    );
+    if (response.statusCode != 200) {
+      clearDirectSession();
+      return false;
+    }
+    _captureSessionCookie(response);
+    return hasDirectSession;
+  }
+
+  /// 17.11 : en mode direct, les routes du plugin Moonfin n'existent pas.
+  /// `/status` de l'API Jellyseerr dit seulement que le service répond ; c'est
+  /// `/auth/me` qui dit si la session est valide. On compose donc la réponse
+  /// que le reste du code attend au lieu d'appeler `Moonfin/Seerr/Status`.
   Future<MoonfinStatusResponse> getMoonfinStatus() async {
+    if (proxyConfig.isDirect) {
+      final status = await _dio.get(
+        _apiUrl('status'),
+        options: Options(validateStatus: (code) => code != null && code < 500),
+      );
+      if (status.statusCode != 200) {
+        return const MoonfinStatusResponse(enabled: false, authenticated: false);
+      }
+      if (!hasDirectSession) {
+        return const MoonfinStatusResponse(enabled: true, authenticated: false);
+      }
+      final me = await _dio.get(
+        _apiUrl('auth/me'),
+        options: _authOptions(
+          Options(validateStatus: (code) => code != null && code < 500),
+        ),
+      );
+      if (me.statusCode != 200) {
+        // Session expirée : on l'oublie pour que l'appelant puisse relancer
+        // une connexion au lieu d'enchaîner les 401.
+        clearDirectSession();
+        return const MoonfinStatusResponse(enabled: true, authenticated: false);
+      }
+      final data = me.data;
+      return MoonfinStatusResponse(
+        enabled: true,
+        authenticated: true,
+        url: proxyConfig.directApiBaseUrl,
+        seerrUserId: data is Map ? (data['id'] as num?)?.toInt() : null,
+        displayName: data is Map ? data['displayName']?.toString() : null,
+        avatar: data is Map ? data['avatar']?.toString() : null,
+      );
+    }
     final response = await _dio.get(
       _moonfinUrl('Status'),
       options: _authOptions(),
