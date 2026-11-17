@@ -2118,6 +2118,10 @@
         "description": "News category filter label"
     },
     "kids": "Enfants",
+    "kidsMode": "Mode enfant",
+    "kidsModeSubtitle": "Simplifie l'app et verrouille la sortie par un code PIN",
+    "kidsModeExit": "Quitter le mode enfant",
+    "kidsModeExitSubtitle": "Saisis ton code PIN pour retrouver l'app complete",
     "@kids": {
         "description": "Kids category filter label"
     },

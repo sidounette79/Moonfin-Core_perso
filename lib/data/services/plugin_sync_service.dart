@@ -85,8 +85,26 @@ class PluginSyncService extends ChangeNotifier {
   String? get seerrUrl => _seerrUrl;
   bool _seerrEnabled = false;
   bool get seerrEnabled => _seerrEnabled;
+
+  /// Une adresse de requetes directe est configuree : le service est joignable
+  /// sans plugin serveur. Voir UserPreferences.seerrDirectApiUrl.
+  bool get _directRequestsConfigured =>
+      _prefs.get(UserPreferences.seerrDirectApiUrl).trim().isNotEmpty;
+
+  /// 17.11, Sid : « il est possible qu'on ait desactive les liens Seerr dans
+  /// les pages. Il faudra les remettre. » Rien n'avait ete desactive a la main :
+  /// ce getter exigeait `_pluginAvailable`, donc le plugin Moonfin - absent de
+  /// son Emby. Les 84 points du code qui testent `seerrAvailable` (onglet
+  /// Decouvrir, boutons de demande, rangees Similaires/Recommandations,
+  /// apparitions d'acteurs, ligne Disponibilite des fiches, episodes a venir)
+  /// restaient donc muets meme une fois Patoune TV connecte en direct.
+  ///
+  /// Une adresse directe configuree vaut desormais plugin disponible. Si la
+  /// connexion echoue, les rangees sont vides plutot qu'absentes - degradation
+  /// visible, preferable a une app qui cache tout sans rien dire.
   bool get seerrAvailable =>
-      _pluginAvailable && _seerrEnabled && _prefs.get(UserPreferences.seerrEnabled);
+      (_directRequestsConfigured || (_pluginAvailable && _seerrEnabled)) &&
+      _prefs.get(UserPreferences.seerrEnabled);
   bool _seerrInfoAvailable = false;
   bool get seerrInfoAvailable => _seerrInfoAvailable;
 

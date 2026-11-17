@@ -45,9 +45,21 @@ class SeerrPreferences {
 
   /// Label for the Seerr integration: the moonbase display name when one is set,
   /// otherwise [fallback] (typically l10n.seerr).
+  ///
+  /// 17.11, Sid, capture a l'appui : le sous-titre de la page Integrations dit
+  /// bien « Patoune TV » (il vient des traductions, deja renommees) alors que
+  /// l'entree juste en dessous dit encore « Seerr » - elle, elle vient d'ici.
+  /// Un `moonfin_display_name` valant litteralement « Seerr », ecrit par une
+  /// ancienne connexion au plugin, prenait le pas sur le nom du service. Ce
+  /// n'est pas un nom choisi, c'est un residu : on le traite comme vide et on
+  /// retombe sur le fallback, qui porte le bon nom.
+  static const _genericStoredNames = {'seerr', 'jellyseerr', 'overseerr'};
+
   String labelOrDefault(String fallback) {
     final name = moonfinDisplayName.trim();
-    return name.isNotEmpty ? name : fallback;
+    if (name.isEmpty) return fallback;
+    if (_genericStoredNames.contains(name.toLowerCase())) return fallback;
+    return name;
   }
 
   String get moonfinVariant => normalizeVariant(_store.getString(_userKey('moonfin_variant')));

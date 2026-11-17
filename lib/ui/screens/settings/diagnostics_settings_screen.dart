@@ -38,13 +38,13 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
       if (!mounted) return;
       _showSnack(
         fileName == null
-            ? 'Report sent to server'
-            : 'Report sent to server: $fileName',
+            ? 'Rapport envoye au serveur'
+            : 'Rapport envoye au serveur : $fileName',
       );
     } catch (e) {
       if (!mounted) return;
       final detail = describeError(e, AppLocalizations.of(context));
-      _showSnack('Could not send report: $detail');
+      _showSnack('Envoi du rapport impossible : $detail');
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -56,11 +56,11 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
     try {
       final fileName = await _log.uploadToNas();
       if (!mounted) return;
-      _showSnack('Report sent to NAS: $fileName');
+      _showSnack('Rapport envoye au NAS : $fileName');
     } catch (e) {
       if (!mounted) return;
       final detail = describeError(e, AppLocalizations.of(context));
-      _showSnack('Could not send report to NAS: $detail');
+      _showSnack('Envoi au NAS impossible : $detail');
     } finally {
       if (mounted) setState(() => _uploadingToNas = false);
     }
@@ -69,17 +69,17 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
   Future<void> _copyAll() async {
     ArtworkTimings.prepareReport();
     await Clipboard.setData(ClipboardData(text: _log.exportText()));
-    _showSnack('Logs copied to clipboard');
+    _showSnack('Journaux copies dans le presse-papiers');
   }
 
   Future<void> _copyEntry(LogEntry entry) async {
     await Clipboard.setData(ClipboardData(text: entry.format()));
-    _showSnack('Entry copied to clipboard');
+    _showSnack('Entree copiee dans le presse-papiers');
   }
 
   void _clearLogs() {
     _log.clear();
-    _showSnack('Logs cleared');
+    _showSnack('Journaux effaces');
   }
 
   void _showSnack(String message) {
@@ -102,7 +102,7 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               RadioListTile<LogCategory?>(
-                title: const Text('All categories'),
+                title: const Text('Toutes les categories'),
                 value: null,
               ),
               for (final category in LogCategory.values)
@@ -128,7 +128,7 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
         Scaffold(
           appBar: buildSettingsAppBar(
             context,
-            const Text('Diagnostics & Logging'),
+            const Text('Diagnostics et journaux'),
           ),
           body: AnimatedBuilder(
             animation: _log,
@@ -156,32 +156,44 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _Section(title: 'Logging'),
+              const _Section(title: 'Journalisation'),
               SwitchPreferenceTile(
                 preference: UserPreferences.diagnosticLoggingEnabled,
-                title: 'Enable diagnostic logging',
+                title: 'Activer la journalisation',
                 subtitle:
-                    'Capture media, Seerr login, network and other '
-                    'diagnostics so they can be sent to the server as a report.',
+                    'Enregistre la lecture, la connexion au service de requetes, le '
+                    'reseau et d\'autres diagnostics, pour les envoyer en rapport.',
                 icon: Icons.bug_report,
               ),
               SwitchPreferenceTile(
                 preference: UserPreferences.crashReportsEnabled,
-                title: 'Send crash reports to server',
+                title: 'Envoyer les rapports de plantage',
                 subtitle:
-                    'Save a report when the app crashes and send it to your '
-                    'own server the next time it connects. Nothing is sent '
-                    'anywhere else.',
+                    'Conserve un rapport quand l\'app plante et l\'envoie a ton propre '
+                    'serveur a la prochaine connexion. Rien ne part ailleurs.',
                 icon: Icons.report_outlined,
+              ),
+              // 17.11 : ce reglage vivait dans Options avancees, cinq ecrans
+              // plus loin. Sid l'a cherche ici, deux fois - et moi aussi, au
+              // point de lui donner un chemin faux. Un interrupteur qui
+              // gouverne un bouton d'envoi de rapport appartient a l'ecran
+              // des rapports, pas aux options avancees de la lecture.
+              SwitchPreferenceTile(
+                preference: UserPreferences.showDiagnosticsShortcut,
+                title: 'Raccourci d\'envoi dans la barre laterale',
+                subtitle:
+                    'Ajoute un bouton qui envoie le rapport en un appui, sans '
+                    'traverser les reglages.',
+                icon: Icons.bolt_outlined,
               ),
               _Section(
                 title: enabled
-                    ? 'Reports ($count entries captured)'
-                    : 'Reports',
+                    ? 'Rapports ($count entrees capturees)'
+                    : 'Rapports',
               ),
               _ActionTile(
                 icon: Icons.cloud_upload,
-                title: 'Send report to server',
+                title: 'Envoyer le rapport au serveur',
                 subtitle: _sendSubtitle(enabled),
                 enabled:
                     enabled && hasEntries && _supportsUpload && !_uploading,
@@ -196,11 +208,11 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
               ),
               _ActionTile(
                 icon: Icons.dns_outlined,
-                title: 'Send report to NAS',
+                title: 'Envoyer le rapport au NAS',
                 subtitle: !enabled
-                    ? 'Enable diagnostic logging first.'
+                    ? 'Activez d\'abord la journalisation.'
                     : !hasEntries
-                        ? 'No entries captured yet.'
+                        ? 'Aucune entree capturee pour l\'instant.'
                         : 'Upload the captured logs straight to Claude\'s NAS '
                             'receiver (CARBA TV diagnostics).',
                 enabled: enabled && hasEntries && !_uploadingToNas,
@@ -215,29 +227,29 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
               ),
               _ActionTile(
                 icon: Icons.copy_all,
-                title: 'Copy all logs',
-                subtitle: 'Copy the full report to the clipboard.',
+                title: 'Copier tous les journaux',
+                subtitle: 'Copie le rapport complet dans le presse-papiers.',
                 enabled: hasEntries,
                 onTap: _copyAll,
               ),
               _ActionTile(
                 icon: Icons.delete_outline,
-                title: 'Clear captured logs',
-                subtitle: 'Discard everything in the current buffer.',
+                title: 'Effacer les journaux captures',
+                subtitle: 'Jette tout ce qui est en memoire.',
                 enabled: hasEntries,
                 destructive: true,
                 onTap: _clearLogs,
               ),
               _Section(
                 title: _filter == null
-                    ? 'Recent logs'
-                    : 'Recent logs (${entries.length} of $count)',
+                    ? 'Journaux recents'
+                    : 'Journaux recents (${entries.length} sur $count)',
               ),
               _ActionTile(
                 icon: Icons.filter_list,
                 title: 'Filter',
                 subtitle: _filter == null
-                    ? 'All categories'
+                    ? 'Toutes les categories'
                     : _categoryLabel(_filter!),
                 enabled: enabled || hasEntries,
                 trailing: const Icon(Icons.expand_more, size: 20),
@@ -264,10 +276,10 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
   }
 
   String _sendSubtitle(bool enabled) {
-    if (!enabled) return 'Enable diagnostic logging first.';
+    if (!enabled) return 'Activez d\'abord la journalisation.';
     if (!_supportsUpload) return _log.uploadUnavailableReason;
-    if (_log.entryCount == 0) return 'No entries captured yet.';
-    return 'Upload the captured logs to the active server.';
+    if (_log.entryCount == 0) return 'Aucune entree capturee pour l\'instant.';
+    return 'Televerse les journaux captures vers le serveur actif.';
   }
 
   Widget _buildEmptyState(BuildContext context, bool enabled) {
@@ -279,15 +291,15 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
     if (filtered) {
       icon = Icons.filter_list_off;
       message =
-          'No ${_categoryLabel(_filter!)} entries. $total captured in other '
-          'categories. Tap Filter to change.';
+          'Aucune entree « ${_categoryLabel(_filter!)} ». $total capturees '
+          'dans d\'autres categories. Touche Filtre pour changer.';
     } else if (enabled) {
       icon = Icons.hourglass_empty;
-      message = 'No log entries yet. Reproduce the issue, then send a report.';
+      message = 'Aucune entree. Reproduis le probleme, puis envoie un rapport.';
     } else {
       icon = Icons.toggle_off_outlined;
       message =
-          'Logging is off. Turn it on, reproduce the issue, then send '
+          'La journalisation est eteinte. Allume-la, reproduis le probleme, '
           'a report to the server.';
     }
 
@@ -316,9 +328,9 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
   static String _categoryLabel(LogCategory category) => switch (category) {
     LogCategory.general => 'General',
     LogCategory.media => 'Media',
-    LogCategory.seerr => 'Seerr login',
+    LogCategory.seerr => 'Connexion Patoune TV',
     LogCategory.network => 'Network',
-    LogCategory.auth => 'Authentication',
+    LogCategory.auth => 'Authentification',
     LogCategory.playback => 'Playback',
     LogCategory.sync => 'Sync',
     LogCategory.artwork => 'Artwork',

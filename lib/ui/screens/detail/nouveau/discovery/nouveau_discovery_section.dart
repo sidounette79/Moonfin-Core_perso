@@ -41,13 +41,76 @@ class NouveauDiscoverySection extends StatefulWidget {
     return item.type == 'Movie' || item.type == 'Series';
   }
 
-  // 30.10, Sid ("la partie 'similaire' on peut la supprimer tout court, je
-  // vais jamais dessus... en plus ils ont pas grand chose à voir") - jamais
-  // incluse côté Nouveau, quel que soit l'item. Gardé en un seul `return
-  // false` plutôt qu'en retirant l'appel côté nouveau_detail_content.dart,
-  // pour rester réversible d'une seule ligne si elle change d'avis.
+  static bool _seerrExpected(ItemDetailViewModel viewModel) {
+    final item = viewModel.item;
+
+    if (item == null || !supportsItem(item)) {
+      return false;
+    }
+
+    if (!GetIt.instance<PluginSyncService>().seerrAvailable) {
+      return false;
+    }
+
+    return (item.tmdbId?.isNotEmpty ?? false) ||
+        (item.imdbId?.isNotEmpty ?? false);
+  }
+
+  static bool _seerrRelatedResolved(ItemDetailViewModel viewModel) {
+    if (!_seerrExpected(viewModel)) {
+      return true;
+    }
+
+    final seerr = viewModel.seerr;
+
+    if (seerr == null) {
+      return false;
+    }
+
+    if (seerr.state.error != null) {
+      return true;
+    }
+
+    return seerr.relatedLoadComplete;
+  }
+
+  // 30.10, Sid : « la partie "similaire" on peut la supprimer tout court, je
+  // vais jamais dessus... en plus ils ont pas grand chose à voir ». Mise en
+  // sommeil par un `return false` unique, en gardant tout le reste du code
+  // « pour rester réversible d'une seule ligne si elle change d'avis ».
+  //
+  // 17.11 : elle change d'avis, et pour une raison precise - ces rangees ne
+  // valaient rien parce qu'elles venaient d'un service de requetes qui n'a
+  // jamais repondu (le plugin Moonfin, absent de son Emby). Patoune TV repond
+  // desormais, les similaires viennent de TMDB : « tu peux remettre du coup ».
+  // Logique d'origine restauree telle quelle.
   static bool shouldInclude(ItemDetailViewModel viewModel) {
-    return false;
+    final item = viewModel.item;
+
+    if (item == null || !supportsItem(item)) {
+      return false;
+    }
+
+    if (!viewModel.similarInitialLoadComplete) {
+      return true;
+    }
+
+    if (viewModel.similar.isNotEmpty) {
+      return true;
+    }
+
+    if (!_seerrExpected(viewModel)) {
+      return false;
+    }
+
+    if (!_seerrRelatedResolved(viewModel)) {
+      return true;
+    }
+
+    final state = seerrItemTabState(viewModel);
+
+    return state != null &&
+        (state.similar.isNotEmpty || state.recommendations.isNotEmpty);
   }
 
   @override
