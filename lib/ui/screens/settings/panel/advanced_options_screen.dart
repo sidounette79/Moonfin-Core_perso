@@ -73,6 +73,39 @@ class _AdvancedOptionsScreenState extends State<_AdvancedOptionsScreen> {
                 ],
               ),
             ],
+            // 17.11, Sid : « si tu arrives à me faire fonctionner patounetv
+            // en tant que seerr, je prends ». L'app ne savait joindre un
+            // service de requêtes qu'à travers le plugin Moonfin du serveur
+            // média - un plugin Jellyfin, donc absent de son Emby. Ces trois
+            // champs ouvrent la voie directe : l'adresse remplace le chemin
+            // du plugin, et les identifiants servent à ouvrir la session
+            // (Patoune TV authentifie par session, pas par jeton).
+            //
+            // Laissés vides, rien ne change : on reste sur le chemin Moonfin
+            // d'origine. Voir UserPreferences.seerrDirectApiUrl.
+            _SectionHeader(l10n.mediaRequestIntegration),
+            adaptiveListSection(
+              children: [
+                _EditableStringPreferenceTile(
+                  preference: UserPreferences.seerrDirectApiUrl,
+                  title: l10n.seerrDirectApiUrlTitle,
+                  icon: Icons.link,
+                  hintText: 'https://exemple.ch/api/jellyseerr/api/v1',
+                ),
+                _EditableStringPreferenceTile(
+                  preference: UserPreferences.seerrDirectEmail,
+                  title: l10n.email,
+                  icon: Icons.alternate_email,
+                  hintText: l10n.email,
+                ),
+                _EditableStringPreferenceTile(
+                  preference: UserPreferences.seerrDirectPassword,
+                  title: l10n.password,
+                  icon: Icons.key_outlined,
+                  hintText: l10n.password,
+                ),
+              ],
+            ),
             if (!PlatformDetection.isWeb) ...[
               _SectionHeader(l10n.storage),
               adaptiveListSection(

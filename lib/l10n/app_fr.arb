@@ -2584,6 +2584,7 @@
         "description": "Plugin settings description"
     },
     "mediaRequestIntegration": "Intégration des demandes de médias",
+  "seerrDirectApiUrlTitle": "Adresse du service de requêtes",
     "@mediaRequestIntegration": {
         "description": "Seerr settings description"
     },

@@ -2557,9 +2557,20 @@ class _ContentRowsState extends State<_ContentRows>
       return screenHeight;
     }
 
+    // 17.11, Sid : « je reviens en arrière sur ce que j'ai dit hier. La
+    // bannière en mode paysage, faut la modifier aussi. Parce qu'en fait,
+    // dans la voiture, je suis tout le temps en paysage. Et la bannière, elle
+    // prend l'entier de l'écran. »
+    //
+    // Le plein écran en paysage partait de l'idée d'un téléphone tourné pour
+    // regarder une affiche. Sa box voiture, elle, vit en paysage en
+    // permanence sur un écran très bas (719x431 dp) : la bannière y mangeait
+    // tout et il ne restait plus rien pour les rangées. Même proportion qu'en
+    // portrait, soit environ 160 dp sur sa box - de quoi voir la bannière ET
+    // ce qu'il y a dessous.
     final isLandscape = screenWidth > screenHeight;
     if (isLandscape) {
-      return screenHeight;
+      return screenHeight * 0.37;
     }
 
     final mediaBarMode = UserPreferences.normalizeMediaBarMode(
@@ -2570,8 +2581,8 @@ class _ContentRowsState extends State<_ContentRows>
     }
 
     // 16.11, Sid : "tu peux aussi changer la bannière sur mobile". Même mode
-    // `moonfin` que sur TV, en portrait : 0.55 -> 0.37. (Le paysage mobile
-    // sort plus haut, volontairement plein écran, et n'est pas concerné.)
+    // `moonfin` que sur TV, en portrait : 0.55 -> 0.37. (Le paysage est
+    // traité plus haut, à la même proportion depuis le 17.11.)
     return screenHeight * 0.37;
   }
 
