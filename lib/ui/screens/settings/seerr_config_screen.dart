@@ -52,6 +52,23 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
   late List<SeerrRowConfig> _rows;
   final _focusNodes = <FocusNode>[];
 
+  /// 17.11, Sid : « CARBA TV me dit que je dois réactiver le plugin Seerr
+  /// dans le plugin Moonfin dans Emby. Je fais donc ? Ou on utilise un autre
+  /// chemin nous ? » — non : ce plugin est un plugin **Jellyfin**, il n'existe
+  /// pas sur son Emby, et c'est précisément pourquoi l'intégration n'a jamais
+  /// fonctionné. Son message « Indisponible, car la prise en charge de Seerr
+  /// par le plugin serveur est désactivée » interrogeait le plugin sans savoir
+  /// que le chemin direct existe.
+  ///
+  /// « Faut faire comme on a fait pour Bazarr du coup » : même montage que
+  /// [BazarrPreferences], une connexion directe au service qui ne dépend
+  /// d'aucun plugin serveur. Dès qu'une adresse est configurée, l'écran
+  /// s'active sans rien demander à Emby.
+  bool get _directRequestsConfigured => _userPreferences
+      .get(UserPreferences.seerrDirectApiUrl)
+      .trim()
+      .isNotEmpty;
+
   final _enableSeerrFocusNode = FocusNode(debugLabel: 'seerrEnableSeerr');
   final _accountCardFocusNode = FocusNode(debugLabel: 'seerrAccountCard');
   final _refreshFocusNode = FocusNode(debugLabel: 'seerrRefresh');
@@ -82,8 +99,8 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
     _enableSeerrFocusNode.onKeyEvent = (node, event) {
       if (event is! KeyDownEvent) return KeyEventResult.ignored;
       if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-        final seerrAvailable =
-            _syncService.pluginAvailable && _syncService.seerrEnabled;
+        final seerrAvailable = _directRequestsConfigured ||
+            (_syncService.pluginAvailable && _syncService.seerrEnabled);
         final showSeerrSettings = seerrAvailable && _seerrPrefs.enabled;
         if (showSeerrSettings) {
           _accountCardFocusNode.requestFocus();
@@ -91,8 +108,8 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
         }
       }
       if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-        final seerrAvailable =
-            _syncService.pluginAvailable && _syncService.seerrEnabled;
+        final seerrAvailable = _directRequestsConfigured ||
+            (_syncService.pluginAvailable && _syncService.seerrEnabled);
         final showSeerrSettings = seerrAvailable && _seerrPrefs.enabled;
         if (showSeerrSettings) {
           _refreshFocusNode.requestFocus();
@@ -427,8 +444,8 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final seerrAvailable =
-        _syncService.pluginAvailable && _syncService.seerrEnabled;
+    final seerrAvailable = _directRequestsConfigured ||
+        (_syncService.pluginAvailable && _syncService.seerrEnabled);
     final showSeerrSettings = seerrAvailable && _seerrPrefs.enabled;
     final seerrLabel = _seerrPrefs.labelOrDefault(l10n.seerr);
 

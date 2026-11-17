@@ -3360,9 +3360,18 @@ class UserPreferences extends ChangeNotifier {
   // telle quelle (chez elle :
   // `https://patounetv.sidounette.ch/api/jellyseerr/api/v1`). Vide, rien ne
   // change et on reste sur le chemin Moonfin.
+  // 17.11, Sid : « faut faire comme on a fait pour bazarr du coup ». Même
+  // raisonnement que BazarrPreferences : le service tourne sur son réseau et
+  // est déjà joignable publiquement par son Caddy, donc l'adresse peut vivre
+  // en dur — seuls des identifiants n'ont rien à faire dans un dépôt public.
+  // Elle n'a ainsi rien à saisir sur chaque appareil, et peut toujours
+  // remplacer la valeur depuis les réglages.
+  static const String patouneTvRequestsUrl =
+      'https://patounetv.sidounette.ch/api/jellyseerr/api/v1';
+
   static final seerrDirectApiUrl = Preference(
     key: 'seerr_direct_api_url',
-    defaultValue: '',
+    defaultValue: patouneTvRequestsUrl,
   );
 
   // Patoune TV authentifie par session, pas par jeton : il faut donc de quoi
