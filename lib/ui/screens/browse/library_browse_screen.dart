@@ -1650,6 +1650,31 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
             _allLetterFocusNode.requestFocus();
             return KeyEventResult.handled;
           }
+          // 17.11, Sid : « page des séries, le d-pad va pas dans l'ordre. Si
+          // je veux aller à gauche, ça remonte », et après vérification de sa
+          // part : « ça fait le bug avec ou sans filtre » - donc ce n'est pas
+          // le filtre, c'est la grille.
+          //
+          // Même défaut que celui corrigé le 30.10 pour la flèche bas (« ça
+          // part toujours en diagonale ») : haut et bas étaient câblés
+          // explicitement, gauche et droite laissés à la traversée
+          // directionnelle de Flutter, qui vise le voisin le plus proche
+          // GÉOMÉTRIQUEMENT. Comme les cartes n'ont pas toutes le même
+          // rapport d'image (_itemAspectRatio), les lignes ne sont pas
+          // alignées et « le plus proche à gauche » se trouve parfois sur la
+          // ligne du dessus.
+          //
+          // On vise donc l'index voisin réel, exactement comme pour le bas.
+          // La première colonne garde son départ vers la barre de navigation
+          // (traité plus haut), et la fin de ligne garde son blocage.
+          if (PlatformDetection.isTV &&
+              event.isActionable &&
+              event.logicalKey.isLeftKey &&
+              positionInSection % crossAxisCount != 0 &&
+              index > 0) {
+            getGridItemFocusNode(index - 1).requestFocus();
+            return KeyEventResult.handled;
+          }
           if (event.isActionable && event.logicalKey.isRightKey) {
             // Measured against the section the card sits in, so the end of a
             // ragged last row holds focus instead of jumping to the next
@@ -1658,6 +1683,10 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
                 (positionInSection % crossAxisCount) == crossAxisCount - 1;
             final isLastInSection = positionInSection == sectionCount - 1;
             if (isLastColumn || isLastInSection) {
+              return KeyEventResult.handled;
+            }
+            if (PlatformDetection.isTV) {
+              getGridItemFocusNode(index + 1).requestFocus();
               return KeyEventResult.handled;
             }
           }
