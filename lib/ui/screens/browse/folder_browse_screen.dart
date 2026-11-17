@@ -488,6 +488,52 @@ class _FolderBrowseScreenState extends State<FolderBrowseScreen> {
                     return KeyEventResult.handled;
                   }
                 }
+                // 17.11, Sid : « fais un tour général de d-pad partout, on a
+                // souvent eu des soucis ». Cette grille avait le même défaut
+                // que celle des séries - son propre commentaire ci-dessus le
+                // disait déjà : seule la sortie à gauche était câblée, les
+                // déplacements à l'intérieur étaient laissés à la traversée
+                // directionnelle de Flutter, qui vise le voisin le plus
+                // proche géométriquement et saute de ligne dès que les
+                // vignettes n'ont pas toutes la même hauteur.
+                //
+                // Les quatre directions suivent désormais l'index réel, comme
+                // dans favorites_screen (le modèle) et library_browse_screen.
+                if (PlatformDetection.isTV && event.isActionable) {
+                  final count = _vm.items.length;
+                  final key = event.logicalKey;
+                  if (key.isLeftKey && index % crossAxisCount != 0) {
+                    _getGridItemFocusNode(index - 1).requestFocus();
+                    return KeyEventResult.handled;
+                  }
+                  if (key.isRightKey) {
+                    final atLineEnd =
+                        index % crossAxisCount == crossAxisCount - 1;
+                    if (atLineEnd || index + 1 >= count) {
+                      return KeyEventResult.handled;
+                    }
+                    _getGridItemFocusNode(index + 1).requestFocus();
+                    return KeyEventResult.handled;
+                  }
+                  if (key.isUpKey && index >= crossAxisCount) {
+                    _getGridItemFocusNode(index - crossAxisCount)
+                        .requestFocus();
+                    return KeyEventResult.handled;
+                  }
+                  if (key.isDownKey) {
+                    // Ligne du bas en dents de scie : on retombe sur la
+                    // dernière carte plutôt que de sauter en diagonale.
+                    final below = index + crossAxisCount;
+                    if (below < count) {
+                      _getGridItemFocusNode(below).requestFocus();
+                      return KeyEventResult.handled;
+                    }
+                    if (index < count - 1 && count > crossAxisCount) {
+                      _getGridItemFocusNode(count - 1).requestFocus();
+                      return KeyEventResult.handled;
+                    }
+                  }
+                }
                 return KeyEventResult.ignored;
               },
             );
