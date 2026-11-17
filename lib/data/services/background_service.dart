@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:get_it/get_it.dart';
+import 'package:server_core/server_core.dart';
 
 import '../../data/models/aggregated_item.dart';
+import '../../util/artwork_timing.dart';
 import 'connectivity_service.dart';
 import 'media_server_client_factory.dart';
 
@@ -157,6 +159,16 @@ class BackgroundService {
   void _update() {
     if (_currentIndex >= _backgrounds.length) _currentIndex = 0;
     _currentUrl = _backgrounds[_currentIndex];
+    // 17.11 : tracé pour la miniature noire. On veut pouvoir dire, dans un
+    // rapport, si le fond chargé porte la MÊME URL que la vignette qui
+    // noircit - c'est la seule différence connue entre les cartes touchées
+    // et New York Unité Spéciale, épargnée.
+    ServerLog.emit(
+      'artwork',
+      ServerLogLevel.info,
+      'backdrop -> ${loggableArtworkUrl(_currentUrl!)} '
+      '(${_currentIndex + 1}/${_backgrounds.length})',
+    );
     _backgroundController.add(_currentUrl);
 
     if (_backgrounds.length > 1) {

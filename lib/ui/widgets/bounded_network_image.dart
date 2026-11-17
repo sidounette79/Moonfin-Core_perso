@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:server_core/server_core.dart';
 
+import '../../util/artwork_timing.dart';
 import '../../util/image_fetch_priority.dart';
 import '../theme/vibrance.dart';
 import 'image_source.dart';
@@ -147,6 +149,19 @@ class _BoundedNetworkImageState extends State<BoundedNetworkImage> {
   // plutôt que resservir l'échec depuis le cache - est conservée, sans
   // toucher aux autres vues de la même œuvre.
   void _handleError(String url, int? decodeWidth, int? decodeHeight) {
+    // 17.11 : instrumentation de la miniature noire, après trois correctifs
+    // qui n'ont rien changé. Le rapport de diagnostic montrait `fail=0` côté
+    // [artwork], mais ces compteurs ne couvrent pas les cartes : un échec ici
+    // passait donc inaperçu. Or le code de l'économiseur d'écran note déjà
+    // qu'« un widget d'erreur est un cadre noir », exactement le symptôme.
+    // On trace donc chaque échec, avec l'URL et la taille demandée, pour
+    // pouvoir le corréler au chargement du fond d'écran.
+    ServerLog.emit(
+      'artwork',
+      ServerLogLevel.warning,
+      'card image FAILED ${loggableArtworkUrl(url)} '
+      '(${decodeWidth ?? '-'}x${decodeHeight ?? '-'}, retry=$_retried)',
+    );
     if (_retried || !mounted) return;
     _retried = true;
     unawaited(
