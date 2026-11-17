@@ -148,9 +148,16 @@ class SeerrRepository {
     // seul moyen d'atteindre un service de requêtes quand le serveur média
     // n'héberge pas le plugin Moonfin - le cas d'un serveur Emby, donc le
     // sien. Voir UserPreferences.seerrDirectApiUrl.
-    final directUrl = _store.getString(UserPreferences.seerrDirectApiUrl.key)
-        ?.trim();
-    if (directUrl != null && directUrl.isNotEmpty) {
+    //
+    // get(preference) et NON getString(preference.key) : le second lit
+    // SharedPreferences brut et ignore le defaultValue declare sur la
+    // preference. Avec getString, l'adresse Patoune TV pre-remplie n'existait
+    // que sur le papier - tant que Sid n'avait rien saisi a la main, directUrl
+    // valait null, le mode direct ne s'activait jamais et l'app retombait sur
+    // le chemin du plugin, d'ou le « Seerr integration is not enabled » de sa
+    // capture du 17.11.
+    final directUrl = _store.get(UserPreferences.seerrDirectApiUrl).trim();
+    if (directUrl.isNotEmpty) {
       _initClient(MoonfinProxyConfig(
         jellyfinBaseUrl: baseUrl,
         jellyfinToken: token ?? '',
@@ -158,9 +165,8 @@ class SeerrRepository {
       ));
       _isMoonfinMode = true;
 
-      final email = _store.getString(UserPreferences.seerrDirectEmail.key) ?? '';
-      final password =
-          _store.getString(UserPreferences.seerrDirectPassword.key) ?? '';
+      final email = _store.get(UserPreferences.seerrDirectEmail).trim();
+      final password = _store.get(UserPreferences.seerrDirectPassword);
       try {
         if (email.isNotEmpty && password.isNotEmpty) {
           await _httpClient!.directLogin(email: email, password: password);

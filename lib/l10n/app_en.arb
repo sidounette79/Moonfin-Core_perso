@@ -284,11 +284,11 @@
   "@spotlightMoviesAndShows": {
     "description": "Subtitle of the spotlight similar and recommendations card"
   },
-  "spotlightSimilarSeerr": "Similar (Seerr)",
+  "spotlightSimilarSeerr": "Similar (Patoune TV)",
   "@spotlightSimilarSeerr": {
     "description": "Header of the Seerr similar-titles section when it appears beside the library's own similar section"
   },
-  "spotlightRecommendationsSeerr": "Recommendations (Seerr)",
+  "spotlightRecommendationsSeerr": "Recommendations (Patoune TV)",
   "@spotlightRecommendationsSeerr": {
     "description": "Header of the Seerr recommendations section when it appears in the Spotlight recommendations modal"
   },
@@ -455,7 +455,7 @@
   "@recommendationSystem": {
     "description": "Label for the Recommendation System setting"
   },
-  "recommendationSystemSubtitle": "Use the Moonfin Recommends local-library algorithm, Jellyfin Recommends server engine, or the online TMDb's Similarity Metrics. Note: Online recommendations require Seerr integration.",
+  "recommendationSystemSubtitle": "Use the Moonfin Recommends local-library algorithm, Jellyfin Recommends server engine, or the online TMDb's Similarity Metrics. Note: Online recommendations require Patoune TV integration.",
   "@recommendationSystemSubtitle": {
     "description": "Explanation under the recommendation system setting"
   },
@@ -3520,12 +3520,12 @@
       }
     }
   },
-  "seerr": "Seerr",
+  "seerr": "Patoune TV",
   "@seerr": {
     "description": "Seerr brand name"
   },
 
-  "seerrAccountType": "Seerr Account Type",
+  "seerrAccountType": "Patoune TV Account Type",
   "@seerrAccountType": {
     "description": "Header for selecting Seerr authentication account type"
   },
@@ -4554,11 +4554,11 @@
   "@detailMetadataGenres": {
     "description": "Item label for genre tags in metadata row"
   },
-  "detailMetadataSeerrAvailability": "Seerr Availability",
+  "detailMetadataSeerrAvailability": "Patoune TV Availability",
   "@detailMetadataSeerrAvailability": {
     "description": "Item label for Seerr request and availability badge in metadata row"
   },
-  "detailMetadataSeerrAvailabilitySubtitle": "Shows request and media availability status from Seerr",
+  "detailMetadataSeerrAvailabilitySubtitle": "Shows request and media availability status from Patoune TV",
   "@detailMetadataSeerrAvailabilitySubtitle": {
     "description": "Subtitle explaining the Seerr availability metadata badge"
   },
@@ -5572,7 +5572,7 @@
   "@navbarAlwaysExpanded": {
     "description": "Setting to keep every top navbar heading's text label visible at all times, tvOS-style"
   },
-  "showSeerrButton": "Show Seerr Button",
+  "showSeerrButton": "Show Patoune TV Button",
   "@showSeerrButton": {
     "description": "Setting for showing Seerr button"
   },
@@ -6430,7 +6430,7 @@
   "@genresAndTags": {
     "description": "Button and dialog title for browsing a title's genres, networks and tags"
   },
-  "seerrDiscoveryRows": "Seerr Discovery Rows",
+  "seerrDiscoveryRows": "Patoune TV Discovery Rows",
   "@seerrDiscoveryRows": {
     "description": "Subtitle shown under Seerr discovery home rows"
   },
@@ -6442,15 +6442,15 @@
   "@resetRowsToDefaults": {
     "description": "Tooltip for reset rows to defaults"
   },
-  "enableSeerr": "Enable Seerr",
+  "enableSeerr": "Enable Patoune TV",
   "@enableSeerr": {
     "description": "Setting for enabling Seerr"
   },
-  "showSeerrInNavigation": "Show Seerr in navigation (requires server plugin)",
+  "showSeerrInNavigation": "Show Patoune TV in navigation",
   "@showSeerrInNavigation": {
     "description": "Description for enable Seerr"
   },
-  "seerrUnavailable": "Unavailable because server plugin Seerr support is disabled.",
+  "seerrUnavailable": "Unavailable: no request service is reachable right now.",
   "@seerrUnavailable": {
     "description": "Description when Seerr is unavailable"
   },
@@ -6470,7 +6470,7 @@
   "@showMissingCollectionItemsDesc": {
     "description": "Setting subtitle explaining that missing items will be included on Collection pages"
   },
-  "showSeerrAvailabilityBadges": "Show Seerr Availability Badges",
+  "showSeerrAvailabilityBadges": "Show Patoune TV Availability Badges",
   "@showSeerrAvailabilityBadges": {
     "description": "Setting title for showing Seerr availability badges on media details pages"
   },
@@ -6523,15 +6523,15 @@
       }
     }
   },
-  "discoverRows": "Seerr Discovery Page",
+  "discoverRows": "Patoune TV Discovery Page",
   "@discoverRows": {
     "description": "Section title for discover rows"
   },
-  "discoverRowsDescriptionPlugin": "Enable rows to see on Seerr mainpage. Drag to reorder. Custom order syncs with Moonbase.",
+  "discoverRowsDescriptionPlugin": "Enable rows to see on Patoune TV mainpage. Drag to reorder. Custom order syncs with Moonbase.",
   "@discoverRowsDescriptionPlugin": {
     "description": "Description for discover rows with plugin"
   },
-  "discoverRowsDescription": "Enable rows to see on Seerr mainpage. Drag to reorder. Custom order syncs with Moonbase.",
+  "discoverRowsDescription": "Enable rows to see on Patoune TV mainpage. Drag to reorder. Custom order syncs with Moonbase.",
   "@discoverRowsDescription": {
     "description": "Description for discover rows without plugin"
   },
@@ -6782,7 +6782,7 @@
       }
     }
   },
-  "seerrSettings": "Seerr Settings",
+  "seerrSettings": "Patoune TV Settings",
   "@seerrSettings": {
     "description": "Dialog title for Seerr browse settings"
   },
@@ -9564,7 +9564,7 @@
   "settingsDynamicContentSubtitle": "Media Bar and visual overlays",
   "settingsPlaybackSyncplay": "Playback & SyncPlay",
   "settingsPlaybackSyncplaySubtitle": "Audio/video settings, subtitles, downloads, and SyncPlay controls",
-  "settingsIntegrationsSubtitle": "Plugin sync, Seerr, ratings, and more",
+  "settingsIntegrationsSubtitle": "Plugin sync, Patoune TV, ratings, and more",
   "settingsAboutSubtitle": "App version, legal information, and credits",
   "settingsAuthenticationSection": "AUTHENTICATION",
   "settingsSortServersBy": "Sort Servers By",
@@ -9610,14 +9610,14 @@
   "settingsShowFavoritesButtonInNavigation": "Show the favorites button in the navigation bar",
   "settingsShowLiveTvButtonInNavigation": "Show the Live TV button in the navigation bar when the server has a Live TV library",
   "settingsShowLibrariesButtonInNavigation": "Show the libraries button in the navigation bar",
-  "settingsShowSeerrButtonInNavigation": "Show the Seerr button in the navigation bar",
+  "settingsShowSeerrButtonInNavigation": "Show the Patoune TV button in the navigation bar",
   "settingsAlwaysExpandNavbarLabels": "Always show text labels in the top navigation bar",
   "settingsLibraryVisibilitySubtitle": "Toggle home page visibility per library. Restart Moonfin for changes to take effect.",
   "settingsMediaBarAndLocalPreviews": "Media Bar & Local Previews",
   "settingsVisualOverlays": "Visual Overlays",
   "settingsSeasonalSurprise": "Seasonal Surprise",
   "settingsMetadataAndRatings": "Metadata & Ratings",
-  "settingsPluginScreenDescription": "Moonbase powers server-side integrations including additional rating sources, Seerr requests, and synced preferences.",
+  "settingsPluginScreenDescription": "Moonbase powers server-side integrations including additional rating sources, Patoune TV requests, and synced preferences.",
   "settingsOfflineDownloads": "Offline Downloads",
   "useNativeEmulator": "Native Emulation",
   "@useNativeEmulator": {
@@ -10229,8 +10229,8 @@
   "recentlyReleasedEpisodes": "Recently Released Episodes",
   "watchAgain": "Watch Again",
   "guestAppearances": "Guest Appearances",
-  "appearancesSeerr": "Appearances (Seerr)",
-  "crewContributionsSeerr": "Crew Contributions (Seerr)",
+  "appearancesSeerr": "Appearances (Patoune TV)",
+  "crewContributionsSeerr": "Crew Contributions (Patoune TV)",
   "watchWithGroup": "Watch with group",
   "errors": "Errors",
   "warnings": "Warnings",
@@ -11623,7 +11623,7 @@
   "@clearFilters": {
     "description": "Action that turns every library filter back off."
   },
-  "seerrShortcutsRow": "Seerr Browse",
+  "seerrShortcutsRow": "Patoune TV Browse",
   "@seerrShortcutsRow": {
     "description": "Title of the Seerr shortcuts row that jumps to Discover, Movies, Series, Requests and Issues."
   },
@@ -11807,7 +11807,7 @@
   "@setupTourMoreHeader": {
     "description": "Heading of the closing setup screen block that lists features found in settings"
   },
-  "setupTourBulletRequests": "Seerr requests",
+  "setupTourBulletRequests": "Patoune TV requests",
   "@setupTourBulletRequests": {
     "description": "Bullet on the closing setup screen for the Seerr request feature"
   },
