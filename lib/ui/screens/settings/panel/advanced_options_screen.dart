@@ -106,6 +106,20 @@ class _AdvancedOptionsScreenState extends State<_AdvancedOptionsScreen> {
                 ),
               ],
             ),
+            // 17.11 : interrupteur de campagne. Allumé le temps d'une chasse
+            // au bug, éteint ensuite - d'où un réglage plutôt qu'un bouton
+            // permanent dans la barre.
+            _SectionHeader(l10n.diagnostics),
+            adaptiveListSection(
+              children: [
+                SwitchPreferenceTile(
+                  preference: UserPreferences.showDiagnosticsShortcut,
+                  title: l10n.diagnosticsShortcutTitle,
+                  subtitle: l10n.diagnosticsShortcutSubtitle,
+                  icon: Icons.bug_report_outlined,
+                ),
+              ],
+            ),
             if (!PlatformDetection.isWeb) ...[
               _SectionHeader(l10n.storage),
               adaptiveListSection(

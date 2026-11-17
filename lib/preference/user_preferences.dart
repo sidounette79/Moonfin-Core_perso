@@ -3377,6 +3377,22 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: '',
   );
 
+  // 17.11, Sid, en plein diagnostic de la miniature noire : « sinon je dois
+  // naviguer sur les cartes, revenir avec plein de clics tout à gauche,
+  // descendre dans la barre latérale, cliquer dans paramètres, descendre
+  // jusqu'à À propos, aller dans diagnostics, et descendre dans send report
+  // to NAS ». Le temps que tout ça se fasse, les lignes de journal
+  // intéressantes sont déjà sorties de la fenêtre gardée en mémoire — ce qui
+  // explique sans doute pourquoi le premier rapport n'avait rien montré.
+  //
+  // Un raccourci dans la barre latérale envoie le rapport en un appui, juste
+  // après l'incident. Désactivé par défaut : c'est un outil de campagne, à
+  // rallumer le temps d'une chasse puis à éteindre.
+  static final showDiagnosticsShortcut = Preference(
+    key: 'pref_show_diagnostics_shortcut',
+    defaultValue: false,
+  );
+
   static final seerrBlockNsfw = Preference(
     key: 'seerrBlockNsfw',
     defaultValue: false,

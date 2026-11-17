@@ -14,6 +14,8 @@ import '../../data/models/aggregated_library.dart';
 import '../../data/repositories/multi_server_repository.dart';
 import '../../data/repositories/user_views_repository.dart';
 import '../../data/services/library_scope_service.dart';
+import '../../data/services/log_service.dart';
+import '../../util/artwork_timing.dart';
 import '../../data/services/plugin_sync_service.dart';
 import '../../preference/preference_constants.dart';
 import '../../preference/seerr_preferences.dart';
@@ -840,6 +842,45 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
     );
   }
 
+  /// 17.11 : envoie le rapport de diagnostic au NAS en un seul appui, depuis
+  /// n'importe où. Même action que le bouton « Send report to NAS » des
+  /// réglages — on ne duplique que le chemin d'accès, pas la logique.
+  ///
+  /// L'intérêt n'est pas le confort mais la fraîcheur : le journal ne garde
+  /// qu'une fenêtre glissante, et traverser sept écrans pour l'envoyer en
+  /// chasse justement les lignes qu'on voulait lire.
+  bool _sendingDiagnostics = false;
+
+  Widget _diagnosticsShortcutItem({required Color? navColor}) {
+    return _SidebarItem(
+      key: const ValueKey('sidebar-diagnostics-shortcut'),
+      icon: _sendingDiagnostics
+          ? Icons.hourglass_top_rounded
+          : Icons.bug_report_outlined,
+      label: 'Envoyer le rapport',
+      baseColor: navColor,
+      showLabel: _showLabels,
+      onPressed: () async {
+        if (_sendingDiagnostics) return;
+        setState(() => _sendingDiagnostics = true);
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        try {
+          ArtworkTimings.prepareReport();
+          final fileName = await GetIt.instance<LogService>().uploadToNas();
+          messenger?.showSnackBar(
+            SnackBar(content: Text('Rapport envoyé : $fileName')),
+          );
+        } catch (e) {
+          messenger?.showSnackBar(
+            SnackBar(content: Text('Envoi impossible : $e')),
+          );
+        } finally {
+          if (mounted) setState(() => _sendingDiagnostics = false);
+        }
+      },
+    );
+  }
+
   /// The messages row, or nothing when there is nothing to show. The nav colour
   /// is passed in so the caller decides which palette slot it takes.
   Widget _serverMessagesSidebarItem({
@@ -1214,6 +1255,14 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                   _serverMessagesSidebarItem(
                     navColor: nextMainSidebarColor(),
                     label: l10n.serverMessages,
+                  ),
+                // 17.11 : raccourci de campagne, éteint par défaut. Voir
+                // UserPreferences.showDiagnosticsShortcut : envoyer le
+                // rapport demandait sept écrans de navigation, le temps que
+                // les lignes utiles sortent du journal gardé en mémoire.
+                if (_prefs.get(UserPreferences.showDiagnosticsShortcut))
+                  _diagnosticsShortcutItem(
+                    navColor: nextMainSidebarColor(),
                   ),
                 _SidebarItem(
                   key: const ValueKey('sidebar-search'),

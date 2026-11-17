@@ -3944,6 +3944,9 @@
     "description": "Plugin settings description"
   },
   "mediaRequestIntegration": "Media request integration",
+    "diagnostics": "Diagnostics",
+"diagnosticsShortcutTitle": "Send-report shortcut in sidebar",
+  "diagnosticsShortcutSubtitle": "Adds a one-tap button that uploads the diagnostic report",
   "seerrDirectApiUrlTitle": "Request service address",
   "@mediaRequestIntegration": {
     "description": "Seerr settings description"

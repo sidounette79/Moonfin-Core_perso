@@ -2584,6 +2584,9 @@
         "description": "Plugin settings description"
     },
     "mediaRequestIntegration": "Intégration des demandes de médias",
+    "diagnostics": "Diagnostics",
+"diagnosticsShortcutTitle": "Raccourci d\u2019envoi dans la barre lat\u00e9rale",
+  "diagnosticsShortcutSubtitle": "Ajoute un bouton qui envoie le rapport de diagnostic en un appui",
   "seerrDirectApiUrlTitle": "Adresse du service de requêtes",
     "@mediaRequestIntegration": {
         "description": "Seerr settings description"
