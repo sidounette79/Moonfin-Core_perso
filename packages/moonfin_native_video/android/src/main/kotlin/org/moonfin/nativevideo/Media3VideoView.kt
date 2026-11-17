@@ -701,7 +701,35 @@ class Media3VideoView(
     // on SurfaceView); TextureView never receives it, so 24/25fps content judders. SurfaceView works
     // on older Android too once it is lifted above Flutter's background on the legacy hybrid-
     // composition path (see newVideoView). Previously gated to API 30+.
-    private val useSurfaceView = true
+    //
+    // 17.11 - previews are the exception, and that exception is the "black
+    // thumbnail" bug Sid has been reporting for weeks. A SurfaceView with
+    // setZOrderMediaOverlay(true) is composited by the system in its own layer
+    // ABOVE the Flutter surface. For the full-screen player that is exactly
+    // what is wanted. For an inline preview sitting inside a scrolling row it
+    // is not: when Flutter unmounts the platform view, the layer underneath is
+    // left punched out and the card keeps a black rectangle the exact size of
+    // its artwork. Her own test is what pins it down - she walked five cards in
+    // a row, all five went black, and the diagnostic report for those same 31
+    // seconds shows five DELETE /Videos/ActiveEncodings and fail=0: five
+    // previews started and stopped, and NOT ONE image load failed. The picture
+    // was always there, covered.
+    //
+    // The one card that never goes black, "New York Unite Speciale", is the
+    // only one of the eight with a theme song on disk (verified on the Emby
+    // server: theme.mp3 present, songs=1; the other seven return songs=0).
+    // A theme song makes ThemeMusicService call PlaybackArbiter.acquire(), and
+    // only that path reaches onAudioRevoked() -> an extra explicit
+    // _media3PreviewBackend.release() on top of _finishSharedPreview(). That
+    // second release is what tears the native surface down properly. Without a
+    // theme song the service returns early on `songs.isEmpty()` BEFORE
+    // acquire(), so nothing ever revokes the preview.
+    //
+    // A preview needs none of what SurfaceView buys: no refresh-rate switching
+    // on a muted 10-second loop in a thumbnail. TextureView composites inside
+    // the Flutter tree, so it disappears with the widget that owns it.
+    // Note: native code, so this ships in a full APK, never in an OTA patch.
+    private val useSurfaceView = role == "main"
     private var videoView: View = newVideoView()
     private var lastSourceArguments: Map<*, *>? = null
     private var lastPlaybackPositionMs: Long = 0L
