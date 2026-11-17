@@ -7,6 +7,13 @@ import '../services/seerr/seerr_api_models.dart';
 import '../services/seerr/seerr_http_client.dart';
 import '../services/seerr/seerr_models.dart';
 
+/// Le nom sous lequel le service de requêtes apparaît dans toute l'app quand
+/// il est joint en direct. Sid, 17.11 : « on pourra, accessoirement, remplacer
+/// le nom Seerr par Patoune TV ? [...] Partout ? Pour ne pas prêter à
+/// confusion » — chez elle ce n'est pas Seerr qui répond, l'appeler ainsi
+/// n'aurait fait qu'entretenir le malentendu qui a coûté deux mois.
+const String directServiceName = 'Patoune TV';
+
 class SeerrRepository {
   final PreferenceStore _store;
   final SessionRepository _session;
@@ -161,6 +168,13 @@ class SeerrRepository {
         final status = await _httpClient!.getMoonfinStatus();
         _isAvailable = status.authenticated;
         _serverReportsEnabled = status.enabled;
+        if (_isAvailable) {
+          // Le nom du service, pour que l'app l'appelle « Patoune TV »
+          // partout dès la première connexion automatique - sans attendre
+          // qu'elle repasse par le formulaire.
+          await _store.setString(_moonfinDisplayNameKey, directServiceName);
+          await _store.setBool(_enabledKey, true);
+        }
       } catch (_) {
         _isAvailable = false;
       }
@@ -364,11 +378,44 @@ class SeerrRepository {
       );
     }
 
-    final response = await client.moonfinLogin(
-      username: username,
-      password: password,
-      authType: authType,
-    );
+    // 17.11, Sid, capture à l'appui : « Seerr integration is not enabled » au
+    // moment de se connecter. L'écran s'ouvrait bien, mais le bouton partait
+    // encore sur la route du plugin (`/Moonfin/Seerr/Login`), qui n'existe pas
+    // chez elle. En mode direct, la connexion se fait sur `/auth/local`, avec
+    // l'e-mail et le mot de passe de son compte, et renvoie un cookie de
+    // session. Le choix Jellyfin/Local de l'écran ne s'applique pas ici : il
+    // n'y a qu'une façon de se connecter à Patoune TV.
+    final MoonfinLoginResponse response;
+    if (client.proxyConfig.isDirect) {
+      final ok = await client.directLogin(
+        email: username,
+        password: password,
+      );
+      if (!ok) {
+        return const MoonfinLoginResponse(success: false);
+      }
+      final status = await client.getMoonfinStatus();
+      response = MoonfinLoginResponse(
+        success: true,
+        seerrUserId: status.seerrUserId,
+        // 17.11, Sid : « on pourra, accessoirement, remplacer le nom Seerr
+        // par Patoune TV ? [...] Partout ? Pour ne pas prêter à confusion ».
+        //
+        // `labelOrDefault` sert déjà de nom à ce service dans toute l'app -
+        // navigation, barre latérale, recherche, fiches, réglages - et lit
+        // `moonfinDisplayName`, écrit juste après par cette réponse. Y mettre
+        // le nom du SERVICE (et non celui de l'utilisateur renvoyé par
+        // /auth/me) renomme donc tout d'un coup, sans toucher aux traductions
+        // ni aux écrans.
+        displayName: directServiceName,
+      );
+    } else {
+      response = await client.moonfinLogin(
+        username: username,
+        password: password,
+        authType: authType,
+      );
+    }
 
     await _store.setString(
       _moonfinDisplayNameKey,
