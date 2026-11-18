@@ -629,6 +629,20 @@ class NouveauDiscoverySectionState extends State<NouveauDiscoverySection>
     return result;
   }
 
+  /// Chemin relatif TMDB -> adresse complete. Renvoie une chaine vide si le
+  /// chemin manque, pour que la carte retombe sur son image de remplacement
+  /// plutot que de tenter une adresse invalide. Laisse passer une valeur qui
+  /// est deja une adresse.
+  static String _tmdbImageUrl(String? path, String size) {
+    final value = path?.trim() ?? '';
+    if (value.isEmpty) return '';
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+    final suffix = value.startsWith('/') ? value : '/$value';
+    return 'https://image.tmdb.org/t/p/$size$suffix';
+  }
+
   Set<String> _identityKeys(AggregatedItem item) {
     final keys = <String>{};
 
@@ -690,8 +704,14 @@ class NouveauDiscoverySectionState extends State<NouveauDiscoverySection>
         'Overview': item.overview,
         'Type': mediaType == 'tv' ? 'Series' : 'Movie',
         'ProviderIds': {'Tmdb': item.id.toString()},
-        'PosterPath': item.posterPath,
-        'BackdropPath': item.backdropPath,
+        // 18.11, Sid : « j'ai besoin des vignettes et des noms ». Les cartes
+        // arrivaient vides. `posterPath` est le chemin relatif renvoye par
+        // TMDB (« /abc123.jpg »), pas une adresse : la carte le recevait tel
+        // quel et n'avait rien a charger. Les rangees d'accueil, elles,
+        // marchent depuis toujours parce qu'elles y mettent une URL complete
+        // (row_data_source.dart, `item.posterUrl`). Meme traitement ici.
+        'PosterPath': _tmdbImageUrl(item.posterPath, 'w342'),
+        'BackdropPath': _tmdbImageUrl(item.backdropPath, 'w1280'),
         'ProductionYear': ?year,
         'PremiereDate': ?date,
         'CommunityRating': item.voteAverage,
