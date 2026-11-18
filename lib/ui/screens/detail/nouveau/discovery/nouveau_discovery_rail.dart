@@ -180,6 +180,21 @@ class NouveauDiscoveryRailState extends State<NouveauDiscoveryRail> {
         if (!PlatformDetection.isTV || !event.isActionable) {
           return KeyEventResult.ignored;
         }
+        // 18.11, Sid : « sur CARBA TV, les propositions Patoune TV s'affichent
+        // mais je peux pas cliquer dedans, il se passe rien au clic », puis
+        // « sur carbatv mobile ça marche hein, ptet juste une histoire de
+        // d-pad ». C'était exactement ça: ce gestionnaire ne traitait QUE les
+        // flèches, et la touche OK repartait en `ignored`. L'ouverture était
+        // câblée sur un `GestureDetector`, qui ne répond qu'au doigt et jamais
+        // à une touche - d'où mobile d'accord, télécommande muette.
+        // `isActivateKey` plutôt que `isSelectKey`: le filtre `isActionable`
+        // ci-dessus laisse passer les KeyRepeatEvent, et un OK maintenu
+        // empilerait autant d'écrans que de répétitions. Celui-ci ne retient
+        // que l'appui initial.
+        if (isActivateKey(event)) {
+          widget.onTap(items[i]);
+          return KeyEventResult.handled;
+        }
         if (event.logicalKey.isLeftKey) {
           final atLineStart = i % layout.itemsPerLine == 0;
           if (atLineStart) {
