@@ -48,6 +48,7 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
 
   MoonfinStatusResponse? _seerrStatus;
   bool _statusLoading = false;
+  bool _testingDirect = false;
   bool _canManageRequests = false;
   late List<SeerrRowConfig> _rows;
   final _focusNodes = <FocusNode>[];
@@ -266,6 +267,79 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
     }
     await _seerrPrefs.setRowsConfig(_rows);
     await _pushSync();
+  }
+
+  /// 18.11, Sid : « en toute logique, les champs a remplir et le test de
+  /// connexion devraient etre sous integration. Comme pour radarr ». Exact :
+  /// Bazarr a ses reglages dans sa propre entree, Patoune TV les avait
+  /// eparpilles entre cet ecran (identifiants de session, oublies au
+  /// redemarrage) et Options avancees sous Lecture & SyncPlay (adresse,
+  /// e-mail, mot de passe). Deux endroits pour la meme chose, dont un
+  /// introuvable - c'est ce qui lui a fait perdre une soiree.
+  Future<void> _editDirectField(
+    Preference<String> preference,
+    String title, {
+    bool obscure = false,
+  }) async {
+    final prefs = GetIt.instance<UserPreferences>();
+    final controller = TextEditingController(text: prefs.get(preference));
+    final l10n = AppLocalizations.of(context);
+    final next = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog.adaptive(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          obscureText: obscure,
+          autocorrect: !obscure,
+          enableSuggestions: !obscure,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: Text(l10n.save),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (next == null || !mounted) return;
+    await prefs.set(preference, next);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _testDirectLogin() async {
+    if (_testingDirect) return;
+    setState(() => _testingDirect = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final prefs = GetIt.instance<UserPreferences>();
+    final email = prefs.get(UserPreferences.seerrDirectEmail).trim();
+    final password = prefs.get(UserPreferences.seerrDirectPassword);
+    String message;
+    try {
+      if (email.isEmpty || password.isEmpty) {
+        message = "Renseigne d'abord l'e-mail et le mot de passe.";
+      } else {
+        final response = await GetIt.instance<SeerrRepository>()
+            .loginWithMoonbase(username: email, password: password);
+        message = response.success
+            ? 'Connexion réussie.'
+            : "Connexion refusée : vérifie l'e-mail et le mot de passe.";
+      }
+    } catch (e) {
+      message = 'Échec : $e';
+    }
+    if (!mounted) return;
+    setState(() => _testingDirect = false);
+    messenger.showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 6)),
+    );
+    unawaited(_loadSeerrStatus());
   }
 
   Future<void> _setBlockNsfw(bool value) async {
@@ -530,6 +604,50 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
             firstFocusNode: _accountCardFocusNode,
             onMoveUp: () => _enableSeerrFocusNode.requestFocus(),
           ),
+        // Connexion directe : tout ce qu'il faut pour brancher Patoune TV,
+        // dans l'ecran Patoune TV. Visible meme quand le reste ne l'est pas,
+        // puisque c'est precisement ce qu'on remplit quand rien ne marche.
+        _DirectRequestsTile(
+          icon: Icons.link,
+          title: 'Adresse du service',
+          value: GetIt.instance<UserPreferences>().get(
+            UserPreferences.seerrDirectApiUrl,
+          ),
+          onTap: () => _editDirectField(
+            UserPreferences.seerrDirectApiUrl,
+            'Adresse du service',
+          ),
+        ),
+        _DirectRequestsTile(
+          icon: Icons.alternate_email,
+          title: 'E-mail',
+          value: GetIt.instance<UserPreferences>().get(
+            UserPreferences.seerrDirectEmail,
+          ),
+          onTap: () =>
+              _editDirectField(UserPreferences.seerrDirectEmail, 'E-mail'),
+        ),
+        _DirectRequestsTile(
+          icon: Icons.key_outlined,
+          title: 'Mot de passe',
+          value: GetIt.instance<UserPreferences>()
+                  .get(UserPreferences.seerrDirectPassword)
+                  .isEmpty
+              ? ''
+              : '\u2022' * 8,
+          onTap: () => _editDirectField(
+            UserPreferences.seerrDirectPassword,
+            'Mot de passe',
+            obscure: true,
+          ),
+        ),
+        _DirectRequestsTile(
+          icon: Icons.wifi_tethering,
+          title: 'Tester la connexion',
+          value: 'Se connecte maintenant et dit si ça marche',
+          busy: _testingDirect,
+          onTap: _testingDirect ? null : _testDirectLogin,
+        ),
         if (showSeerrSettings)
           TvFocusHighlight(
             builder: (context, focused) => SwitchListTile.adaptive(
@@ -1955,6 +2073,65 @@ class _SeerrReorderableTileState extends State<_SeerrReorderableTile> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+/// Tuile des reglages de connexion directe a Patoune TV. Volontairement
+/// simple : ce fichier n'est pas un `part of` du panneau de reglages, donc
+/// _EditableStringPreferenceTile n'y est pas accessible.
+class _DirectRequestsTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final bool busy;
+  final VoidCallback? onTap;
+
+  const _DirectRequestsTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+    this.busy = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return TvFocusHighlight(
+      builder: (context, focused) => ListTile(
+        leading: busy
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(
+                icon,
+                color: focused ? AppColors.black.withValues(alpha: 0.54) : null,
+              ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: focused
+                ? AppColors.black.withValues(alpha: 0.87)
+                : AppColorScheme.onSurface,
+          ),
+        ),
+        subtitle: Text(
+          value.isEmpty ? l10n.notSet : value,
+          style: TextStyle(
+            fontSize: 12,
+            color: focused
+                ? AppColors.black.withValues(alpha: 0.54)
+                : AppColorScheme.onSurface.withValues(alpha: 0.7),
+          ),
+        ),
+        onTap: onTap,
       ),
     );
   }

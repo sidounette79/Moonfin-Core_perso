@@ -19,47 +19,6 @@ class _AdvancedOptionsScreenState extends State<_AdvancedOptionsScreen> {
     super.dispose();
   }
 
-  bool _testingRequests = false;
-
-  /// 17.11, Sid : « j'ai complete dans lecture & sync mais a aucun moment j'ai
-  /// pu tester la connexion ». Elle avait raison : la connexion directe n'est
-  /// tentee qu'au demarrage de l'app (_initMoonfinMode), donc remplir ces
-  /// champs ne declenchait rien et rien ne disait si c'etait bon. Pendant ce
-  /// temps les journaux de Patoune TV n'affichaient que des « gate rejected »,
-  /// invisibles depuis l'app.
-  Future<void> _testRequestsLogin(BuildContext context) async {
-    if (_testingRequests) return;
-    setState(() => _testingRequests = true);
-    final messenger = ScaffoldMessenger.of(context);
-    final prefs = GetIt.instance<UserPreferences>();
-    final email = prefs.get(UserPreferences.seerrDirectEmail).trim();
-    final password = prefs.get(UserPreferences.seerrDirectPassword);
-    String message;
-    try {
-      if (email.isEmpty || password.isEmpty) {
-        message = 'Renseigne d\'abord l\'e-mail et le mot de passe.';
-      } else {
-        final repo = GetIt.instance<SeerrRepository>();
-        final response = await repo.loginWithMoonbase(
-          username: email,
-          password: password,
-        );
-        message = response.success
-            ? 'Connexion réussie.'
-            : 'Connexion refusée : vérifie l\'e-mail et le mot de passe.';
-      }
-    } catch (e) {
-      // Le detail compte ici : une adresse injoignable et un mot de passe
-      // faux se ressemblent trop a l'ecran sans lui.
-      message = 'Échec : $e';
-    }
-    if (!mounted) return;
-    setState(() => _testingRequests = false);
-    messenger.showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 6)),
-    );
-  }
-
   Future<void> _clearImageCache(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
     await clearImageDiskCache();
@@ -114,56 +73,12 @@ class _AdvancedOptionsScreenState extends State<_AdvancedOptionsScreen> {
                 ],
               ),
             ],
-            // 17.11, Sid : « si tu arrives à me faire fonctionner patounetv
-            // en tant que seerr, je prends ». L'app ne savait joindre un
-            // service de requêtes qu'à travers le plugin Moonfin du serveur
-            // média - un plugin Jellyfin, donc absent de son Emby. Ces trois
-            // champs ouvrent la voie directe : l'adresse remplace le chemin
-            // du plugin, et les identifiants servent à ouvrir la session
-            // (Patoune TV authentifie par session, pas par jeton).
-            //
-            // Laissés vides, rien ne change : on reste sur le chemin Moonfin
-            // d'origine. Voir UserPreferences.seerrDirectApiUrl.
-            _SectionHeader(l10n.mediaRequestIntegration),
-            adaptiveListSection(
-              children: [
-                _EditableStringPreferenceTile(
-                  preference: UserPreferences.seerrDirectApiUrl,
-                  title: l10n.seerrDirectApiUrlTitle,
-                  icon: Icons.link,
-                  hintText: 'https://exemple.ch/api/jellyseerr/api/v1',
-                ),
-                _EditableStringPreferenceTile(
-                  preference: UserPreferences.seerrDirectEmail,
-                  title: l10n.email,
-                  icon: Icons.alternate_email,
-                  hintText: l10n.email,
-                ),
-                _EditableStringPreferenceTile(
-                  preference: UserPreferences.seerrDirectPassword,
-                  title: l10n.password,
-                  icon: Icons.key_outlined,
-                  hintText: l10n.password,
-                  obscure: true,
-                ),
-                _TvSettingsListTile(
-                  leading: _testingRequests
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.wifi_tethering),
-                  title: const Text('Tester la connexion'),
-                  subtitle: const Text(
-                    'Se connecte maintenant et dit si ça marche',
-                  ),
-                  onTap: _testingRequests
-                      ? null
-                      : () => _testRequestsLogin(context),
-                ),
-              ],
-            ),
+            // 18.11 : l'adresse, l'e-mail, le mot de passe et le test de
+            // connexion du service de requetes vivaient ici. Sid : « en toute
+            // logique, les champs a remplir et le test de connexion devraient
+            // etre sous integration. Comme pour radarr ». Ils ont demenage
+            // dans Reglages > Integrations > Patoune TV, avec le reste de ce
+            // service - voir seerr_config_screen.dart.
             // 17.11 : l'interrupteur du raccourci de diagnostic vivait ici.
             // Il a demenage dans l'ecran « Diagnostics & Logging », avec les
             // autres reglages de rapport : c'est la que Sid l'a cherche, et
