@@ -7,20 +7,12 @@ class _EditableStringPreferenceTile extends StatefulWidget {
   final String hintText;
   final Future<String?> Function()? pickPath;
 
-  /// 17.11, Sid : « mon mot de passe Patoune TV reste en clair ». La valeur
-  /// servait de sous-titre a la tuile, donc le mot de passe s'affichait tel
-  /// quel dans la liste des reglages, lisible par-dessus l'epaule et sur
-  /// n'importe quelle capture d'ecran. Avec ce drapeau la tuile montre des
-  /// points, et le champ de saisie masque la frappe.
-  final bool obscure;
-
   const _EditableStringPreferenceTile({
     required this.preference,
     required this.title,
     required this.icon,
     required this.hintText,
     this.pickPath,
-    this.obscure = false,
   });
 
   @override
@@ -63,9 +55,6 @@ class _EditableStringPreferenceTileState
   String _displaySubtitle(BuildContext context, String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return AppLocalizations.of(context).notSet;
-    // Longueur fixe : afficher un point par caractere donnerait deja la
-    // longueur du mot de passe.
-    if (widget.obscure) return '\u2022' * 8;
     return trimmed;
   }
 
@@ -82,9 +71,6 @@ class _EditableStringPreferenceTileState
             TextField(
               controller: controller,
               autofocus: true,
-              obscureText: widget.obscure,
-              autocorrect: !widget.obscure,
-              enableSuggestions: !widget.obscure,
               decoration: InputDecoration(hintText: widget.hintText),
             ),
             if (widget.pickPath != null)
