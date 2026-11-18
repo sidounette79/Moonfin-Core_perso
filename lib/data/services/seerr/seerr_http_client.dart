@@ -32,6 +32,16 @@ class SeerrHttpClient {
           '<- ${response.statusCode} ${response.requestOptions.method} '
           '${response.requestOptions.uri}',
         );
+        // 18.11, Sid : « ça refait comme hier. Le premier coup, je peux.
+        // Ensuite = unauthorized. Je ferme et rouvre et j'ai le message de
+        // seerr ». Signature nette : la session ne valait qu'un seul appel.
+        //
+        // better-auth fait tourner le jeton de session et en renvoie un neuf
+        // dans la reponse. On ne capturait le cookie qu'a la connexion, donc
+        // l'app rejouait ensuite un jeton deja perime - d'ou le 401 des le
+        // deuxieme appel, et le retour a zero a chaque redemarrage. On garde
+        // desormais le cookie le plus recent, d'ou qu'il vienne.
+        _captureSessionCookie(response);
         handler.next(response);
       },
       onError: (error, handler) {
@@ -96,6 +106,7 @@ class SeerrHttpClient {
   /// Retient les cookies d'une réponse de connexion. Ne garde que le couple
   /// nom=valeur : les attributs (Path, Secure, SameSite…) ne se renvoient pas.
   void _captureSessionCookie(Response response) {
+    if (!proxyConfig.isDirect) return;
     final raw = response.headers.map['set-cookie'];
     if (raw == null || raw.isEmpty) return;
     final pairs = <String>[];
