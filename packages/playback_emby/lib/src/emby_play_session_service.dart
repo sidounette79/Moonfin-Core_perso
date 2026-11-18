@@ -66,7 +66,24 @@ class EmbyPlaySessionService implements PlayerService {
     Object? reportError;
     StackTrace? reportStackTrace;
     try {
-      if (!_isAudiobook(mediaItem)) {
+      // 18.11, Sid : « la barre bleue s'est arretee 1 mm avant la fin et la
+      // ça met comme si je l'avais pas vu ». Les journaux d'Emby montraient
+      // trois arrets pour le meme episode:
+      //   stopped  Position: 2796014 ms   session cd0b21c8...   (95,9 %)
+      //   stopped  Position: 0 ms         session 25a62a46...
+      //   stopped  Position: 2796014 ms   session 25a62a46...
+      // Le rapport a zero, emis sous une seconde session apres le bon, a
+      // remis la position a zero cote serveur - donc sous le seuil de
+      // « vu », donc l'episode est revenu dans sa liste alors qu'elle
+      // l'avait fini.
+      //
+      // Un arret a la position zero n'apprend jamais rien au serveur: soit
+      // rien n'a ete lu, soit c'est un rapport parasite comme ici. On ne
+      // l'envoie donc pas, plutot que de risquer d'ecraser une position
+      // valide. La progression normale (reportPlaybackProgress) n'est pas
+      // concernee.
+      final isMeaningless = position == Duration.zero;
+      if (!_isAudiobook(mediaItem) && !isMeaningless) {
         await _client.playbackApi.reportPlaybackStopped(report.toJson());
       }
     } catch (error, stackTrace) {
