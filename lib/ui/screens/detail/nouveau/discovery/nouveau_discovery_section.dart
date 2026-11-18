@@ -402,7 +402,20 @@ class NouveauDiscoverySectionState extends State<NouveauDiscoverySection>
 
     final seerrWaiting = _seerrExpected && !_seerrRelatedResolved;
 
-    if (!hasRelated && !baseWaiting && !seerrWaiting && _relatedSkeletonShown) {
+    // 18.11, Sid : « là j'ai pas de similaires », capture a l'appui — et sur
+    // la MEME fiche, « Recommandations » etait pleine. Pas un hasard : TMDB a
+    // deux algorithmes, et `/similar` ne renvoie souvent rien sur un film peu
+    // connu la ou `/recommendations` repond.
+    //
+    // Le squelette aurait du s'effacer, mais cette condition attendait en
+    // plus `!baseWaiting`, c'est-a-dire la fin du chargement des similaires
+    // d'EMBY. Sur un titre TMDB absent de la bibliotheque, ce chargement ne
+    // se termine jamais: squelette gris a vie. « Recommandations » n'avait
+    // pas ce terme, d'ou les deux comportements cote a cote.
+    //
+    // La rangee ne vient plus que du service de requetes depuis le 17.11
+    // (voir `shouldInclude`), donc l'attente d'Emby n'a plus a la retenir.
+    if (!hasRelated && !seerrWaiting && _relatedSkeletonShown) {
       _relatedSkeletonShown = false;
 
       _relatedOpacityController
@@ -808,11 +821,12 @@ class NouveauDiscoverySectionState extends State<NouveauDiscoverySection>
 
     final recommendations = _recommendations;
 
-    final baseWaiting = !_vm.similarInitialLoadComplete;
-
     final seerrWaiting = _seerrExpected && !_seerrRelatedResolved;
 
-    final showRelated = related.isNotEmpty || baseWaiting || seerrWaiting;
+    // Meme raison qu'au-dessus: `baseWaiting` (les similaires d'Emby) ne se
+    // termine jamais sur un titre TMDB absent de la bibliotheque, et laissait
+    // la rangee affichee indefiniment. Alignee sur « Recommandations ».
+    final showRelated = related.isNotEmpty || seerrWaiting;
 
     final showRecommendations =
         _seerrExpected && (recommendations.isNotEmpty || seerrWaiting);
