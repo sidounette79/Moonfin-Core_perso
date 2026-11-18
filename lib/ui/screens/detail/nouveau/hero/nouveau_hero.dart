@@ -314,12 +314,13 @@ class NouveauHeroState extends State<NouveauHero> {
 
     final hasNoteworthySeerr =
         seerrStatus != null &&
-        seerrStatusTracks(
-          seerrStatus,
-          l10n,
-        ).any(
-          (track) => seerrStatusIsNoteworthy(track.$1, showAvailable: true),
-        );
+        (seerrStatus.hd.watched ||
+            seerrStatusTracks(
+              seerrStatus,
+              l10n,
+            ).any(
+              (track) => seerrStatusIsNoteworthy(track.$1, showAvailable: true),
+            ));
 
     final seerrPills = hasNoteworthySeerr
         ? _nouveauSeerrPills(context, seerrStatus, scale)
@@ -1065,7 +1066,39 @@ class NouveauHeroState extends State<NouveauHero> {
         // possede deja le titre.
         if (seerrStatusIsNoteworthy(track.$1, showAvailable: true))
           _nouveauSeerrPill(track.$1, track.$2, l10n, scale),
+      // 18.11, Sid : « voir aussi un deja vu, quand on a deja vu ». Pastille
+      // a part, pas un statut Seerr: « Disponible » dit qu'on possede le
+      // titre, « Vu » dit qu'on l'a regarde - les deux peuvent coexister, et
+      // c'est justement le cas qu'elle decrit (« celui la, on l'a vu »).
+      // L'information vient de Patoune TV, films seulement.
+      if (state.hd.watched) _nouveauWatchedPill(l10n, scale),
     ];
+  }
+
+  Widget _nouveauWatchedPill(AppLocalizations l10n, double scale) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10 * scale, vertical: 4 * scale),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.visibility_outlined, size: 13 * scale, color: Colors.white70),
+          SizedBox(width: 5 * scale),
+          Text(
+            l10n.watched,
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 11 * scale,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _nouveauSeerrPill(

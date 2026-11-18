@@ -39,6 +39,10 @@ class SeerrQualityStatus {
   /// to the request list.
   final List<SeerrSeasonAvailability> seasonAvailability;
 
+  /// 18.11 : vient de Patoune TV, pas de Jellyseerr. Sid : « voir aussi un
+  /// deja vu, quand on a deja vu ». Films seulement.
+  final bool watched;
+
   const SeerrQualityStatus({
     required this.is4k,
     required this.status,
@@ -48,6 +52,7 @@ class SeerrQualityStatus {
     required this.canManageRequests,
     required this.currentUserId,
     this.seasonAvailability = const [],
+    this.watched = false,
   });
 
   factory SeerrQualityStatus.of({
@@ -77,6 +82,9 @@ class SeerrQualityStatus {
       currentUserId: currentUserId,
       seasonAvailability:
           mediaInfo?.seasons ?? const <SeerrSeasonAvailability>[],
+      // Pas de « deja vu » sur la piste 4K: l'information de Patoune TV ne
+      // distingue pas les qualites, elle dit juste qu'on a vu le film.
+      watched: !is4k && (mediaInfo?.watched ?? false),
     );
   }
 

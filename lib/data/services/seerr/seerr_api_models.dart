@@ -664,6 +664,11 @@ class SeerrMediaInfo {
   final String? jellyfinMediaId;
   final String? jellyfinMediaId4k;
 
+  /// 18.11 : champ propre a Patoune TV, absent de Jellyseerr. Sid : « voir
+  /// aussi un deja vu, quand on a deja vu » — et « patoune TV l'a, et nous
+  /// on bosse avec patoune TV ». Renseigne pour les FILMS seulement.
+  final bool? watched;
+
   const SeerrMediaInfo({
     this.id,
     this.tmdbId,
@@ -676,6 +681,7 @@ class SeerrMediaInfo {
     this.seasons,
     this.jellyfinMediaId,
     this.jellyfinMediaId4k,
+    this.watched,
   });
 
   factory SeerrMediaInfo.fromJson(Map<String, dynamic> json) =>
