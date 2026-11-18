@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 
@@ -169,7 +171,16 @@ class _SeerrRequestDialogState extends State<SeerrRequestDialog> {
     return needed > remaining;
   }
 
-  void _submit() {
+  /// 18.11, Sid : « j'ai aucun retour si la demande est partie ou non ».
+  /// Le dialogue lançait submitRequest SANS l'attendre puis se fermait
+  /// aussitôt: le viewmodel notait bien requestSuccess ou requestError, mais
+  /// plus personne ne les lisait une fois l'écran disparu. Une demande
+  /// refusee et une demande partie se ressemblaient donc exactement.
+  ///
+  /// On capture le messager avant de fermer - le widget est demonte juste
+  /// apres, son context ne vaut plus rien - puis on attend le resultat et on
+  /// le dit.
+  Future<void> _submit() async {
     if (_submitting || _quotaBlocked) {
       return;
     }
@@ -182,7 +193,10 @@ class _SeerrRequestDialogState extends State<SeerrRequestDialog> {
 
     _submitting = true;
 
-    widget.vm.submitRequest(
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.of(context).pop();
+
+    await widget.vm.submitRequest(
       is4k: _is4k,
       seasons: seasons,
       allSeasons: widget.isTv && _allSeasons,
@@ -191,7 +205,16 @@ class _SeerrRequestDialogState extends State<SeerrRequestDialog> {
       serverId: _advanced.effectiveServerId,
     );
 
-    Navigator.of(context).pop();
+    final state = widget.vm.state;
+    final failure = state.requestError;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          failure ?? state.requestSuccess ?? 'Demande envoyée.',
+        ),
+        duration: Duration(seconds: failure == null ? 4 : 7),
+      ),
+    );
   }
 
   @override
@@ -273,7 +296,7 @@ class _SeerrRequestDialogState extends State<SeerrRequestDialog> {
               primary: true,
               primaryColor: const Color(0xFF6366F1),
               busy: _submitting,
-              onPressed: _quotaBlocked || _submitting ? null : _submit,
+              onPressed: _quotaBlocked || _submitting ? null : () => unawaited(_submit()),
             ),
           ),
         ],
