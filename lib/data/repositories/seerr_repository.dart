@@ -465,7 +465,23 @@ class SeerrRepository {
       try {
         await client.moonfinLogout();
       } catch (_) {}
+      // 18.11, Sid : « quand je clique sur deconnecte, il se passe rien ».
+      // En mode direct, moonfinLogout() tape sur la route du plugin, qui
+      // n'existe pas la-bas: l'erreur partait dans le catch ci-dessus et
+      // RIEN n'etait efface. Le cookie restait valide, _loadSeerrStatus()
+      // retrouvait la session, et l'ecran reaffichait « Connecte ».
+      client.clearDirectSession();
     }
+
+    // Les identifiants directs aussi, sinon _initMoonfinMode() rouvre une
+    // session au demarrage suivant et la deconnexion ne tient pas.
+    await _store.set(UserPreferences.seerrDirectEmail, '');
+    await _store.set(UserPreferences.seerrDirectPassword, '');
+
+    // Forcer une reinitialisation complete au prochain acces: sans ça le
+    // client garde sa configuration (et son mode) jusqu'au redemarrage.
+    _initialized = false;
+    _httpClient = null;
 
     await _store.setString(_moonfinDisplayNameKey, '');
     await _store.setString(_moonfinUserIdKey, '');
