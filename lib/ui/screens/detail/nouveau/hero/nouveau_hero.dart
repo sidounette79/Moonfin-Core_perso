@@ -317,7 +317,9 @@ class NouveauHeroState extends State<NouveauHero> {
         seerrStatusTracks(
           seerrStatus,
           l10n,
-        ).any((track) => seerrStatusIsNoteworthy(track.$1));
+        ).any(
+          (track) => seerrStatusIsNoteworthy(track.$1, showAvailable: true),
+        );
 
     final seerrPills = hasNoteworthySeerr
         ? _nouveauSeerrPills(context, seerrStatus, scale)
@@ -1058,7 +1060,10 @@ class NouveauHeroState extends State<NouveauHero> {
 
     return [
       for (final track in seerrStatusTracks(state, l10n))
-        if (seerrStatusIsNoteworthy(track.$1))
+        // showAvailable: cette fiche s'ouvre aussi depuis les rangees
+        // Patoune TV, ou « Disponible » est la seule facon de savoir qu'on
+        // possede deja le titre.
+        if (seerrStatusIsNoteworthy(track.$1, showAvailable: true))
           _nouveauSeerrPill(track.$1, track.$2, l10n, scale),
     ];
   }

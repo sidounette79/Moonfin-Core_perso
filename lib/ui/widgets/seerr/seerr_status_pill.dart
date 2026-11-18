@@ -40,9 +40,22 @@ String seerrStatusLabel(SeerrQualityStatus q, AppLocalizations l10n) {
 ///
 /// The 4K track speaks whenever it has any state at all, because owning the HD
 /// copy says nothing about the 4K one.
-bool seerrStatusIsNoteworthy(SeerrQualityStatus q) {
+/// 18.11, Sid : « ça serait bien que ça affiche dispo pour ceux qui sont
+/// déjà là, comme ça affiche demandé pour ceux qui sont en attente ».
+///
+/// La regle d'origine ci-dessus suppose qu'on arrive sur la fiche DEPUIS sa
+/// bibliotheque, ou dire « Disponible » n'apprend rien. Mais depuis une
+/// rangee Similaires/Recommandations de Patoune TV, on tombe sur des titres
+/// qu'on possede deja sans aucun moyen de le voir : ni pastille, ni bouton
+/// Demander (capture de « Médecin de nuit », present en Blu-ray 1080p dans
+/// Radarr, affiche sans le moindre indice).
+///
+/// [showAvailable] rouvre ce cas-la, et seulement pour les fiches qui le
+/// demandent: les trois autres styles de fiche gardent le comportement
+/// d'origine.
+bool seerrStatusIsNoteworthy(SeerrQualityStatus q, {bool showAvailable = false}) {
   if (q.is4k) return q.hasAnyState;
-  if (q.isFullyAvailable) return false;
+  if (q.isFullyAvailable) return showAvailable;
   return q.hasAnyState;
 }
 
