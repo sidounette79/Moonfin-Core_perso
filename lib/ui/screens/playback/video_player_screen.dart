@@ -2682,7 +2682,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         return;
       }
       if (isOutro && !_hasDistinctQueueNextItem()) {
-        unawaited(_exitPlayback());
+        unawaited(_finishAtCredits());
         return;
       }
       _seekDirect(result.skipTo!);
@@ -3020,6 +3020,47 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       // stays, and from now on it follows the OSD visibility.
       setState(() {});
     });
+  }
+
+  /// Sortie de lecture quand le generique est atteint et qu'il n'y a pas
+  /// d'episode suivant: on quitte ET on marque l'episode comme vu.
+  ///
+  /// 18.11, Sid, deuxieme fois en un jour (MobLand S2E9 le matin, Marshals
+  /// S2E6 l'apres-midi) : « la lecture s'est arretee, il reste un mm sur la
+  /// ligne bleue alors que l'episode est termine [...] ca doit marquer comme
+  /// lu, dans ce cas [...] pas s'arreter et garder dans "continuer a
+  /// regarder" ».
+  ///
+  /// Releve cote Emby sur Marshals S2E6, qui donne la mesure du probleme :
+  ///   marqueur Credits  42,37 min
+  ///   position gardee   42,40 min  (96,7 %)
+  ///   duree totale      43,81 min   -> vu = False
+  /// La lecture s'arrete pile au generique, donc l'episode est fini pour de
+  /// bon, mais personne ne le dit au serveur: il restait a 96,7 % et donc
+  /// dans « Continuer a regarder ».
+  ///
+  /// L'ORDRE compte, et c'est le piege : `_exitPlayback()` emet un
+  /// `reportPlaybackStopped` a la position courante (42,4 min). Marquer
+  /// « vu » AVANT se ferait donc ecraser par ce rapport. On attend que
+  /// l'arret soit parti, puis `setPlayed` pose Played=true et remet la
+  /// position a zero — c'est le dernier mot qui compte.
+  Future<void> _finishAtCredits() async {
+    // On lit l'item AVANT de quitter: la sortie vide la file d'attente.
+    // `_itemIdForQueueItem`/`_clientForQueueItem` gerent les deux formes
+    // d'entree de file (AggregatedItem et Map brute), contrairement a un
+    // `item is AggregatedItem` qui laisserait la seconde sans marquage.
+    final item = _queue.currentItem;
+    final itemId = _itemIdForQueueItem(item);
+    final client = _clientForQueueItem(item);
+    await _exitPlayback();
+    if (itemId == null || itemId.isEmpty) return;
+    try {
+      await ItemMutationRepository(client).setPlayed(itemId, isPlayed: true);
+    } catch (_) {
+      // Rien a rattraper ici: l'episode reste a sa position, exactement
+      // comme avant ce correctif. On ne casse pas la sortie de lecture
+      // pour un marquage qui n'a pas pu partir.
+    }
   }
 
   Future<void> _exitPlayback() async {
