@@ -440,10 +440,13 @@ class SeerrRepository {
       );
     }
 
-    await _store.setString(
-      _moonfinDisplayNameKey,
-      response.displayName ?? '',
-    );
+    // 18.11, Sid, apres que le SSO du plugin a enfin abouti : « maintenant
+    // ça s'appelle sidounette ». Le plugin renvoie le nom de l'UTILISATEUR
+    // dans displayName, et `labelOrDefault` s'en sert comme nom du service -
+    // l'entree des Integrations, la navigation et les fiches se sont donc
+    // mises a s'appeler « sidounette ». On ecrit le nom du SERVICE dans les
+    // deux modes, pas seulement en direct comme le 17.11.
+    await _store.setString(_moonfinDisplayNameKey, directServiceName);
     await _store.setString(
       _moonfinUserIdKey,
       response.seerrUserId?.toString() ?? '',
