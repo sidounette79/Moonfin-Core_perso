@@ -997,8 +997,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     unawaited(_syncAutoHdrSwitching());
     _positionSub = _state.positionStream.listen(_onPositionUpdate);
     _completedSub = _manager.sessionEndedStream.listen((_) {
-      if (!mounted || _isStopping) return;
-      unawaited(_exitPlayback());
+      if (!mounted) return;
+      // 19.11, Sid : « si je fais forward pour finir la lecture du fichier,
+      // il ne se ferme plus tout seul quand il arrive à la fin. Il reste
+      // bloqué sur la dernière image. Ça faisait pas avant [ton correctif]. »
+      //
+      // Regression de `_finishAtCredits`: au generique il arme la sortie,
+      // ce qui leve `_isStopping` — et ce drapeau ne redescend JAMAIS. Si
+      // la lecture repart (elle avance a la main pour voir la fin), le
+      // media atteint sa vraie fin, ce listener voit `_isStopping` encore
+      // leve et refuse de fermer. Ecran fige sur la derniere image.
+      //
+      // La fin du media est un fait, pas une intention: quand elle arrive
+      // et qu'on est toujours affiche, on sort, drapeau ou pas. `force`
+      // passe outre la garde d'entree de `_exitPlayback` — le pop lui-meme
+      // reste protege par `mounted` et `context.canPop()`.
+      unawaited(_exitPlayback(force: _isStopping));
     });
     _backendSub = _manager.backendChangedStream.listen((backend) {
       if (backend is Media3PlayerBackend) {
@@ -3080,11 +3094,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     }
   }
 
-  Future<void> _exitPlayback() async {
-    if (_isStopping) return;
-    setState(() {
-      _isStopping = true;
-    });
+  /// [force] : sortir meme si une sortie precedente a deja leve
+  /// `_isStopping` sans aboutir — voir le listener de `sessionEndedStream`.
+  Future<void> _exitPlayback({bool force = false}) async {
+    if (_isStopping && !force) return;
+    if (!_isStopping) {
+      setState(() {
+        _isStopping = true;
+      });
+    }
     _cancelTvTemporarySpeedHold();
     if (!PlatformDetection.isTV) _pipService.enableAutoPiP(false);
     if (_wasAlwaysOnTopOnEntry == false && _isAlwaysOnTop) {
