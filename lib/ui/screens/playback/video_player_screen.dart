@@ -3053,6 +3053,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     final itemId = _itemIdForQueueItem(item);
     final client = _clientForQueueItem(item);
     await _exitPlayback();
+    // 19.11 : le correctif precedent ne marchait pas, et Sid a trouve le
+    // motif — « ça arrive chaque fois quand c'est le dernier épisode dont
+    // je dispose sur Emby », jamais quand un suivant existe. Ce qui
+    // confirmait que cette branche etait bien atteinte, donc que l'action
+    // echouait apres coup.
+    //
+    // Elle echouait sur l'ORDRE : `_exitPlayback()` lance l'arret par
+    // `unawaited(_manager.stop(...))` et rend la main AVANT que le
+    // `reportPlaybackStopped` ne soit parti. On marquait « vu », puis le
+    // rapport arrivait derriere et reecrivait la position a 96,7 % —
+    // l'episode revenait dans « Continuer a regarder ».
+    //
+    // `pendingStop` expose ce future-la: on l'attend, et le marquage a
+    // vraiment le dernier mot. (Piste « à suivre » ecartee au passage:
+    // `_nextUpCandidate()` renvoie null sans episode suivant, donc
+    // l'overlay ne peut pas intercepter ce cas.)
+    await _manager.pendingStop;
     if (itemId == null || itemId.isEmpty) return;
     try {
       await ItemMutationRepository(client).setPlayed(itemId, isPlayed: true);
