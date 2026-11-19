@@ -58,7 +58,97 @@ class OtaChangelogEntry {
 /// below is native Kotlin (Media3VideoView.kt/LetterboxCropLayout.kt);
 /// confirmed Shorebird itself refused to publish it as a patch ("Breaking
 /// differences" in the native bytecode, exit code 70) before tagging.
+/// 19.11, Sid : « est-ce que tu pourrais aussi remettre, dans la liste des
+/// patchs OTA, ce que chaque patch contient dans les grandes lignes ? On a
+/// eu un moment et ça s'est arrêté et pourtant c'était bien pratique. »
+/// Exact : plus rien n'avait été ajouté ici depuis le 03.11, alors que
+/// quinze jours de correctifs ont été publiés entre-temps. Les entrées
+/// ci-dessous rattrapent ce retard, reconstituées depuis l'historique git
+/// et les numéros de patch réellement publiés par les runs GitHub.
+/// À tenir à jour à CHAQUE push sur `carba-tv-changes`.
 const otaChangelog = [
+  OtaChangelogEntry(
+    date: '19.11 11h09',
+    patchNumber: 15,
+    title: 'Lecture : un épisode terminé au générique sortait quand même '
+        'de la liste « Continuer à regarder »… puis y revenait. Le '
+        'marquage « vu » partait avant le rapport d\'arrêt de la machine, '
+        'qui réécrivait la position par-dessus. Piste trouvée par Sid : '
+        'ça n\'arrivait que sur le DERNIER épisode disponible.',
+  ),
+  OtaChangelogEntry(
+    date: '18.11 21h48',
+    patchNumber: 14,
+    title: 'Fiches Patoune TV : pastille « Vu » sur les films déjà '
+        'regardés, badge « Disponible » sur ceux qu\'on possède déjà, la '
+        'touche OK ouvre enfin les cartes Similaires/Recommandations sur '
+        'TV, et une rangée Similaires vide disparaît au lieu de rester '
+        'grise à vie.',
+  ),
+  OtaChangelogEntry(
+    date: '18.11 14h31',
+    patchNumber: 10,
+    title: 'Lecture : atteindre le générique d\'un épisode le marque '
+        'comme vu (il restait à 96 % et traînait dans « Continuer à '
+        'regarder »). Demandes Patoune TV : le message d\'erreur après '
+        'une demande a disparu — elle partait bien, c\'est la réponse qui '
+        'était illisible.',
+  ),
+  OtaChangelogEntry(
+    date: '17.11 18h17',
+    title: 'Vignette noire sur les cartes « Continuer à regarder » : '
+        'RÉSOLU après des semaines. L\'aperçu vidéo gardait sa surface '
+        'au-dessus de la carte quand la série n\'avait pas de générique. '
+        'Release 2.6.12 (mobile) / 2.6.8 (TV) — code natif, réinstallation '
+        'nécessaire.',
+  ),
+  OtaChangelogEntry(
+    date: '17.11 12h59',
+    patchNumber: 25,
+    title: 'Patoune TV remplace Seerr partout : connexion directe sans '
+        'passer par le plugin du serveur, nom et logo corrects, liens '
+        'débloqués, onglet Découverte remis, choix du dossier et retour '
+        'visible quand une demande part.',
+  ),
+  OtaChangelogEntry(
+    date: '17.11 06h19',
+    patchNumber: 21,
+    title: 'D-pad : page des séries (gauche/droite suivent enfin l\'index '
+        'réel), navigateur de dossiers aligné sur les favoris, et remontée '
+        'possible depuis les détails d\'une série.',
+  ),
+  OtaChangelogEntry(
+    date: '16.11 21h58',
+    patchNumber: 16,
+    title: 'Fiche série : pistes audio et sous-titres affichées sur TOUS '
+        'les épisodes, pas seulement celui mis en avant. Décalage des '
+        'sous-titres : ne repart plus à zéro en pleine lecture, se pilote '
+        'à gauche/droite sur TV, et sa fenêtre ne masque plus les '
+        'sous-titres qu\'on règle.',
+  ),
+  OtaChangelogEntry(
+    date: '16.11 15h32',
+    title: 'Le volume mémorisé est réellement appliqué à la reprise. '
+        'Bannière d\'accueil descendue sur TV et sur mobile.',
+  ),
+  OtaChangelogEntry(
+    date: '06.11 12h39',
+    title: 'Télécommande intégrée : écran dédié avec choix parmi trois TV, '
+        'carré tactile pour la navigation, sélecteurs audio / sous-titres '
+        '/ chapitres. Barre de navigation : télécommande et bibliothèques '
+        'épinglables, position réglable par appareil.',
+  ),
+  OtaChangelogEntry(
+    date: '05.11 14h31',
+    title: 'Sous-titres : fenêtre de décalage séparée avec bouton '
+        'rafraîchir, et recherche Bazarr utilisable au D-pad.',
+  ),
+  OtaChangelogEntry(
+    date: '04.11 12h42',
+    title: 'D-pad : miniature d\'aperçu des épisodes atteignable sur les '
+        'pages de séries, curseur de décalage exclu du parcours (il '
+        'bloquait la navigation).',
+  ),
   OtaChangelogEntry(
     date: '03.11',
     title: 'Lecture : en mode zoom "rogner" (autoCrop), un conteneur '
