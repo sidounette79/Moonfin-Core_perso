@@ -69,7 +69,7 @@ class OtaChangelogEntry {
 const otaChangelog = [
   OtaChangelogEntry(
     date: '19.11 11h09',
-    patchNumber: 15,
+    patchNumber: 16,
     title: 'Lecture : un épisode terminé au générique sortait quand même '
         'de la liste « Continuer à regarder »… puis y revenait. Le '
         'marquage « vu » partait avant le rapport d\'arrêt de la machine, '
