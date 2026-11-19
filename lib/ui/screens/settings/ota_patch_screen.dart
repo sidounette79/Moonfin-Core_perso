@@ -5,6 +5,7 @@ import 'package:restart_app/restart_app.dart';
 import '../../../data/ota_changelog.dart';
 import '../../../data/services/shorebird_update_service.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../util/platform_detection.dart';
 import '../../widgets/focus/request_initial_focus.dart';
 import '../../widgets/settings/clean_settings_typography.dart';
 import 'settings_app_bar.dart';
@@ -173,7 +174,24 @@ class _OtaPatchScreenState extends State<OtaPatchScreen> {
                     title: Text(entry.title),
                     subtitle: Text(
                       entry.patchNumber != null
-                          ? '${entry.date} - patch n° ${entry.patchNumber}'
+                          // 19.11, Sid : « pour le prochain, tu les
+                          // appelles tous les deux 17 et qu'on soit
+                          // raccord ». Impossible de forcer le numero —
+                          // mobile et androidTv sont DEUX applications
+                          // Shorebird distinctes, chacune avec son propre
+                          // compteur, et le TV a pris un patch de retard
+                          // (mobile 16 / TV 15 le 19.11).
+                          //
+                          // Mais le resultat voulu s'obtient sans y
+                          // toucher: chaque build affiche LE SIEN. Le
+                          // changelog ne stocke que le numero mobile, et
+                          // la version TV retranche 1 — `build-android.sh`
+                          // publie toujours mobile puis androidTv dans le
+                          // meme run, donc l'ecart est constant. Elle voit
+                          // ainsi, sur chaque appareil, le numero que
+                          // l'ecran « Patch actuel » lui affiche juste
+                          // au-dessus.
+                          ? '${entry.date} - patch n° ${PlatformDetection.isForcedTv ? entry.patchNumber! - 1 : entry.patchNumber}'
                           : entry.date,
                     ),
                   ),
