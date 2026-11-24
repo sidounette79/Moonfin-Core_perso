@@ -94,7 +94,22 @@ shorebird_release() {
   shorebird_bin="$(resolve_shorebird)"
   log_file="$(mktemp)"
   SHOREBIRD_RELEASE_SKIPPED=0
-  if "$shorebird_bin" release android --artifact apk "$@" 2>&1 | tee "$log_file"; then
+  # 24.11: depuis la release 2.6.12 (17.11), le plugin Gradle de Flutter
+  # refuse de s'appliquer - "Your project's Gradle version (8.14.5) is
+  # lower than Flutter's minimum supported version of 9.3.1". Rien n'a
+  # bouge de notre cote: meme Gradle, meme FLUTTER_VERSION (3.47.2), meme
+  # workflow qu'a la 2.6.12 qui, elle, etait passee. Seules les releases
+  # sont touchees (bundleMobileRelease); les patches OTA continuaient de
+  # passer, ce qui a masque la panne pendant une semaine.
+  #
+  # On prend le contournement que Flutter propose lui-meme dans son
+  # message plutot que de migrer Gradle 8 -> 9, qui est un chantier a part
+  # entiere sur un projet avec autant de plugins natifs. A refaire
+  # proprement quand il y aura du temps pour le tester.
+  #
+  # Tout ce qui suit "--" est transmis par Shorebird a "flutter build".
+  if "$shorebird_bin" release android --artifact apk "$@" \
+       -- --android-skip-build-dependency-validation 2>&1 | tee "$log_file"; then
     status=0
   else
     status=1
