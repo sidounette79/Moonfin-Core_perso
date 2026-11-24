@@ -68,6 +68,14 @@ class OtaChangelogEntry {
 /// À tenir à jour à CHAQUE push sur `carba-tv-changes`.
 const otaChangelog = [
   OtaChangelogEntry(
+    date: '19.11 13h12',
+    patchNumber: 19,
+    title: 'Lecture : après le correctif du générique, avancer jusqu\'au '
+        'bout du fichier ne fermait plus le lecteur — il restait figé sur '
+        'la dernière image et il fallait faire Retour. La sortie se '
+        'bloquait elle-même le temps du marquage « vu ».',
+  ),
+  OtaChangelogEntry(
     date: '19.11 11h09',
     patchNumber: 16,
     title: 'Lecture : un épisode terminé au générique sortait quand même '
