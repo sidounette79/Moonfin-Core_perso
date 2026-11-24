@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="patoune_widget_next_title">Next episodes to watch</string>
+  <string name="patoune_widget_upcoming_title">Upcoming episodes</string>
+  <string name="patoune_widget_recent_title">Recently aired</string>
+  <string name="patoune_widget_empty">Nothing to show here right now…</string>
+  <string name="patoune_widget_today">today</string>
+  <plurals name="patoune_widget_unwatched">
+    <item quantity="one">%d unwatched episode</item>
+    <item quantity="other">%d unwatched episodes</item>
+  </plurals>
+  <plurals name="patoune_widget_in_days">
+    <item quantity="one">in %d day</item>
+    <item quantity="other">in %d days</item>
+  </plurals>
+  <plurals name="patoune_widget_days_ago">
+    <item quantity="one">%d day ago</item>
+    <item quantity="other">%d days ago</item>
+  </plurals>
+</resources>

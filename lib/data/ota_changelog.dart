@@ -65,8 +65,25 @@ class OtaChangelogEntry {
 /// quinze jours de correctifs ont été publiés entre-temps. Les entrées
 /// ci-dessous rattrapent ce retard, reconstituées depuis l'historique git
 /// et les numéros de patch réellement publiés par les runs GitHub.
+/// 24.11, tag "2.6.13" : encore une vraie release. Les widgets d'écran
+/// d'accueil (« Prochains épisodes à voir », « Prochaines diffusions »,
+/// « Épisodes récemment diffusés ») sont du Kotlin natif, un manifest et
+/// des ressources — rien que Shorebird sache ajouter à un APK déjà
+/// installé. Saveur mobile uniquement (android/app/src/mobile), la TV
+/// n'embarque rien de tout ça. android_tv_version bumpé quand même, sans
+/// quoi Shorebird saute silencieusement le flavor androidTv — le piège
+/// déjà rencontré à la release 2.6.11.
 /// À tenir à jour à CHAQUE push sur `carba-tv-changes`.
 const otaChangelog = [
+  OtaChangelogEntry(
+    date: '24.11 17h20',
+    title: 'Nouveau : trois widgets pour l\'écran d\'accueil — prochains '
+        'épisodes à voir, prochaines diffusions, épisodes récemment '
+        'diffusés. Ils lisent le suivi de Patoune TV et se reconnaissent '
+        'tout seuls grâce au compte Emby. Vraie release : réinstallation '
+        'nécessaire, puis appui long sur l\'écran d\'accueil pour les '
+        'poser.',
+  ),
   OtaChangelogEntry(
     date: '19.11 13h12',
     patchNumber: 19,

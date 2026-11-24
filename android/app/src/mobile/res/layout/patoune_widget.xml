@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Reprend la présentation de l'ancienne app de suivi (captures du 24.11) :
+  un bandeau de titre rose en capitales, puis la liste.
+  RemoteViews n'accepte qu'un sous-ensemble de vues - ListView est l'une
+  des rares collections autorisées, d'où le RemoteViewsService.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/patoune_widget_background"
+    android:padding="12dp">
+
+  <TextView
+      android:id="@+id/patoune_widget_title"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:textColor="#FF4D94"
+      android:textSize="13sp"
+      android:textStyle="bold"
+      android:letterSpacing="0.06"
+      android:maxLines="1"
+      android:ellipsize="end"
+      android:textAllCaps="true"
+      android:paddingBottom="8dp" />
+
+  <!-- setEmptyView exige que les deux vues soient frères dans ce parent. -->
+  <ListView
+      android:id="@+id/patoune_widget_list"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_weight="1"
+      android:divider="@android:color/transparent"
+      android:dividerHeight="6dp"
+      android:scrollbars="none" />
+
+  <TextView
+      android:id="@+id/patoune_widget_empty"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_weight="1"
+      android:gravity="center_vertical"
+      android:textColor="#C8FFFFFF"
+      android:textSize="14sp"
+      android:text="@string/patoune_widget_empty" />
+</LinearLayout>

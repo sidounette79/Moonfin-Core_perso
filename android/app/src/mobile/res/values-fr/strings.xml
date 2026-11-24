@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="patoune_widget_next_title">Prochains épisodes à voir</string>
+  <string name="patoune_widget_upcoming_title">Prochaines diffusions</string>
+  <string name="patoune_widget_recent_title">Épisodes récemment diffusés</string>
+  <string name="patoune_widget_empty">Il n\'y a rien à afficher ici pour le moment…</string>
+  <string name="patoune_widget_today">aujourd\'hui</string>
+  <plurals name="patoune_widget_unwatched">
+    <item quantity="one">%d épisode non vu</item>
+    <item quantity="other">%d épisodes non vus</item>
+  </plurals>
+  <plurals name="patoune_widget_in_days">
+    <item quantity="one">dans %d jour</item>
+    <item quantity="other">dans %d jours</item>
+  </plurals>
+  <plurals name="patoune_widget_days_ago">
+    <item quantity="one">il y a %d jour</item>
+    <item quantity="other">il y a %d jours</item>
+  </plurals>
+</resources>

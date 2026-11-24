@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'credential_store_base.dart';
+import 'patoune_widget_bridge.dart';
 
 /// Every call answers rather than throwing. A platform with no plugin
 /// registered raises MissingPluginException, which is not a PlatformException,
@@ -37,6 +38,9 @@ class CredentialStoreImpl implements CredentialStore {
         key: '${CredentialStore.tokenKeyPrefix}$serverId',
         value: token,
       );
+      // Copie lisible par les widgets d'écran d'accueil, qui n'ont pas
+      // accès à ce coffre (voir PatouneWidgetBridge).
+      await PatouneWidgetBridge.publishToken(token);
     } on Exception catch (_) {
       _markUnavailable();
     }
@@ -60,6 +64,7 @@ class CredentialStoreImpl implements CredentialStore {
       await _storage.delete(
         key: '${CredentialStore.tokenKeyPrefix}$serverId',
       );
+      await PatouneWidgetBridge.clear();
     } on Exception catch (_) {
       _markUnavailable();
     }
@@ -69,6 +74,7 @@ class CredentialStoreImpl implements CredentialStore {
   Future<void> clear() async {
     try {
       await _storage.deleteAll();
+      await PatouneWidgetBridge.clear();
     } on Exception catch (_) {
       _markUnavailable();
     }

@@ -1,2 +1,60 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!--
+      24.11, Sid — widgets « séries à voir », saveur mobile uniquement
+      (ce manifest n'est fusionné que pour mobile/mobile-beta, la version
+      Android TV ne les embarque pas).
+
+      Noms de classe COMPLETS et exported="true" : c'est le système qui
+      envoie APPWIDGET_UPDATE, un receiver non exporté ne le recevrait
+      jamais et le widget n'apparaîtrait même pas dans la liste du
+      lanceur. Deux pièges rencontrés le jour même sur le widget Pooky
+      Music, qui compilaient parfaitement tous les deux.
+    -->
+    <receiver
+      android:name="org.moonfin.androidtv.widget.NextEpisodesWidgetProvider"
+      android:exported="true"
+      android:label="@string/patoune_widget_next_title">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/patoune_widget_next" />
+    </receiver>
+
+    <receiver
+      android:name="org.moonfin.androidtv.widget.UpcomingWidgetProvider"
+      android:exported="true"
+      android:label="@string/patoune_widget_upcoming_title">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/patoune_widget_upcoming" />
+    </receiver>
+
+    <receiver
+      android:name="org.moonfin.androidtv.widget.RecentlyAiredWidgetProvider"
+      android:exported="true"
+      android:label="@string/patoune_widget_recent_title">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/patoune_widget_recent" />
+    </receiver>
+
+    <!--
+      BIND_REMOTEVIEWS est exigée par le système : sans elle, le lanceur
+      refuse de se lier au service et la liste reste vide. La permission
+      n'est tenable que parce que seul le système peut la détenir.
+    -->
+    <service
+      android:name="org.moonfin.androidtv.widget.SeriesWidgetService"
+      android:permission="android.permission.BIND_REMOTEVIEWS"
+      android:exported="false" />
+  </application>
 </manifest>
