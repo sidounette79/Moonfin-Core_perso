@@ -137,19 +137,25 @@ TV_BUNDLE_OUTPUT="$REPO_ROOT/${APP_NAME}_AndroidTV_v${TV_VERSION}.aab"
 echo "${APP_NAME} version: ${APP_VERSION} (${APP_BUILD_NUMBER})"
 echo "${APP_NAME} Android TV version: ${TV_VERSION} (${TV_BUILD_NUMBER})"
 # 25.11: Shorebird embarque SA propre version de Flutter, independante de
-# FLUTTER_VERSION / subosito-flutter-action (qui ne sert qu'a `flutter
-# analyze` et aux builds hors Shorebird). Non epinglee, il prend la plus
-# recente - et la 3.50.1, sortie entre le 19 et le 25.11, exige Gradle
-# 9.3.1 alors que le projet est en 8.14.5 : toute release echouait avec
-# "Your project's Gradle version is lower than Flutter's minimum
-# supported version". Le 19.11, Shorebird utilisait 3.50.0 et tout
-# passait : on s'y tient jusqu'a ce que la migration Gradle 8 -> 9 soit
-# faite et testee pour elle-meme.
+# FLUTTER_VERSION / subosito-flutter-action - lesquels ne servent qu'a
+# `flutter analyze` et aux builds hors Shorebird. Non epinglee, Shorebird
+# prend la derniere stable, aujourd'hui 3.50.1.
 #
-# Pourquoi ca n'a pas saute aux yeux plus tot : seules les RELEASES
-# construisent un AAB. Les patches OTA empruntent un autre chemin et
-# continuaient de passer au vert.
-SHOREBIRD_FLUTTER_VERSION="${SHOREBIRD_FLUTTER_VERSION:-3.50.0}"
+# Or TOUTE la branche 3.50 exige Gradle 9.3.1, alors que le projet est en
+# 8.14.5 : "Your project's Gradle version (8.14.5) is lower than Flutter's
+# minimum supported version of 9.3.1". Verifie: epingler 3.50.0 donne
+# exactement la meme erreur que 3.50.1.
+#
+# Pourquoi ca n'a saute aux yeux que le 24.11, une semaine apres la
+# derniere release (2.6.12, 17.11) : seules les RELEASES construisent un
+# AAB (bundleMobileRelease). Les patches OTA empruntent un autre chemin et
+# continuaient de passer au vert. Un patch vert ne prouve donc PAS qu'une
+# release passerait.
+#
+# On s'aligne sur la version que le projet declare deja (FLUTTER_VERSION,
+# utilisee par `flutter analyze` qui lui passe), jusqu'a ce que la
+# migration Gradle 8 -> 9 soit faite et testee pour elle-meme.
+SHOREBIRD_FLUTTER_VERSION="${SHOREBIRD_FLUTTER_VERSION:-${FLUTTER_VERSION:-3.47.2}}"
 echo "Shorebird Flutter version: $SHOREBIRD_FLUTTER_VERSION"
 echo "Shorebird mode: ${SHOREBIRD_MODE:-<none - plain flutter build>}"
 
