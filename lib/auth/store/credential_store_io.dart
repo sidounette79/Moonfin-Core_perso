@@ -49,9 +49,17 @@ class CredentialStoreImpl implements CredentialStore {
   @override
   Future<String?> getToken(String serverId) async {
     try {
-      return await _storage.read(
+      final token = await _storage.read(
         key: '${CredentialStore.tokenKeyPrefix}$serverId',
       );
+      // 25.11: publier la copie ICI aussi, pas seulement dans saveToken.
+      // Les widgets d'ecran d'accueil restaient vides sur un telephone
+      // deja connecte: saveToken n'est appele qu'a une NOUVELLE
+      // connexion, moment qui n'arrive jamais pour une session ouverte
+      // depuis des mois. getToken, lui, est appele a chaque restauration
+      // de session, donc a chaque demarrage de l'app.
+      if (token != null) await PatouneWidgetBridge.publishToken(token);
+      return token;
     } on Exception catch (_) {
       _markUnavailable();
       return null;

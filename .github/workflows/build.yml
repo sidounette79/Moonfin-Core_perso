@@ -42,9 +42,11 @@ on:
         options:
           - release
           - testflight
-  push:
-    tags:
-      - '[0-9]+.[0-9]+.[0-9]+*'
+  # 25.11, Sid : « retire le tag pour all build ». Ce workflow construit
+  # iOS, macOS, Windows et Linux - rien qui serve a CARBA TV, qui a son
+  # propre build-carba-android.yml. Il se declenchait sur chaque tag de
+  # version et echouait a chaque fois, un mail d'echec par release pour
+  # rien. Il reste lancable a la main (workflow_dispatch ci-dessus).
   pull_request:
     branches:
       - main

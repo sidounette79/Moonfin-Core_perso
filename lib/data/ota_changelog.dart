@@ -76,6 +76,14 @@ class OtaChangelogEntry {
 /// À tenir à jour à CHAQUE push sur `carba-tv-changes`.
 const otaChangelog = [
   OtaChangelogEntry(
+    date: '25.11 16h32',
+    title: 'Widgets « séries à voir » : ils restaient vides sur un '
+        'téléphone déjà connecté. Le jeton dont ils ont besoin n\'était '
+        'depose qu\'au moment d\'une nouvelle connexion — un moment qui '
+        'n\'arrive jamais quand on est connecté depuis des mois. Il est '
+        'maintenant rafraîchi à chaque démarrage de l\'app.',
+  ),
+  OtaChangelogEntry(
     date: '24.11 17h20',
     title: 'Nouveau : trois widgets pour l\'écran d\'accueil — prochains '
         'épisodes à voir, prochaines diffusions, épisodes récemment '
