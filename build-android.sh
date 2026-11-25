@@ -94,22 +94,8 @@ shorebird_release() {
   shorebird_bin="$(resolve_shorebird)"
   log_file="$(mktemp)"
   SHOREBIRD_RELEASE_SKIPPED=0
-  # 24.11: depuis la release 2.6.12 (17.11), le plugin Gradle de Flutter
-  # refuse de s'appliquer - "Your project's Gradle version (8.14.5) is
-  # lower than Flutter's minimum supported version of 9.3.1". Rien n'a
-  # bouge de notre cote: meme Gradle, meme FLUTTER_VERSION (3.47.2), meme
-  # workflow qu'a la 2.6.12 qui, elle, etait passee. Seules les releases
-  # sont touchees (bundleMobileRelease); les patches OTA continuaient de
-  # passer, ce qui a masque la panne pendant une semaine.
-  #
-  # On prend le contournement que Flutter propose lui-meme dans son
-  # message plutot que de migrer Gradle 8 -> 9, qui est un chantier a part
-  # entiere sur un projet avec autant de plugins natifs. A refaire
-  # proprement quand il y aura du temps pour le tester.
-  #
-  # Tout ce qui suit "--" est transmis par Shorebird a "flutter build".
-  if "$shorebird_bin" release android --artifact apk "$@" \
-       -- --android-skip-build-dependency-validation 2>&1 | tee "$log_file"; then
+  if "$shorebird_bin" release android --artifact apk \
+       --flutter-version="$SHOREBIRD_FLUTTER_VERSION" "$@" 2>&1 | tee "$log_file"; then
     status=0
   else
     status=1
@@ -150,6 +136,21 @@ TV_BUNDLE_OUTPUT="$REPO_ROOT/${APP_NAME}_AndroidTV_v${TV_VERSION}.aab"
 
 echo "${APP_NAME} version: ${APP_VERSION} (${APP_BUILD_NUMBER})"
 echo "${APP_NAME} Android TV version: ${TV_VERSION} (${TV_BUILD_NUMBER})"
+# 25.11: Shorebird embarque SA propre version de Flutter, independante de
+# FLUTTER_VERSION / subosito-flutter-action (qui ne sert qu'a `flutter
+# analyze` et aux builds hors Shorebird). Non epinglee, il prend la plus
+# recente - et la 3.50.1, sortie entre le 19 et le 25.11, exige Gradle
+# 9.3.1 alors que le projet est en 8.14.5 : toute release echouait avec
+# "Your project's Gradle version is lower than Flutter's minimum
+# supported version". Le 19.11, Shorebird utilisait 3.50.0 et tout
+# passait : on s'y tient jusqu'a ce que la migration Gradle 8 -> 9 soit
+# faite et testee pour elle-meme.
+#
+# Pourquoi ca n'a pas saute aux yeux plus tot : seules les RELEASES
+# construisent un AAB. Les patches OTA empruntent un autre chemin et
+# continuaient de passer au vert.
+SHOREBIRD_FLUTTER_VERSION="${SHOREBIRD_FLUTTER_VERSION:-3.50.0}"
+echo "Shorebird Flutter version: $SHOREBIRD_FLUTTER_VERSION"
 echo "Shorebird mode: ${SHOREBIRD_MODE:-<none - plain flutter build>}"
 
 cd "$REPO_ROOT"
@@ -178,6 +179,7 @@ if [ "$SHOREBIRD_MODE" = "patch" ]; then
   # this pubspec.yaml false positive was blocking every patch otherwise.
   echo "Publishing Shorebird OTA patch - mobile flavor..."
   "$SHOREBIRD" patch android --flavor mobile \
+    --flutter-version="$SHOREBIRD_FLUTTER_VERSION" \
     --release-version latest \
     --build-name "$APP_VERSION" \
     --build-number "$APP_BUILD_NUMBER" \
@@ -188,6 +190,7 @@ if [ "$SHOREBIRD_MODE" = "patch" ]; then
 
   echo "Publishing Shorebird OTA patch - androidTv flavor..."
   "$SHOREBIRD" patch android --flavor androidTv \
+    --flutter-version="$SHOREBIRD_FLUTTER_VERSION" \
     --release-version latest \
     --build-name "$TV_VERSION" \
     --build-number "$TV_BUILD_NUMBER" \
