@@ -76,6 +76,13 @@ class OtaChangelogEntry {
 /// À tenir à jour à CHAQUE push sur `carba-tv-changes`.
 const otaChangelog = [
   OtaChangelogEntry(
+    date: '26.11 14h01',
+    title: 'Widgets « séries à voir » : encore vides. Les trois tentatives '
+        'précédentes se greffaient sur un moment d\'authentification, que '
+        'ton téléphone ne traverse jamais. Le jeton est maintenant redéposé '
+        'à chaque fois que tu reviens dans l\'app.',
+  ),
+  OtaChangelogEntry(
     date: '26.11 06h05',
     title: 'Widgets « séries à voir » : toujours vides après le premier '
         'correctif. Le jeton n\'était déposé qu\'au changement de serveur, '

@@ -1074,6 +1074,13 @@ class _ConnectivityListenerState extends ConsumerState<_ConnectivityListener>
       if (GetIt.instance.isRegistered<ConnectivityService>()) {
         GetIt.instance<ConnectivityService>().onAppResumed();
       }
+      // 26.11 : les widgets d'ecran d'accueil lisent le jeton Emby dans les
+      // preferences partagees. On le redepose a chaque reprise, le seul
+      // moment dont on soit sur qu'il arrive — y compris quand Android a
+      // garde le processus et qu'aucun demarrage n'a eu lieu.
+      if (GetIt.instance.isRegistered<SessionRepository>()) {
+        unawaited(GetIt.instance<SessionRepository>().republishWidgetToken());
+      }
     }
   }
 

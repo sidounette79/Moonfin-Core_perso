@@ -166,6 +166,34 @@ class SessionRepository {
   Stream<SessionState> get stateStream => _stateController.stream;
 
 
+  /// 26.11 — redepose le jeton Emby pour les widgets d'ecran d'accueil.
+  ///
+  /// Trois tentatives precedentes ont echoue parce qu'elles se greffaient
+  /// sur un chemin d'AUTHENTIFICATION : saveToken (nouvelle connexion),
+  /// getToken, puis les trois endroits ou le client recoit son jeton. Or
+  /// une app deja connectee, rouverte depuis les recents, n'emprunte aucun
+  /// de ces chemins — restoreSession() elle-meme est court-circuitee quand
+  /// un code PIN est actif ou que « toujours authentifier » est coche
+  /// (voir startup_screen.dart), et getLoggedInServers() n'est appelee
+  /// nulle part.
+  ///
+  /// Ici on ne depend plus d'aucun de ces chemins : on relit simplement le
+  /// coffre pour le serveur actif, a chaque passage au premier plan. Le
+  /// pont ignore une valeur identique a la precedente, donc c'est sans
+  /// frais quand rien n'a change.
+  Future<void> republishWidgetToken() async {
+    final serverId = _activeServerId;
+    if (serverId == null || serverId.isEmpty) return;
+    try {
+      final token = await _credentialStore.getToken(serverId);
+      if (token != null && token.isNotEmpty) {
+        await PatouneWidgetBridge.publishToken(token);
+      }
+    } catch (_) {
+      // Un widget qui ne se met pas a jour ne doit jamais perturber l'app.
+    }
+  }
+
   Future<bool> restoreSession() async {
     _setState(SessionState.restoring);
 
