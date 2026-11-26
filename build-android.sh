@@ -155,6 +155,11 @@ echo "${APP_NAME} Android TV version: ${TV_VERSION} (${TV_BUILD_NUMBER})"
 # On s'aligne sur la version que le projet declare deja (FLUTTER_VERSION,
 # utilisee par `flutter analyze` qui lui passe), jusqu'a ce que la
 # migration Gradle 8 -> 9 soit faite et testee pour elle-meme.
+# ⚠️ Uniquement sur `shorebird release` : `shorebird patch` REFUSE
+# --flutter-version (exit 64, il affiche son aide). C'est voulu de leur
+# cote - un patch doit tourner sur la version Flutter de la release qu'il
+# corrige, Shorebird la deduit tout seul. Essaye le 25.11, ca a fait
+# echouer le patch et Sid n'a rien recu.
 SHOREBIRD_FLUTTER_VERSION="${SHOREBIRD_FLUTTER_VERSION:-${FLUTTER_VERSION:-3.47.2}}"
 echo "Shorebird Flutter version: $SHOREBIRD_FLUTTER_VERSION"
 echo "Shorebird mode: ${SHOREBIRD_MODE:-<none - plain flutter build>}"
@@ -185,7 +190,6 @@ if [ "$SHOREBIRD_MODE" = "patch" ]; then
   # this pubspec.yaml false positive was blocking every patch otherwise.
   echo "Publishing Shorebird OTA patch - mobile flavor..."
   "$SHOREBIRD" patch android --flavor mobile \
-    --flutter-version="$SHOREBIRD_FLUTTER_VERSION" \
     --release-version latest \
     --build-name "$APP_VERSION" \
     --build-number "$APP_BUILD_NUMBER" \
@@ -196,7 +200,6 @@ if [ "$SHOREBIRD_MODE" = "patch" ]; then
 
   echo "Publishing Shorebird OTA patch - androidTv flavor..."
   "$SHOREBIRD" patch android --flavor androidTv \
-    --flutter-version="$SHOREBIRD_FLUTTER_VERSION" \
     --release-version latest \
     --build-name "$TV_VERSION" \
     --build-number "$TV_BUILD_NUMBER" \
