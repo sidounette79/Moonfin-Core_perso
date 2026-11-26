@@ -188,6 +188,13 @@ class SessionRepository {
       final token = await _credentialStore.getToken(serverId);
       if (token != null && token.isNotEmpty) {
         await PatouneWidgetBridge.publishToken(token);
+        // 26.11, diagnostic temporaire : les widgets restent vides et le
+        // serveur ne voit aucun appel. On le previent nous-memes que le
+        // jeton vient d'etre depose, avec ce meme jeton. S'il journalise
+        // « appel widget reconnu », le depot et le jeton sont bons et il
+        // faut chercher cote Android ; s'il ne voit rien, c'est ici que ca
+        // casse. A RETIRER une fois la cause trouvee.
+        unawaited(PatouneWidgetBridge.signalerDepot(token));
       }
     } catch (_) {
       // Un widget qui ne se met pas a jour ne doit jamais perturber l'app.
