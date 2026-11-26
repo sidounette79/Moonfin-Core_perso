@@ -25,6 +25,7 @@ import '../utils/playlist_utils.dart';
 import 'user_views_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../../l10n/current_app_localizations.dart';
+import '../../auth/store/patoune_widget_bridge.dart';
 
 class ServerUserSession {
   final Server server;
@@ -138,6 +139,9 @@ class MultiServerRepository {
           baseUrl: server.address,
         );
         client.accessToken = accessToken;
+        // 26.11: le widget d'ecran d'accueil ne peut pas lire le coffre
+        // chiffre; on lui depose une copie partout ou le jeton est pose.
+        unawaited(PatouneWidgetBridge.publishToken(accessToken));
         client.userId = userId;
 
         sessions.add(

@@ -20,14 +20,20 @@ class PatouneWidgetBridge {
 
   static bool get _supported => !kIsWeb && Platform.isAndroid;
 
+  /// Le jeton est publié depuis chaque endroit où l'app le pose sur son
+  /// client (connexion, restauration au démarrage, changement de
+  /// session) : on évite d'écrire plusieurs fois la même valeur.
+  static String? _dernierPublie;
+
   /// Appelé à chaque enregistrement de jeton. Multi-serveur : c'est le
   /// dernier serveur connecté qui alimente les widgets — elle n'en a
   /// qu'un, et un widget ne saurait de toute façon pas lequel choisir.
   static Future<void> publishToken(String token) async {
-    if (!_supported || token.isEmpty) return;
+    if (!_supported || token.isEmpty || token == _dernierPublie) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_tokenKey, token);
+      _dernierPublie = token;
     } catch (_) {
       // Un widget qui ne se met pas à jour ne doit jamais faire échouer
       // une connexion.
@@ -52,6 +58,7 @@ class PatouneWidgetBridge {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_tokenKey);
+      _dernierPublie = null;
     } catch (_) {
       // idem
     }

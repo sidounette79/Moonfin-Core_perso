@@ -54,6 +54,7 @@ import '../store/credential_store.dart';
 import '../models/user.dart';
 import 'server_repository.dart';
 import 'user_repository.dart';
+import '../store/patoune_widget_bridge.dart';
 
 enum SessionState { ready, restoring, switching }
 
@@ -255,6 +256,9 @@ class SessionRepository {
     );
 
     client.accessToken = accessToken;
+    // 26.11: le widget d'ecran d'accueil ne peut pas lire le coffre
+    // chiffre; on lui depose une copie partout ou le jeton est pose.
+    unawaited(PatouneWidgetBridge.publishToken(accessToken));
     client.userId = userId;
 
     // A stored token can be long dead, and everything past this point fires
